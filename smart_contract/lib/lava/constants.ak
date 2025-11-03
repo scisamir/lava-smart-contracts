@@ -1,3 +1,5 @@
+pub const precision_factor = 100_000
+
 // LGS (Lava Global Settings)
 pub const global_settings_nft = #"47534e"
 

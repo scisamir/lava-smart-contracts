@@ -11,7 +11,9 @@ use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
   placeholder,
 }
-use lava/constants.{global_settings_nft, lava_pool_nft_name, min_pool_lovelace}
+use lava/constants.{
+  global_settings_nft, lava_pool_nft_name, min_pool_lovelace, precision_factor,
+}
 use lava/types.{GlobalSettingsDatum, PoolDatum}
 use lava/utils.{find_gs_ref_input, is_multisig_signing}
 use mocktail/virgin_address.{mock_pub_key_address}
@@ -52,7 +54,23 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
 
     // pool datum must be of the expected type PoolDatum
     expect InlineDatum(pool_datum) = pool_output.datum
-    expect PoolDatum { pool_asset, .. } = pool_datum
+    expect PoolDatum {
+      pool_asset,
+      total_st_assets_minted,
+      total_underlying,
+      exchange_rate,
+      total_rewards_accrued,
+      pool_stake_asset_name,
+      ..
+    } = pool_datum
+
+    let is_new_pool_datum_valid = and {
+        total_st_assets_minted == 0,
+        total_underlying == 0,
+        exchange_rate == 1 * precision_factor,
+        total_rewards_accrued == 0,
+        pool_stake_asset_name != #"",
+      }
 
     let is_pool_value_valid = and {
         (assets.without_lovelace(pool_output.value) == from_asset(
@@ -72,6 +90,8 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
       list.has(allowed_assets, pool_asset)?,
       // pool utxo must contain only the pool nft and min pool lovelace
       is_pool_value_valid?,
+      // New pool datum must be valid
+      is_new_pool_datum_valid?,
     }
   }
 

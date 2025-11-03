@@ -217,6 +217,7 @@ test test_create_global_settings() {
           admin: admin_sc,
           authorized_batchers: [admin_sc],
           allowed_assets: [],
+          mint_validator_hash: mock_script_hash(15),
         },
       ),
       reference_script: None,
@@ -263,6 +264,7 @@ test test_update_global_settings() {
       admin: admin_sc,
       authorized_batchers: [admin_sc],
       allowed_assets: [],
+      mint_validator_hash: mock_script_hash(15),
     }
   let gs_input_utxo_ref = mock_utxo_ref(0, 11)
   let gs_input =
@@ -291,6 +293,7 @@ test test_update_global_settings() {
           admin: admin_sc,
           authorized_batchers: [admin_sc, new_sc],
           allowed_assets: [],
+          mint_validator_hash: mock_script_hash(15),
         },
       ),
       reference_script: None,
