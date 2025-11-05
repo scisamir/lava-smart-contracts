@@ -1,0 +1,9 @@
+Create global settings tx hash: 060b30f8b8f36202c556ff3edf530d33e1bdcee109bf64741117e1570ed3a2ea
+Update global settings tx hash: 0cdc0b90cb0f0d698ee0fab926d3a90450f642b57c115ade75c55d287f9b7356
+
+Create optin order tx hash: 3bc00dd36a5eaa4481dc314fe52fc1edd6629795f3660c5ed5db9026fb65cbc7
+Cancel order tx hash: e981a4c6f9a48b6c60660839cd2e711b3c82d11802be90b8ba2039cd90b37634
+
+Create pool tx hash: 6eb2c034a31425097a107c47391d94cd5fd1464165cce0d20bebf261f1159416
+
+register all stake certificate tx hash: a01f21e1c6a35829a379753af4a9e66bb779e3c36a3f4fe95dce132ed61847a9
