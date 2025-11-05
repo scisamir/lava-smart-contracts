@@ -2,11 +2,15 @@ use aiken/collection/dict
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Credential}
-use cardano/assets.{AssetName, Lovelace, PolicyId}
-use cardano/transaction.{InlineDatum, Input, Transaction}
+use cardano/assets.{Lovelace, PolicyId, from_asset}
+use cardano/transaction.{InlineDatum, Input, Transaction, placeholder}
 use lava/constants.{global_settings_nft}
 use lava/types.{Burn, GlobalSettingsDatum, Mint, MintRedeemer}
 use lava/utils.{find_gs_ref_input, is_multisig_signing}
+use test_utils/constants_t.{
+  gs_validator_hash_t, mint_validator_hash_t, pool_batching_cred_t,
+}
+use test_utils/fns_t.{get_admin_input, get_global_settings_input}
 
 validator minting(
   pool_batching_cred: Credential,
@@ -71,4 +75,52 @@ fn validate_minting(
     // pool batching is successful
     pairs.has_key(withdrawals, pool_batching_cred)?,
   }
+}
+
+test test_mint() {
+  let (_, admin_input) = get_admin_input()
+  let gs_input = get_global_settings_input()
+
+  let mint = from_asset(mint_validator_hash_t, "test", 100)
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [admin_input, gs_input],
+      reference_inputs: [gs_input],
+      mint: mint,
+      withdrawals: [Pair(pool_batching_cred_t, 0)],
+    }
+
+  minting.mint(
+    pool_batching_cred_t,
+    gs_validator_hash_t,
+    Mint,
+    mint_validator_hash_t,
+    tx,
+  )
+}
+
+test test_burn() {
+  let (_, admin_input) = get_admin_input()
+  let gs_input = get_global_settings_input()
+
+  let mint = from_asset(mint_validator_hash_t, "test", -100)
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [admin_input, gs_input],
+      reference_inputs: [gs_input],
+      mint: mint,
+      withdrawals: [Pair(pool_batching_cred_t, 0)],
+    }
+
+  minting.mint(
+    pool_batching_cred_t,
+    gs_validator_hash_t,
+    Burn,
+    mint_validator_hash_t,
+    tx,
+  )
 }

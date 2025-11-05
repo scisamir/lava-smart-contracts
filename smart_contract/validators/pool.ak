@@ -2,25 +2,20 @@ use aiken/collection/dict
 use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
-use cardano/address.{Address, Credential, Script, VerificationKey}
-use cardano/assets.{
-  AssetName, PolicyId, Value, from_asset, from_lovelace, lovelace_of,
-  quantity_of, without_lovelace,
-}
+use cardano/address.{Address, Script}
+use cardano/assets.{PolicyId, from_asset, from_lovelace, lovelace_of}
 use cardano/transaction.{
-  InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
-  placeholder,
+  InlineDatum, Input, Output, OutputReference, Transaction, placeholder,
 }
 use lava/constants.{
   global_settings_nft, lava_pool_nft_name, min_pool_lovelace, precision_factor,
 }
-use lava/types.{GlobalSettingsDatum, PoolDatum}
+use lava/types.{AssetType, GlobalSettingsDatum, PoolDatum}
 use lava/utils.{find_gs_ref_input, is_multisig_signing}
-use mocktail/virgin_address.{mock_pub_key_address}
-use mocktail/virgin_key_hash.{
-  mock_policy_id, mock_pub_key_hash, mock_script_hash,
-}
+use mocktail/virgin_key_hash.{mock_policy_id, mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
+use test_utils/constants_t.{gs_validator_hash_t, pool_batching_cred_t}
+use test_utils/fns_t.{get_admin_input, get_global_settings_input}
 
 validator pool_validator(gs_validator_hash: ScriptHash) {
   // minting to create pool
@@ -109,4 +104,102 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
   else(_) {
     fail
   }
+}
+
+test test_create_pool() {
+  let pool_hash = mock_script_hash(18)
+  let mint = from_asset(pool_hash, lava_pool_nft_name, 1)
+  let gs_input = get_global_settings_input()
+  let (_, admin_input) = get_admin_input()
+
+  let pool_datum =
+    PoolDatum {
+      pool_batching_cred: pool_batching_cred_t,
+      total_st_assets_minted: 0,
+      total_underlying: 0,
+      exchange_rate: 1 * precision_factor,
+      total_rewards_accrued: 0,
+      pool_asset: AssetType {
+        is_stable: False,
+        policy_id: mock_policy_id(11),
+        asset_name: "test",
+        multiplier: 1_000_000,
+      },
+      pool_stake_asset_name: "stTest",
+    }
+  let pool_output =
+    Output {
+      address: Address {
+        payment_credential: Script(pool_hash),
+        stake_credential: None,
+      },
+      value: assets.merge(from_lovelace(min_pool_lovelace), mint),
+      datum: InlineDatum(pool_datum),
+      reference_script: None,
+    }
+
+  let mint = from_asset(pool_hash, lava_pool_nft_name, 1)
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [admin_input],
+      outputs: [pool_output],
+      mint: mint,
+      reference_inputs: [gs_input],
+    }
+
+  pool_validator.mint(gs_validator_hash_t, "", pool_hash, tx)
+}
+
+test test_pool_spend() {
+  let pool_hash = mock_script_hash(18)
+
+  let pool_utxo_ref = mock_utxo_ref(0, 18)
+  let pool_datum =
+    PoolDatum {
+      pool_batching_cred: pool_batching_cred_t,
+      total_st_assets_minted: 0,
+      total_underlying: 0,
+      exchange_rate: 1 * precision_factor,
+      total_rewards_accrued: 0,
+      pool_asset: AssetType {
+        is_stable: False,
+        policy_id: mock_policy_id(11),
+        asset_name: "test",
+        multiplier: 1_000_000,
+      },
+      pool_stake_asset_name: "stTest",
+    }
+  let pool_input =
+    Input {
+      output_reference: pool_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: Script(pool_hash),
+          stake_credential: None,
+        },
+        value: assets.merge(
+          from_lovelace(min_pool_lovelace),
+          from_asset(pool_hash, lava_pool_nft_name, 1),
+        ),
+        datum: InlineDatum(pool_datum),
+        reference_script: None,
+      },
+    }
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [pool_input],
+      withdrawals: [Pair(pool_batching_cred_t, 0)],
+    }
+
+  pool_validator.spend(
+    gs_validator_hash_t,
+    Some(pool_datum),
+    "",
+    pool_utxo_ref,
+    tx,
+  )
 }

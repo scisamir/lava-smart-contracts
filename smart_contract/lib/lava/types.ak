@@ -31,11 +31,15 @@ pub type OrderRedeemer {
   ProcessOrder
 }
 
+pub type OrderType {
+  OptIn { deposit_amount: Int }
+  Redeem { st_amount: Int }
+}
+
 pub type OrderDatum {
+  order_type: OrderType,
   receiver_address: Address,
   canceller: VerificationKeyHash,
-  deposit_amount: Int,
-  st_amount: Int,
 }
 
 pub type PoolDatum {
