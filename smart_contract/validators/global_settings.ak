@@ -16,7 +16,8 @@ use lava/utils.{is_multisig_signing}
 use mocktail/virgin_address.{mock_pub_key_address}
 use mocktail/virgin_key_hash.{mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
-use test_utils/constants_t.{admin_t, utxo_ref_t}
+use test_utils/constants_t.{utxo_ref_t}
+use test_utils/fns_t.{get_admin_input}
 
 validator global_settings(
   admin_sc: ScriptHash,
@@ -182,24 +183,6 @@ fn validate_settings_output(
 }
 
 // Tests
-fn get_admin_input() {
-  let admin_input =
-    Input {
-      output_reference: mock_utxo_ref(0, 10),
-      output: Output {
-        address: Address {
-          payment_credential: Script(admin_t),
-          stake_credential: None,
-        },
-        value: from_lovelace(2000000),
-        datum: NoDatum,
-        reference_script: None,
-      },
-    }
-
-  (admin_t, admin_input)
-}
-
 test test_create_global_settings() {
   let global_settings_validator_hash = mock_script_hash(0)
   let gsn = from_asset(global_settings_validator_hash, global_settings_nft, 1)
@@ -217,6 +200,7 @@ test test_create_global_settings() {
           admin: admin_sc,
           authorized_batchers: [admin_sc],
           allowed_assets: [],
+          mint_validator_hash: mock_script_hash(15),
         },
       ),
       reference_script: None,
@@ -263,6 +247,7 @@ test test_update_global_settings() {
       admin: admin_sc,
       authorized_batchers: [admin_sc],
       allowed_assets: [],
+      mint_validator_hash: mock_script_hash(15),
     }
   let gs_input_utxo_ref = mock_utxo_ref(0, 11)
   let gs_input =
@@ -291,6 +276,7 @@ test test_update_global_settings() {
           admin: admin_sc,
           authorized_batchers: [admin_sc, new_sc],
           allowed_assets: [],
+          mint_validator_hash: mock_script_hash(15),
         },
       ),
       reference_script: None,

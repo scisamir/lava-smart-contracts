@@ -1,23 +1,17 @@
-use aiken/collection/dict
 use aiken/collection/list
 use aiken/collection/pairs
-use aiken/crypto.{ScriptHash}
-use cardano/address.{Address, Credential, Script, VerificationKey}
-use cardano/assets.{
-  AssetName, PolicyId, Value, from_asset, from_lovelace, quantity_of,
-  without_lovelace,
-}
+use cardano/address.{Address, Credential, Inline, Script}
+use cardano/assets.{from_lovelace}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
   placeholder,
 }
-use lava/types.{CancelOrder, OrderDatum, OrderRedeemer, ProcessOrder}
+use lava/types.{CancelOrder, OptIn, OrderDatum, OrderRedeemer, ProcessOrder}
 use lava/utils.{signed_by}
-use mocktail/virgin_address.{mock_pub_key_address}
-use mocktail/virgin_key_hash.{
-  mock_policy_id, mock_pub_key_hash, mock_script_hash,
-}
+use mocktail/virgin_address.{mock_pub_key_address, mock_script_credential}
+use mocktail/virgin_key_hash.{mock_pub_key_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
+use test_utils/constants_t.{mint_validator_hash_t, pool_batching_cred_t}
 
 validator order_validator(pool_batching_cred: Credential) {
   spend(
@@ -78,4 +72,116 @@ validator order_validator(pool_batching_cred: Credential) {
   else(_) {
     fail
   }
+}
+
+test test_process_order_opt_in() {
+  let receiver_address = mock_pub_key_address(6, None)
+  let deposit_amount = 1000
+  let extra = 100
+  let order_cred = mock_script_credential(16)
+
+  let order_utxo_ref = mock_utxo_ref(0, 16)
+  let order_datum =
+    OrderDatum {
+      order_type: OptIn { deposit_amount },
+      receiver_address,
+      canceller: mock_pub_key_hash(6),
+    }
+
+  let order_input =
+    Input {
+      output_reference: order_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: order_cred,
+          stake_credential: Some(Inline(order_cred)),
+        },
+        value: from_lovelace(2_000_000)
+          |> assets.add(mint_validator_hash_t, "test", deposit_amount + extra),
+        datum: InlineDatum(order_datum),
+        reference_script: None,
+      },
+    }
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [order_input],
+      withdrawals: [Pair(pool_batching_cred_t, 0), Pair(order_cred, 0)],
+    }
+
+  order_validator.spend(
+    pool_batching_cred_t,
+    Some(order_datum),
+    "",
+    order_utxo_ref,
+    tx,
+  ) && order_validator.withdraw(
+    pool_batching_cred_t,
+    ProcessOrder,
+    order_cred,
+    tx,
+  )
+}
+
+test test_cancel_order() {
+  let receiver_address = mock_pub_key_address(6, None)
+  let canceller = mock_pub_key_hash(6)
+  let deposit_amount = 1000
+  let extra = 100
+  let order_cred = mock_script_credential(16)
+  let order_value =
+    from_lovelace(2_000_000)
+      |> assets.add(mint_validator_hash_t, "test", deposit_amount + extra)
+
+  let order_utxo_ref = mock_utxo_ref(0, 16)
+  let order_datum =
+    OrderDatum {
+      order_type: OptIn { deposit_amount },
+      receiver_address,
+      canceller,
+    }
+  let order_input =
+    Input {
+      output_reference: order_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: order_cred,
+          stake_credential: Some(Inline(order_cred)),
+        },
+        value: order_value,
+        datum: InlineDatum(order_datum),
+        reference_script: None,
+      },
+    }
+
+  let user_order_output =
+    Output {
+      address: receiver_address,
+      value: order_value,
+      datum: NoDatum,
+      reference_script: None,
+    }
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [order_input],
+      outputs: [user_order_output],
+      withdrawals: [Pair(order_cred, 0)],
+      extra_signatories: [canceller],
+    }
+
+  order_validator.spend(
+    pool_batching_cred_t,
+    Some(order_datum),
+    "",
+    order_utxo_ref,
+    tx,
+  ) && order_validator.withdraw(
+    pool_batching_cred_t,
+    CancelOrder,
+    order_cred,
+    tx,
+  )
 }
