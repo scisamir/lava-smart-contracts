@@ -1,6 +1,6 @@
 import { applyParamsToScript, builtinByteString, conStr, resolveScriptHash, serializePlutusScript } from "@meshsdk/core";
 import { blueprint } from "../setup.js";
-import { GlobalSettingsHash } from "../global_settings.ts/validator.js";
+import { GlobalSettingsHash } from "../global_settings/validator.js";
 import { BatchingHash } from "../batching/validator.js";
 
 const MintingValidator = blueprint.validators.filter(v => 

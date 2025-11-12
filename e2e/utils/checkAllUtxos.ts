@@ -1,4 +1,4 @@
-import { GlobalSettingsAddr } from "../global_settings.ts/validator.js";
+import { GlobalSettingsAddr } from "../global_settings/validator.js";
 import { OrderValidatorAddr } from "../order/validator.js";
 import { PoolValidatorAddr } from "../pool/validator.js";
 import { blockchainProvider } from "../setup.js";

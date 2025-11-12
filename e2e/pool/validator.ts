@@ -1,6 +1,6 @@
 import { applyParamsToScript, builtinByteString, resolveScriptHash, serializePlutusScript } from "@meshsdk/core";
 import { blueprint } from "../setup.js";
-import { GlobalSettingsHash } from "../global_settings.ts/validator.js";
+import { GlobalSettingsHash } from "../global_settings/validator.js";
 
 const PoolValidator = blueprint.validators.filter(v => 
     v.title.includes("pool.pool_validator.mint")

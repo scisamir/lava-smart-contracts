@@ -2,7 +2,7 @@ import { mConStr0, mConStr1 } from "@meshsdk/core";
 import { alwaysSuccessMintValidatorHash, multiSigAddress, multiSigCbor, multiSigUtxos, txBuilder, testAssetName, wallet1, wallet1Address, wallet1Collateral, wallet1Utxos, wallet2, PrecisionFactor, poolStakeAssetName, LavaPoolNftName, MinPoolLovelace, blockchainProvider } from "../setup.js";
 import { PoolValidatorAddr, PoolValidatorHash, PoolValidatorScript } from "./validator.js";
 import { BatchingHash } from "../batching/validator.js";
-import { GlobalSettingsAddr } from "../global_settings.ts/validator.js";
+import { GlobalSettingsAddr } from "../global_settings/validator.js";
 
 const poolAsset =
   mConStr0([
