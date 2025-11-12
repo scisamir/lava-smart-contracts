@@ -1,84 +1,44 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ArrowRight } from "lucide-react";
+"use client";
 
-interface WalletConnectModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConnect: (wallet: string) => void;
-}
-
-const wallets = [
-  {
-    name: "MetaMask",
-    description: "The leading self-custodial wallet",
-    icon: "🦊",
-    color: "bg-orange-500",
-  },
-  {
-    name: "Coinbase Wallet",
-    description: "The most user-friendly wallet",
-    icon: "🔵",
-    color: "bg-blue-500",
-  },
-  {
-    name: "WalletConnect",
-    description: "A decentralized future",
-    icon: "🔗",
-    color: "bg-blue-400",
-  },
-  {
-    name: "Fortmatic",
-    description: "Don't settle for less",
-    icon: "⬛",
-    color: "bg-indigo-600",
-  },
-];
+import { useWalletList } from "@meshsdk/react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export const WalletConnectModal = ({
   open,
   onOpenChange,
   onConnect,
-}: WalletConnectModalProps) => {
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConnect: (name: string) => void;
+}) => {
+  const wallets = useWalletList(); // lists only wallets installed in the browser
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-xl border-border">
+      <DialogContent className="sm:max-w-md bg-card/90 backdrop-blur-lg">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Connect Wallet</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">Connect a Wallet</DialogTitle>
         </DialogHeader>
-        
-        <div className="mt-4">
-          <p className="text-muted-foreground mb-6">
-            Connect with one of our available wallet providers or create a new one.
-          </p>
-          
-          <div className="space-y-3">
-            {wallets.map((wallet) => (
-              <button
+
+        <div className="flex flex-col gap-3 mt-4">
+          {wallets.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No Cardano wallets detected. Please install Nami, Lace, or Eternl.
+            </p>
+          ) : (
+            wallets.map((wallet) => (
+              <Button
                 key={wallet.name}
-                onClick={() => {
-                  onConnect(wallet.name);
-                  onOpenChange(false);
-                }}
-                className="w-full flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 border border-border/50 hover:border-primary/50 transition-all group"
+                onClick={() => onConnect(wallet.name)}
+                variant="outline"
+                className="flex items-center justify-between"
               >
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-lg ${wallet.color} flex items-center justify-center text-2xl`}>
-                    {wallet.icon}
-                  </div>
-                  <div className="text-left">
-                    <p className="font-semibold text-foreground">{wallet.name}</p>
-                    <p className="text-sm text-muted-foreground">{wallet.description}</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-              </button>
-            ))}
-          </div>
+                <span>{wallet.name}</span>
+              </Button>
+            ))
+          )}
         </div>
       </DialogContent>
     </Dialog>

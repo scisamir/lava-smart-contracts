@@ -32,7 +32,7 @@ const Index = () => {
 					</div>
 
 					<StatsSection />
-					<StakingCard onConnectWallet={() => {}} />
+					<StakingCard />
 				</div>
 			</section>
 
