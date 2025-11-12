@@ -201,6 +201,8 @@ test test_create_global_settings() {
           authorized_batchers: [admin_sc],
           allowed_assets: [],
           mint_validator_hash: mock_script_hash(15),
+          // 5 days
+          deposit_waiting_time: 5 * 24 * 60 * 60 * 1000,
         },
       ),
       reference_script: None,
@@ -248,6 +250,8 @@ test test_update_global_settings() {
       authorized_batchers: [admin_sc],
       allowed_assets: [],
       mint_validator_hash: mock_script_hash(15),
+      // 5 days
+      deposit_waiting_time: 5 * 24 * 60 * 60 * 1000,
     }
   let gs_input_utxo_ref = mock_utxo_ref(0, 11)
   let gs_input =
@@ -277,6 +281,8 @@ test test_update_global_settings() {
           authorized_batchers: [admin_sc, new_sc],
           allowed_assets: [],
           mint_validator_hash: mock_script_hash(15),
+          // 5 days
+          deposit_waiting_time: 5 * 24 * 60 * 60 * 1000,
         },
       ),
       reference_script: None,

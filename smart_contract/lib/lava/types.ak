@@ -14,6 +14,7 @@ pub type GlobalSettingsDatum {
   authorized_batchers: List<ScriptHash>,
   allowed_assets: List<AssetType>,
   mint_validator_hash: ScriptHash,
+  deposit_waiting_time: Int,
 }
 
 pub type GlobalSettingsRedeemer {
@@ -32,7 +33,7 @@ pub type OrderRedeemer {
 }
 
 pub type OrderType {
-  OptIn { deposit_amount: Int }
+  OptIn { deposit_amount: Int, creation_time: Int }
   Redeem { st_amount: Int }
 }
 
