@@ -3,7 +3,7 @@ import { alwaysSuccessMintValidatorHash, batchingScriptTxHash, batchingScriptTxI
 import { OrderValidatorAddr, OrderValidatorRewardAddress, OrderValidatorScript } from "../order/validator.js";
 import { PoolValidatorAddr, PoolValidatorHash, PoolValidatorScript } from "../pool/validator.js";
 import { BatchingHash, BatchingRewardAddress, BatchingValidatorScript } from "./validator.js";
-import { GlobalSettingsAddr } from "../global_settings.ts/validator.js";
+import { GlobalSettingsAddr } from "../global_settings/validator.js";
 import { OrderDatumType, PoolDatumType } from "../types.js";
 import { MintingHash, MintingValidatorScript } from "../mint/validator.js";
 
