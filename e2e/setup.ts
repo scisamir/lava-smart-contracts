@@ -136,8 +136,8 @@ const testUnit = alwaysSuccessMintValidatorHash + testAssetName;
 const poolStakeAssetName = stringToHex("stTest");
 
 // Reference scripts
-const depositScriptTxHash = "e56b59c58903ba34ca5c4ff6e5222ad2990bfb136aa7cdcb90cf3eddf6ce154c";
-const depositScriptTxIdx = 0;
+const batchingScriptTxHash = "6d08fef4a6e91e345348443c0ddf1a0ea337c7e42d98d0dddf1096b2f6757f9b";
+const batchingScriptTxIdx = 0;
 
 export {
     blueprint,
@@ -168,6 +168,6 @@ export {
     testUnit,
     poolStakeAssetName,
     // Ref scripts
-    depositScriptTxHash,
-    depositScriptTxIdx,
+    batchingScriptTxHash,
+    batchingScriptTxIdx,
 }
