@@ -1,9 +1,0 @@
-{
-  "/_app": "pages/_app.js",
-  "/_error": "pages/_error.js",
-  "/_document": "pages/_document.js",
-  "/stake": "pages/stake.js",
-  "/earn": "pages/earn.js",
-  "/": "pages/index.js",
-  "/validators": "pages/validators.js"
-}
