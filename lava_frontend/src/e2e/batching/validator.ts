@@ -1,17 +1,19 @@
 import { applyParamsToScript, builtinByteString, resolveScriptHash, serializePlutusScript, serializeRewardAddress } from "@meshsdk/core";
-import { blueprint } from "../setup.js";
-import { GlobalSettingsHash } from "../global_settings/validator.js";
-import { PoolValidatorHash } from "../pool/validator.js";
+import { GlobalSettingsHash } from "../global_settings/validator";
+import { PoolValidatorHash } from "../pool/validator";
+import { setupE2e } from "../setup";
 
-const BatchingValidator = blueprint.validators.filter(v => 
+const { blueprint } = setupE2e();
+
+const BatchingValidator = blueprint.validators.filter(v =>
     v.title.includes("pool_batching.pool_batching.withdraw")
 );
 
 const BatchingValidatorScript = applyParamsToScript(
     BatchingValidator[0].compiledCode,
     [
-      builtinByteString(GlobalSettingsHash),
-      builtinByteString(PoolValidatorHash),
+        builtinByteString(GlobalSettingsHash),
+        builtinByteString(PoolValidatorHash),
     ],
     "JSON"
 );

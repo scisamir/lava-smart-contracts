@@ -7,3 +7,14 @@ Cancel order tx hash: e981a4c6f9a48b6c60660839cd2e711b3c82d11802be90b8ba2039cd90
 Create pool tx hash: 6eb2c034a31425097a107c47391d94cd5fd1464165cce0d20bebf261f1159416
 
 register all stake certificate tx hash: a01f21e1c6a35829a379753af4a9e66bb779e3c36a3f4fe95dce132ed61847a9
+
+
+-----------------------
+- complete batching tx ///////
+- remove the multisig signing in mint //////
+
+- pause deposits (optin order creation date in order datum) ///////
+- contract accumulate rewards; any batcher adds rewards to pool
+
+Actions in pool
+- stake ada, stake to contracts (other tokens), stake using frost on strike

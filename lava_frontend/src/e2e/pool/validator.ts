@@ -1,15 +1,17 @@
 import { applyParamsToScript, builtinByteString, resolveScriptHash, serializePlutusScript } from "@meshsdk/core";
-import { blueprint } from "../setup.js";
-import { GlobalSettingsHash } from "../global_settings/validator.js";
+import { GlobalSettingsHash } from "../global_settings/validator";
+import { setupE2e } from "../setup";
 
-const PoolValidator = blueprint.validators.filter(v => 
+const { blueprint } = setupE2e();
+
+const PoolValidator = blueprint.validators.filter(v =>
     v.title.includes("pool.pool_validator.mint")
 );
 
 const PoolValidatorScript = applyParamsToScript(
     PoolValidator[0].compiledCode,
     [
-      builtinByteString(GlobalSettingsHash),
+        builtinByteString(GlobalSettingsHash),
     ],
     "JSON"
 );
