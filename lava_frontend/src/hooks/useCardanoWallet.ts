@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useWallet } from "@meshsdk/react";
+import { BlockchainProviderType } from "@/e2e/types";
+import { deserializeAddress, MaestroProvider, MeshTxBuilder, UTxO } from "@meshsdk/core";
 
 const LOCAL_STORAGE_KEY = "connectedWallet";
 
@@ -9,6 +11,12 @@ export function useCardanoWallet() {
   const { wallet, connected, connect, disconnect, name } = useWallet();
   const [walletAddress, setWalletAddress] = useState("");
   const [balance, setBalance] = useState(0);
+  const [txBuilder, setTxBuilder] = useState<MeshTxBuilder | null>(null);
+  const [blockchainProvider, setBlockchainProvider] = useState<BlockchainProviderType | null>(null);
+  const [walletVK, setWalletVK] = useState<string>("");
+  const [walletSK, setWalletSK] = useState<string>("");
+  const [walletUtxos, setWalletUtxos] = useState<UTxO[]>([]);
+  const [walletCollateral, setWalletCollateral] = useState<UTxO | null>(null);
 
   // Reconnect last wallet from localStorage
   useEffect(() => {
@@ -33,8 +41,36 @@ export function useCardanoWallet() {
           const balanceInAda = adaAsset ? Number(adaAsset.quantity) / 1_000_000 : 0;
           setBalance(balanceInAda);
 
+          const { pubKeyHash: walletVK, stakeCredentialHash: walletSK } = deserializeAddress(walletAddress);
+          const walletUtxos = await wallet.getUtxos();
+          const walletCollateral = (await wallet.getCollateral())[0];
+
           // Persist the connected wallet
           if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
+
+          const maestroKey = process.env.NEXT_PUBLIC_MAESTRO_KEY;
+          if (!maestroKey) {
+            throw new Error("MAESTRO_KEY does not exist");
+          }
+
+          const bp = new MaestroProvider({
+            network: 'Preprod',
+            apiKey: maestroKey,
+          });
+          const tb = new MeshTxBuilder({
+            fetcher: bp,
+            submitter: bp,
+            // evaluator: bp,
+            verbose: true,
+          });
+          tb.setNetwork('preprod');
+
+          setTxBuilder(tb);
+          setBlockchainProvider(bp);
+          setWalletVK(walletVK);
+          setWalletSK(walletSK);
+          setWalletCollateral(walletCollateral);
+          setWalletUtxos(walletUtxos);
         } catch (err) {
           console.error("Error fetching wallet data:", err);
         }
@@ -67,5 +103,11 @@ export function useCardanoWallet() {
     balance,
     connect: connectWallet,
     disconnect: disconnectWallet,
+    blockchainProvider,
+    txBuilder,
+    walletVK,
+    walletSK,
+    walletCollateral,
+    walletUtxos,
   };
 }
