@@ -1,8 +1,8 @@
 import { IWallet, mConStr0, mConStr1, MeshTxBuilder, mPubKeyAddress, mScriptAddress, stringToHex, UTxO } from "@meshsdk/core";
-import { setupE2e } from "../setup.js";
-import { OrderValidatorAddr } from "./validator.js";
+import { setupE2e } from "../setup";
+import { OrderValidatorAddr } from "./validator";
 
-const createOrder = async (
+export const createOrder = async (
     txBuilder: MeshTxBuilder,
     wallet: IWallet,
     walletAddress: string,
@@ -10,9 +10,10 @@ const createOrder = async (
     walletUtxos: UTxO[],
     walletVK: string,
     walletSK: string,
+    amount: number,
 ) => {
     const { alwaysSuccessMintValidatorHash, testUnit } = setupE2e();
-    const depositAmount = 1000;
+    const depositAmount = amount * 1_000_000; // to lovelaces
     const orderType = mConStr0([depositAmount]);
 
     const orderDatum = mConStr0([
@@ -25,8 +26,11 @@ const createOrder = async (
         .txOut(
             OrderValidatorAddr,
             [
-                { unit: testUnit, quantity: String(depositAmount) },
+                { unit: "lovelace", quantity: String(depositAmount) },
             ]
+            // [
+            //     { unit: testUnit, quantity: String(depositAmount) },
+            // ]
         )
         .txOutInlineDatumValue(orderDatum)
         .txInCollateral(
@@ -39,8 +43,8 @@ const createOrder = async (
         .selectUtxosFrom(walletUtxos)
         .complete()
 
-    const signedTx = await wallet.signTx(unsignedTx);
+    const signedTx = await wallet.signTx(unsignedTx, true);
     const txHash = await wallet.submitTx(signedTx);
 
-    console.log("Create optin order tx hash:", txHash);
+    return txHash;
 }

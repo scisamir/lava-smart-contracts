@@ -6,8 +6,27 @@ import { ProtocolsSection } from "@/components/home/ProtocolsSection";
 import { SecuritySection } from "@/components/home/SecuritySection";
 import { CTASection } from "@/components/home/CTASection";
 import { LAVA_WAVE } from "@/lib/images";
+import { OrderList } from "@/components/home/OrderList";
+import { useEffect, useState } from "react";
+import { fetchUserOrders } from "@/e2e/utils";
+import { useCardanoWallet } from "@/hooks/useCardanoWallet";
+import { UserOrderType } from "@/lib/types";
 
 const Index = () => {
+	const { blockchainProvider, walletAddress } = useCardanoWallet();
+	const [orders, setOrders] = useState<UserOrderType[]>([]);
+
+	useEffect(() => {
+		if (blockchainProvider) {
+			const awaitFetchUserOrders = async () => {
+				const userOrders = await fetchUserOrders(blockchainProvider, walletAddress);
+				setOrders(userOrders);
+			}
+
+			awaitFetchUserOrders();
+		}
+	});
+
 	return (
 		<div className="min-h-screen bg-background">
 			<Navigation />
@@ -33,6 +52,7 @@ const Index = () => {
 
 					<StatsSection />
 					<StakingCard />
+					<OrderList orders={orders} />
 				</div>
 			</section>
 

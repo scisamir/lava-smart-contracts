@@ -9,6 +9,12 @@ const nextConfig = {
       ...(config.resolve.alias || {}),
       "@": path.resolve(process.cwd(), "src"),
     };
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      // optional, only if your module requires synchronous wasm
+      // syncWebAssembly: true,
+    };
     return config;
   },
 };

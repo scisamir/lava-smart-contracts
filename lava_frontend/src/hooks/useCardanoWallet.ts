@@ -41,9 +41,10 @@ export function useCardanoWallet() {
           const balanceInAda = adaAsset ? Number(adaAsset.quantity) / 1_000_000 : 0;
           setBalance(balanceInAda);
 
-          const { pubKeyHash: walletVK, stakeCredentialHash: walletSK } = deserializeAddress(walletAddress);
+          const { pubKeyHash: walletVK, stakeCredentialHash: walletSK } = deserializeAddress(addr);
           const walletUtxos = await wallet.getUtxos();
-          const walletCollateral = (await wallet.getCollateral())[0];
+          // const walletCollateral = (await wallet.getCollateral())[0];
+          const walletCollateral = (walletUtxos.filter(utxo => (utxo.output.amount.length === 1 && (Number(utxo.output.amount[0].quantity) >= 5000000 && Number(utxo.output.amount[0].quantity) <= 100000000))))[0];
 
           // Persist the connected wallet
           if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);

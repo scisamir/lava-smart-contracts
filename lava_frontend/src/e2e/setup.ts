@@ -12,8 +12,6 @@ import {
     serializeNativeScript,
     stringToHex,
 } from "@meshsdk/core";
-import dotenv from "dotenv";
-dotenv.config();
 import blueprint from "../../../smart_contract/plutus_copy.json" with { type: "json" };
 
 export const setupE2e = () => {

@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowDown } from "lucide-react";
 import { LAVA_LOGO } from "@/lib/images";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
+import { toast, ToastContainer } from 'react-toastify';
+import { createOrder } from "@/e2e/order/create_order";
 
 export const StakingCard = () => {
-  const { connected, walletAddress } = useCardanoWallet();
   const [amount, setAmount] = useState<string>("0.00");
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+
+  const { connected, txBuilder, blockchainProvider, walletCollateral, wallet, walletAddress, walletVK, walletSK, walletUtxos } = useCardanoWallet();
 
   const conversionRate = 0.996;
   const usdRate = 0.32;
@@ -29,8 +33,69 @@ export const StakingCard = () => {
 
   const numAmount = parseFloat(amount) || 0;
 
+  // Toast
+  const toastSuccess = (txHash: string) => {
+    toast.success(<div>
+      Success!  
+      <br />
+      <a
+        href={`https://preprod.cardanoscan.io/transaction/${txHash}`} 
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: "#61dafb", textDecoration: "underline" }}
+      >
+        View on Explorer
+      </a>
+    </div>);
+  };
+  const toastFailure = (err: any) => toast.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+
+  const handleCreateOrder = async (amount: number) => {
+    setIsProcessing(true);
+    console.log("txBuilder:", txBuilder);
+    console.log("walletCollateral:", walletCollateral);
+    console.log("blockchainProvider:", blockchainProvider);
+
+    if (!txBuilder || !walletCollateral || !blockchainProvider) {
+      toastFailure("Error: Check collateral")
+      return;
+    }
+
+    let txHash = "";
+    try {
+      txHash = await createOrder(
+        txBuilder,
+        wallet,
+        walletAddress,
+        walletCollateral,
+        walletUtxos,
+        walletVK,
+        walletSK,
+        amount,
+      );
+      txBuilder.reset();
+    } catch (e) {
+      txBuilder.reset();
+      setIsProcessing(false);
+      toastFailure(e);
+      console.error("e tx:", e);
+      console.log("Err in handle create order");
+      return;
+    }
+
+    blockchainProvider.onTxConfirmed(txHash, () => {
+      txBuilder.reset();
+      setIsProcessing(false);
+      toastSuccess(txHash);
+      console.log("Create order tx hash:", txHash);
+    });
+  }
+
   return (
     <Card className="max-w-lg mx-auto p-6 bg-card/80 backdrop-blur-lg border-border shadow-glow-md">
+      {/* Toast */}
+      <ToastContainer position='top-right' autoClose={5000} />
+
       <div className="space-y-6">
         {/* ADA input */}
         <div>
@@ -97,11 +162,13 @@ export const StakingCard = () => {
         {/* Wallet button */}
         <Button
           className="w-full bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-lg py-6"
-          disabled={!connected}
+          disabled={!connected || isProcessing || numAmount === 0}
+          onClick={async () => await handleCreateOrder(numAmount)}
         >
-          {connected && walletAddress
-            ? `Connected: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
-            : "Connect Wallet in Nav"}
+          {isProcessing
+            ? "Processing..."
+            : "Stake"
+          }
         </Button>
       </div>
     </Card>
