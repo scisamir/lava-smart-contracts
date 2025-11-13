@@ -10,22 +10,35 @@ import { ConnectedWalletModal } from "@/components/wallet/ConnectedWalletModal";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 
 export const StakingInputCard = () => {
-  const {
-    connected,
-    connect,
-    disconnect,
-    walletAddress,
-    balance,
-  } = useCardanoWallet();
+  const { connected, connect, disconnect, walletAddress, balance } =
+    useCardanoWallet();
 
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [amount, setAmount] = useState<string>("0.00");
+
+  const conversionRate = 0.996;
+  const usdRate = 0.32;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9.]/g, "");
+    setAmount(value);
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (amount === "0.00") setAmount("");
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (e.target.value === "") setAmount("0.00");
+  };
+
+  const numAmount = parseFloat(amount) || 0;
 
   const handleConnect = async (walletName: string) => {
     try {
       await connect(walletName);
       setShowConnectModal(false);
-      console.log(`Connected to ${walletName}`);
     } catch (error) {
       console.error("Wallet connection failed:", error);
     }
@@ -35,7 +48,6 @@ export const StakingInputCard = () => {
     try {
       await disconnect();
       setShowWalletModal(false);
-      console.log("Wallet disconnected");
     } catch (error) {
       console.error("Failed to disconnect:", error);
     }
@@ -48,19 +60,26 @@ export const StakingInputCard = () => {
     <>
       <Card className="max-w-lg mx-auto p-6 bg-card/80 backdrop-blur-lg border-border shadow-glow-md">
         <div className="space-y-6">
-          {/* ADA input */}
+          {/* ADA Input */}
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className="text-muted-foreground text-sm">Your staking</label>
               <div className="flex gap-2">
-                <button className="text-xs px-2 py-1 border border-primary/50 rounded text-primary hover:bg-primary/10 transition-colors">
+                <button
+                  onClick={() => setAmount((balance / 2).toFixed(2))}
+                  className="text-xs px-2 py-1 border border-primary/50 rounded text-primary hover:bg-primary/10"
+                >
                   Half
                 </button>
-                <button className="text-xs px-2 py-1 border border-primary/50 rounded text-primary hover:bg-primary/10 transition-colors">
+                <button
+                  onClick={() => setAmount(balance.toFixed(2))}
+                  className="text-xs px-2 py-1 border border-primary/50 rounded text-primary hover:bg-primary/10"
+                >
                   Max
                 </button>
               </div>
             </div>
+
             <div className="flex items-center justify-between bg-muted/50 rounded-lg p-4">
               <button className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -69,25 +88,34 @@ export const StakingInputCard = () => {
                 <span className="font-semibold">ADA</span>
                 <ChevronDown className="w-4 h-4 text-muted-foreground" />
               </button>
-              <div className="text-right">
-                <p className="text-2xl font-bold">{balance.toFixed(2)}</p>
-                <p className="text-muted-foreground text-sm">≈ ${(
-                  balance * 0.32
-                ).toFixed(2)}</p>
-              </div>
+              <input
+                type="text"
+                value={amount}
+                onChange={handleChange}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                inputMode="decimal"
+                placeholder="0.00"
+                className="bg-transparent text-right text-2xl font-bold outline-none w-24 appearance-none"
+              />
             </div>
+            <p className="text-right text-sm text-muted-foreground mt-1">
+              ≈ ${(numAmount * usdRate).toFixed(2)}
+            </p>
           </div>
 
-          {/* Arrow divider */}
+          {/* Divider */}
           <div className="flex justify-center">
             <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
               <ArrowDown className="w-6 h-6 text-primary" />
             </div>
           </div>
 
-          {/* stADA output */}
+          {/* stADA Output */}
           <div>
-            <label className="text-muted-foreground text-sm mb-2 block">To receive</label>
+            <label className="text-muted-foreground text-sm mb-2 block">
+              To receive
+            </label>
             <div className="flex items-center justify-between bg-muted/50 rounded-lg p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-lava flex items-center justify-center shadow-glow p-2">
@@ -100,25 +128,29 @@ export const StakingInputCard = () => {
                 <span className="font-semibold">stADA</span>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold">0.00</p>
-                <p className="text-muted-foreground text-sm">≈ $0.00</p>
+                <p className="text-2xl font-bold">
+                  {(numAmount / conversionRate).toFixed(2)}
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  ≈ ${((numAmount / conversionRate) * usdRate).toFixed(2)}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Details */}
+          {/* Info */}
           <div className="text-sm text-muted-foreground space-y-1">
             <div className="flex justify-between">
               <span>1 stADA</span>
-              <span>0.996 ADA ($0.32) 📋</span>
+              <span>0.996 ADA ($0.32)</span>
             </div>
             <div className="flex justify-between">
               <span>Balance</span>
-              <span>{balance.toFixed(2)} ADA 📋</span>
+              <span>{balance.toFixed(2)} ADA</span>
             </div>
           </div>
 
-          {/* Wallet button */}
+          {/* Wallet Button */}
           <Button
             onClick={() =>
               connected ? setShowWalletModal(true) : setShowConnectModal(true)
@@ -138,7 +170,6 @@ export const StakingInputCard = () => {
         onOpenChange={setShowConnectModal}
         onConnect={handleConnect}
       />
-
       {walletAddress && (
         <ConnectedWalletModal
           open={showWalletModal}
