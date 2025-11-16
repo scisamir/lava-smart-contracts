@@ -14,7 +14,6 @@ pub type GlobalSettingsDatum {
   authorized_batchers: List<ScriptHash>,
   allowed_assets: List<AssetType>,
   mint_validator_hash: ScriptHash,
-  deposit_waiting_time: Int,
 }
 
 pub type GlobalSettingsRedeemer {
@@ -33,7 +32,7 @@ pub type OrderRedeemer {
 }
 
 pub type OrderType {
-  OptIn { deposit_amount: Int, creation_time: Int }
+  OptIn { deposit_amount: Int }
   Redeem { st_amount: Int }
 }
 
@@ -41,6 +40,11 @@ pub type OrderDatum {
   order_type: OrderType,
   receiver_address: Address,
   canceller: VerificationKeyHash,
+}
+
+pub type PoolRedeemer {
+  ProcessPool
+  UpdatePoolProcessingState
 }
 
 pub type PoolDatum {
@@ -52,6 +56,7 @@ pub type PoolDatum {
   total_rewards_accrued: Int,
   pool_asset: AssetType,
   pool_stake_asset_name: AssetName,
+  is_processing_open: Bool,
 }
 
 pub type BatchingRedeemer {

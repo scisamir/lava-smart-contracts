@@ -41,8 +41,6 @@ pub fn get_global_settings_input() {
         },
       ],
       mint_validator_hash: mint_validator_hash_t,
-      // 5 days
-      deposit_waiting_time: 5 * 24 * 60 * 60 * 1000,
     }
   let gs_input_utxo_ref = mock_utxo_ref(0, 11)
   let gs_input =

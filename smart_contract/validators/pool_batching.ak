@@ -4,9 +4,8 @@ use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Credential, Inline, Script, VerificationKey}
 use cardano/assets.{AssetName, PolicyId, from_asset, from_lovelace, quantity_of}
 use cardano/transaction.{
-  InlineDatum, Input, NoDatum, Output, Transaction, ValidityRange, placeholder,
+  InlineDatum, Input, NoDatum, Output, Transaction, placeholder,
 }
-use cocktail/vodka_validity_range.{valid_after}
 use lava/constants.{
   global_settings_nft, lava_pool_nft_name, min_pool_lovelace, precision_factor,
 }
@@ -18,7 +17,6 @@ use lava/utils.{find_gs_ref_input}
 use mocktail/virgin_address.{mock_pub_key_address, mock_script_credential}
 use mocktail/virgin_key_hash.{mock_policy_id, mock_pub_key_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
-use mocktail/virgin_validity_range.{mock_interval}
 use test_utils/constants_t.{
   gs_validator_hash_t, mint_validator_hash_t, pool_batching_cred_t,
   pool_validator_hash_t,
@@ -30,14 +28,7 @@ validator pool_batching(
   pool_validator_hash: ScriptHash,
 ) {
   withdraw(redeemer: BatchingRedeemer, _stake_cred: Credential, tx: Transaction) {
-    let Transaction {
-      inputs,
-      outputs,
-      mint,
-      reference_inputs,
-      validity_range,
-      ..
-    } = tx
+    let Transaction { inputs, outputs, mint, reference_inputs, .. } = tx
 
     let BatchingRedeemer { batcher_index, batching_asset } = redeemer
 
@@ -53,7 +44,6 @@ validator pool_batching(
       allowed_assets,
       authorized_batchers,
       mint_validator_hash,
-      deposit_waiting_time,
       ..
     } = global_settings
 
@@ -71,6 +61,7 @@ validator pool_batching(
       total_underlying,
       total_st_assets_minted,
       pool_stake_asset_name,
+      is_processing_open,
     } = pool_in_datum
 
     let AssetType { policy_id: pool_asset_pid, asset_name: pool_asset_an, .. } =
@@ -101,9 +92,10 @@ validator pool_batching(
         pool_asset_an,
         pool_stake_asset_name,
         outputs,
-        deposit_waiting_time,
-        validity_range,
       )
+
+    // Processing of orders of the pool should be open
+    expect is_processing_open
 
     let expected_total_mint =
       updated_total_st_assets_minted - total_st_assets_minted
@@ -131,6 +123,7 @@ validator pool_batching(
         total_rewards_accrued,
         pool_asset,
         pool_stake_asset_name,
+        is_processing_open,
         updated_total_st_assets_minted,
         updated_total_underlying,
       )?,
@@ -152,8 +145,6 @@ fn process_orders(
   asset_name: AssetName,
   pool_stake_asset_name: AssetName,
   outputs: List<Output>,
-  deposit_waiting_time: Int,
-  validity_range: ValidityRange,
 ) -> (Int, Int) {
   when orders is {
     [] -> (total_underlying, total_st_assets_minted)
@@ -164,7 +155,7 @@ fn process_orders(
 
       let (order_amount, asset_amt_to_mint_or_burn) =
         when order_type is {
-          OptIn { deposit_amount, creation_time } -> {
+          OptIn { deposit_amount } -> {
             let order_amount =
               quantity_of(current_order.output.value, policy_id, asset_name)
 
@@ -195,10 +186,6 @@ fn process_orders(
                   }
                 },
               )
-
-            // order must have reached deposit waiting time
-            expect
-              valid_after(validity_range, creation_time + deposit_waiting_time)
 
             (deposit_amount, asset_amt_to_mint)
           }
@@ -251,8 +238,6 @@ fn process_orders(
         asset_name,
         pool_stake_asset_name,
         outputs,
-        deposit_waiting_time,
-        validity_range,
       )
     }
   }
@@ -284,6 +269,7 @@ fn verify_pool_output(
   total_rewards_accrued: Int,
   pool_asset: AssetType,
   pool_stake_asset_name: AssetName,
+  is_processing_open: Bool,
   updated_total_st_assets_minted: Int,
   updated_total_underlying: Int,
 ) {
@@ -309,6 +295,7 @@ fn verify_pool_output(
     total_rewards_accrued: total_rewards_accrued_out,
     pool_asset: pool_asset_out,
     pool_stake_asset_name: pool_stake_asset_name_out,
+    is_processing_open: is_processing_open_out,
   } = pool_out_datum
 
   let is_pool_out_datum_valid = and {
@@ -317,6 +304,7 @@ fn verify_pool_output(
       total_rewards_accrued == total_rewards_accrued_out,
       pool_asset == pool_asset_out,
       pool_stake_asset_name == pool_stake_asset_name_out,
+      is_processing_open == is_processing_open_out,
       // changed
       updated_total_st_assets_minted == total_st_assets_minted_out,
       updated_total_underlying == total_underlying_out,
@@ -343,7 +331,6 @@ test test_batching_opt_in() {
   let deposit_amount = 1000
   let extra = 100
   let order_cred = mock_script_credential(16)
-  let creation_time = 1762929745
 
   let da_precised = deposit_amount * precision_factor
   let asset_amt_to_mint = da_precised / exchange_rate
@@ -351,7 +338,7 @@ test test_batching_opt_in() {
   let order_utxo_ref = mock_utxo_ref(0, 16)
   let order_datum =
     OrderDatum {
-      order_type: OptIn { deposit_amount, creation_time },
+      order_type: OptIn { deposit_amount },
       receiver_address,
       canceller: mock_pub_key_hash(6),
     }
@@ -404,6 +391,7 @@ test test_batching_opt_in() {
         multiplier: 1_000_000,
       },
       pool_stake_asset_name,
+      is_processing_open: True,
     }
   let pool_input =
     Input {
@@ -433,6 +421,7 @@ test test_batching_opt_in() {
         multiplier: 1_000_000,
       },
       pool_stake_asset_name,
+      is_processing_open: True,
     }
   let pool_output =
     Output {
@@ -449,17 +438,13 @@ test test_batching_opt_in() {
   let mint =
     from_asset(mint_validator_hash_t, pool_stake_asset_name, asset_amt_to_mint)
 
-  let validity_range =
-    mock_interval(Some(creation_time + 432000000 + 1), Some(2762929745))
-
   let tx =
     Transaction {
       ..placeholder,
       inputs: [pool_input, order_input],
       outputs: [pool_output, user_order_output],
-      mint: mint,
+      mint,
       reference_inputs: [gs_input],
-      validity_range: validity_range,
     }
 
   pool_batching.withdraw(
@@ -540,6 +525,7 @@ test test_batching_redeem() {
         multiplier: 1_000_000,
       },
       pool_stake_asset_name,
+      is_processing_open: True,
     }
   let pool_input =
     Input {
@@ -570,6 +556,7 @@ test test_batching_redeem() {
         multiplier: 1_000_000,
       },
       pool_stake_asset_name,
+      is_processing_open: True,
     }
   let pool_output =
     Output {
@@ -591,7 +578,7 @@ test test_batching_redeem() {
       ..placeholder,
       inputs: [pool_input, order_input],
       outputs: [pool_output, user_order_output],
-      mint: mint,
+      mint,
       reference_inputs: [gs_input],
     }
 

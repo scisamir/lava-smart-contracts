@@ -79,12 +79,11 @@ test test_process_order_opt_in() {
   let deposit_amount = 1000
   let extra = 100
   let order_cred = mock_script_credential(16)
-  let creation_time = 1762929745
 
   let order_utxo_ref = mock_utxo_ref(0, 16)
   let order_datum =
     OrderDatum {
-      order_type: OptIn { deposit_amount, creation_time },
+      order_type: OptIn { deposit_amount },
       receiver_address,
       canceller: mock_pub_key_hash(6),
     }
@@ -138,7 +137,7 @@ test test_cancel_order() {
   let order_utxo_ref = mock_utxo_ref(0, 16)
   let order_datum =
     OrderDatum {
-      order_type: OptIn { deposit_amount, creation_time: 1762929745 },
+      order_type: OptIn { deposit_amount },
       receiver_address,
       canceller,
     }
