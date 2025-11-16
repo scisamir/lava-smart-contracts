@@ -8,14 +8,11 @@ use cardano/transaction.{
   InlineDatum, Input, Output, OutputReference, Transaction, find_input,
   placeholder,
 }
-use lava/constants.{
-  global_settings_nft, lava_pool_nft_name, min_pool_lovelace, precision_factor,
-}
+use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
 use lava/types.{
-  AssetType, GlobalSettingsDatum, PoolDatum, PoolRedeemer, ProcessPool,
-  UpdatePoolProcessingState,
+  AssetType, PoolDatum, PoolRedeemer, ProcessPool, UpdatePoolProcessingState,
 }
-use lava/utils.{find_gs_ref_input, is_multisig_signing}
+use lava/utils.{get_global_settings, is_multisig_signing}
 use mocktail/virgin_key_hash.{mock_policy_id, mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
 use test_utils/constants_t.{gs_validator_hash_t, pool_batching_cred_t}
@@ -41,15 +38,8 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
         fn(output) { output.address.payment_credential == Script(policy_id) },
       )
 
-    // find global settings from reference inputs
-    expect Some(global_settings_ref) =
-      find_gs_ref_input(
-        reference_inputs,
-        gs_validator_hash,
-        global_settings_nft,
-      )
-    expect InlineDatum(global_settings) = global_settings_ref.output.datum
-    expect GlobalSettingsDatum { admin, allowed_assets, .. } = global_settings
+    let (admin, _, allowed_assets, _) =
+      get_global_settings(reference_inputs, gs_validator_hash)
 
     // pool datum must be of the expected type PoolDatum
     expect InlineDatum(pool_datum) = pool_output.datum
@@ -103,7 +93,7 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
     utxo: OutputReference,
     tx: Transaction,
   ) {
-    let Transaction { inputs, outputs, .. } = tx
+    let Transaction { inputs, outputs, reference_inputs, .. } = tx
     expect Some(own_input) = find_input(inputs, utxo)
     let own_payment_cred = own_input.output.address.payment_credential
 
@@ -145,6 +135,9 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
           is_processing_open: is_processing_open_out,
         } = pool_out_datum
 
+        let (admin, _, _, _) =
+          get_global_settings(reference_inputs, gs_validator_hash)
+
         and {
           // pool in and out value must be unchaged
           own_input.output.value == pool_output.value,
@@ -156,8 +149,10 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
           total_rewards_accrued == total_rewards_accrued_out,
           pool_asset == pool_asset_out,
           pool_stake_asset_name == pool_stake_asset_name_out,
-          // changed
+          // changed datum paramter
           (is_processing_open != is_processing_open_out)?,
+          // admin must sign transaction
+          is_multisig_signing(inputs, admin)?,
         }
       }
     }
@@ -271,6 +266,8 @@ test test_pool_spend() {
 test test_update_pool_processing_state() {
   let pool_hash = mock_script_hash(18)
   let mint = from_asset(pool_hash, lava_pool_nft_name, 1)
+  let gs_input = get_global_settings_input()
+  let (_, admin_input) = get_admin_input()
 
   let pool_utxo_ref = mock_utxo_ref(0, 18)
   let pool_datum_in =
@@ -334,7 +331,12 @@ test test_update_pool_processing_state() {
     }
 
   let tx =
-    Transaction { ..placeholder, inputs: [pool_input], outputs: [pool_output] }
+    Transaction {
+      ..placeholder,
+      inputs: [pool_input, admin_input],
+      outputs: [pool_output],
+      reference_inputs: [gs_input],
+    }
 
   pool_validator.spend(
     gs_validator_hash_t,

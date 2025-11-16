@@ -2,7 +2,9 @@ use aiken/collection/list
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Script}
 use cardano/assets.{AssetName, quantity_of}
-use cardano/transaction.{Input}
+use cardano/transaction.{InlineDatum, Input}
+use lava/constants.{global_settings_nft}
+use lava/types.{GlobalSettingsDatum}
 
 /// validate that the transaction is signed by 'signer'
 pub fn signed_by(
@@ -35,4 +37,23 @@ pub fn find_gs_ref_input(
           }
         },
       )
+}
+
+/// Get global settings
+pub fn get_global_settings(
+  reference_inputs: List<Input>,
+  gs_validator_hash: ScriptHash,
+) {
+  // find global settings from reference inputs
+  expect Some(global_settings_ref) =
+    find_gs_ref_input(reference_inputs, gs_validator_hash, global_settings_nft)
+  expect InlineDatum(global_settings) = global_settings_ref.output.datum
+  expect GlobalSettingsDatum {
+    admin,
+    authorized_batchers,
+    allowed_assets,
+    mint_validator_hash,
+  } = global_settings
+
+  (admin, authorized_batchers, allowed_assets, mint_validator_hash)
 }
