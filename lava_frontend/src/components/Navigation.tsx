@@ -1,22 +1,28 @@
 "use client";
+
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { WalletConnectModal } from "./wallet/WalletConnectModal";
 import { ConnectedWalletModal } from "./wallet/ConnectedWalletModal";
 import { LAVA_LOGO } from "@/lib/images";
-import { useCardanoWallet } from "@/hooks/useCardanoWallet"; // ✅ our custom hook
+import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 
 const Navigation = () => {
+  const router = useRouter();
   const { connected, connect, disconnect, walletAddress } = useCardanoWallet();
+
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleConnect = async (walletName: string) => {
     try {
       await connect(walletName);
       setShowConnectModal(false);
-      console.log(`Connected to ${walletName}`);
     } catch (error) {
       console.error("Wallet connection failed:", error);
     }
@@ -26,14 +32,20 @@ const Navigation = () => {
     try {
       await disconnect();
       setShowWalletModal(false);
-      console.log("Wallet disconnected");
     } catch (error) {
-      console.error("Failed to disconnect:", error);
+      console.error("Disconnect failed:", error);
     }
   };
 
   const truncateAddress = (address: string) =>
     `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+  const navItems = [
+    { label: "Stake", path: "/stake" },
+    { label: "Earn", path: "/earn" },
+    { label: "Validators", path: "/validators" },
+    { label: "Portfolio", path: "/portfolio" }, // ✅ this is the new page
+  ];
 
   return (
     <>
@@ -48,42 +60,64 @@ const Navigation = () => {
               </div>
             </Link>
 
-            {/* Nav Links */}
+            {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
-              <Link
-                href="/stake"
-                className="text-foreground hover:text-primary transition-colors"
-              >
-                Stake
-              </Link>
-              <Link
-                href="/earn"
-                className="text-foreground hover:text-primary transition-colors"
-              >
-                Earn
-              </Link>
-              <Link
-                href="/validators"
-                className="text-foreground hover:text-primary transition-colors"
-              >
-                Validators
-              </Link>
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className="text-foreground hover:text-primary transition-colors"
+                >
+                  {item.label}
+                </Link>
+              ))}
             </div>
 
-            {/* Wallet Button */}
-            <Button
-              onClick={() =>
-                connected
-                  ? setShowWalletModal(true)
-                  : setShowConnectModal(true)
-              }
-              className="bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow"
-            >
-              <span className="mr-2">🔗</span>
-              {connected && walletAddress
-                ? truncateAddress(walletAddress)
-                : "Connect Wallet"}
-            </Button>
+            {/* Right Side Buttons */}
+            <div className="flex items-center gap-2">
+              {/* Wallet Button */}
+              <Button
+                onClick={() =>
+                  connected
+                    ? setShowWalletModal(true)
+                    : setShowConnectModal(true)
+                }
+                className="bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow"
+              >
+                <span className="mr-2">🔗</span>
+                {connected && walletAddress
+                  ? truncateAddress(walletAddress)
+                  : "Connect Wallet"}
+              </Button>
+
+              {/* Mobile Menu */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="md:hidden">
+                    <Menu className="h-6 w-6" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent
+                  side="right"
+                  className="w-[280px] bg-background border-border"
+                >
+                  <div className="flex flex-col gap-2 mt-8">
+                    {navItems.map((item) => (
+                      <button
+                        key={item.path}
+                        onClick={() => {
+                          router.push(item.path);
+                          setMobileMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-3 rounded-lg text-foreground hover:bg-muted transition-colors"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
         </div>
       </nav>
