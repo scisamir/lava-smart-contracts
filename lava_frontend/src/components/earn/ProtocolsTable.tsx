@@ -5,30 +5,27 @@ import { Card } from "@/components/ui/card";
 const protocols = [
   {
     name: "Minswap",
-    reward: ["🪙", "🔥"],
+    reward: "8.4%",
     tvl: "$5.2M",
     borrowRate: "4.8%",
     supplyRate: "2.1%",
     category: "DEX",
-    color: "bg-cyan-500",
   },
   {
     name: "Liqwid",
-    reward: ["🪙", "💧"],
+    reward: "6.2%",
     tvl: "$3.9M",
     borrowRate: "5.6%",
     supplyRate: "3.4%",
     category: "Lending",
-    color: "bg-slate-400",
   },
   {
     name: "Indigo",
-    reward: ["🪙", "⚡"],
+    reward: "7.1%",
     tvl: "$2.4M",
     borrowRate: "3.9%",
     supplyRate: "1.8%",
     category: "Synthetic Assets",
-    color: "bg-cyan-600",
   },
 ];
 
@@ -45,24 +42,14 @@ export function ProtocolsTable() {
             <div className="flex justify-between gap-6">
               {/* LEFT SIDE */}
               <div className="flex flex-col space-y-3">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-10 h-10 rounded-full ${p.color} flex items-center justify-center`}
-                  >
-                    <span className="text-lg">{p.name[0]}</span>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Name</p>
                   <p className="font-semibold">{p.name}</p>
                 </div>
 
-                <div className="flex flex-col gap-1">
+                <div>
                   <p className="text-xs text-muted-foreground">Reward</p>
-                  <div className="flex gap-2">
-                    {p.reward.map((icon, idx) => (
-                      <span key={idx} className="text-lg">
-                        {icon}
-                      </span>
-                    ))}
-                  </div>
+                  <p className="font-medium">{p.reward}</p>
                 </div>
 
                 <div>
@@ -99,7 +86,7 @@ export function ProtocolsTable() {
           <table className="w-full text-left">
             <thead className="bg-muted/20">
               <tr>
-                <th className="p-4">Protocol</th>
+                <th className="p-4">Name</th>
                 <th className="p-4">Reward</th>
                 <th className="p-4">TVL</th>
                 <th className="p-4">Borrow Rate</th>
@@ -113,21 +100,8 @@ export function ProtocolsTable() {
                   key={index}
                   className="border-t border-border hover:bg-muted/10 transition"
                 >
-                  <td className="p-4 flex items-center gap-3 font-medium">
-                    <div
-                      className={`w-10 h-10 rounded-full ${p.color} flex items-center justify-center`}
-                    >
-                      <span className="text-lg">{p.name[0]}</span>
-                    </div>
-                    {p.name}
-                  </td>
-                  <td className="p-4 flex gap-1">
-                    {p.reward.map((icon, idx) => (
-                      <span key={idx} className="text-lg">
-                        {icon}
-                      </span>
-                    ))}
-                  </td>
+                  <td className="p-4 font-medium">{p.name}</td>
+                  <td className="p-4">{p.reward}</td>
                   <td className="p-4">{p.tvl}</td>
                   <td className="p-4">{p.borrowRate}</td>
                   <td className="p-4">{p.supplyRate}</td>
