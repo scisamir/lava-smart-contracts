@@ -277,7 +277,10 @@ fn verify_pool_output(
     list.filter(
       outputs,
       fn(output) {
-        (output.address.payment_credential == Script(pool_validator_hash))?
+        and {
+          (output.address.payment_credential == Script(pool_validator_hash))?,
+          (quantity_of(output.value, pool_validator_hash, lava_pool_nft_name) == 1)?,
+        }
       },
     )
 

@@ -2,10 +2,13 @@ use cardano/address.{Address, Script}
 use cardano/assets.{from_asset, from_lovelace}
 use cardano/transaction.{InlineDatum, Input, NoDatum, Output}
 use lava/constants.{global_settings_nft}
-use lava/types.{AssetType, GlobalSettingsDatum}
-use mocktail/virgin_key_hash.{mock_policy_id}
+use lava/types.{GlobalSettingsDatum, StakeType}
+use mocktail/virgin_address.{mock_pub_key_address, mock_script_address}
+use mocktail/virgin_key_hash.{mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
-use test_utils/constants_t.{admin_t, gs_validator_hash_t, mint_validator_hash_t}
+use test_utils/constants_t.{
+  admin_t, allowed_ast_one, gs_validator_hash_t, mint_validator_hash_t,
+}
 
 pub fn get_admin_input() {
   let admin_input =
@@ -32,15 +35,16 @@ pub fn get_global_settings_input() {
     GlobalSettingsDatum {
       admin: admin_t,
       authorized_batchers: [admin_t],
-      allowed_assets: [
-        AssetType {
-          is_stable: False,
-          policy_id: mock_policy_id(11),
-          asset_name: "test",
-          multiplier: 1_000_000,
+      allowed_assets: [allowed_ast_one],
+      mint_validator_hash: mint_validator_hash_t,
+      stake_details: [
+        StakeType {
+          asset_type: allowed_ast_one,
+          address: mock_script_address(14, None),
+          datum_verifier_hash: mock_script_hash(14),
         },
       ],
-      mint_validator_hash: mint_validator_hash_t,
+      frost_address: mock_pub_key_address(16, None),
     }
   let gs_input_utxo_ref = mock_utxo_ref(0, 11)
   let gs_input =

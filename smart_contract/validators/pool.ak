@@ -3,14 +3,17 @@ use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Script}
-use cardano/assets.{PolicyId, from_asset, from_lovelace, lovelace_of}
+use cardano/assets.{
+  PolicyId, from_asset, from_lovelace, lovelace_of, quantity_of,
+}
 use cardano/transaction.{
   InlineDatum, Input, Output, OutputReference, Transaction, find_input,
   placeholder,
 }
 use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
 use lava/types.{
-  AssetType, PoolDatum, PoolRedeemer, ProcessPool, UpdatePoolProcessingState,
+  AssetType, GlobalSettingsDatum, PoolDatum, PoolRedeemer, ProcessPool,
+  UpdatePoolProcessingState,
 }
 use lava/utils.{get_global_settings, is_multisig_signing}
 use mocktail/virgin_key_hash.{mock_policy_id, mock_script_hash}
@@ -38,7 +41,7 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
         fn(output) { output.address.payment_credential == Script(policy_id) },
       )
 
-    let (admin, _, allowed_assets, _) =
+    let GlobalSettingsDatum { admin, allowed_assets, .. } =
       get_global_settings(reference_inputs, gs_validator_hash)
 
     // pool datum must be of the expected type PoolDatum
@@ -96,6 +99,7 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
     let Transaction { inputs, outputs, reference_inputs, .. } = tx
     expect Some(own_input) = find_input(inputs, utxo)
     let own_payment_cred = own_input.output.address.payment_credential
+    expect Script(own_hash) = own_payment_cred
 
     when redeemer is {
       ProcessPool -> {
@@ -120,7 +124,10 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
           list.filter(
             outputs,
             fn(output) {
-              (output.address.payment_credential == own_payment_cred)?
+              and {
+                (output.address.payment_credential == own_payment_cred)?,
+                (quantity_of(output.value, own_hash, lava_pool_nft_name) == 1)?,
+              }
             },
           )
         expect InlineDatum(pool_out_datum) = pool_output.datum
@@ -135,7 +142,7 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
           is_processing_open: is_processing_open_out,
         } = pool_out_datum
 
-        let (admin, _, _, _) =
+        let GlobalSettingsDatum { admin, .. } =
           get_global_settings(reference_inputs, gs_validator_hash)
 
         and {

@@ -43,7 +43,7 @@ pub fn find_gs_ref_input(
 pub fn get_global_settings(
   reference_inputs: List<Input>,
   gs_validator_hash: ScriptHash,
-) {
+) -> GlobalSettingsDatum {
   // find global settings from reference inputs
   expect Some(global_settings_ref) =
     find_gs_ref_input(reference_inputs, gs_validator_hash, global_settings_nft)
@@ -53,7 +53,16 @@ pub fn get_global_settings(
     authorized_batchers,
     allowed_assets,
     mint_validator_hash,
+    stake_details,
+    frost_address,
   } = global_settings
 
-  (admin, authorized_batchers, allowed_assets, mint_validator_hash)
+  GlobalSettingsDatum {
+    admin,
+    authorized_batchers,
+    allowed_assets,
+    mint_validator_hash,
+    stake_details,
+    frost_address,
+  }
 }

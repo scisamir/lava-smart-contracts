@@ -9,11 +9,19 @@ pub type AssetType {
   multiplier: Int,
 }
 
+pub type StakeType {
+  asset_type: AssetType,
+  address: Address,
+  datum_verifier_hash: ScriptHash,
+}
+
 pub type GlobalSettingsDatum {
   admin: ScriptHash,
   authorized_batchers: List<ScriptHash>,
   allowed_assets: List<AssetType>,
   mint_validator_hash: ScriptHash,
+  stake_details: List<StakeType>,
+  frost_address: Address,
 }
 
 pub type GlobalSettingsRedeemer {
@@ -62,4 +70,24 @@ pub type PoolDatum {
 pub type BatchingRedeemer {
   batcher_index: Int,
   batching_asset: AssetType,
+}
+
+pub type StakeRedeemer {
+  Stake { stake_asset: AssetType }
+  Rewards
+  Swap
+}
+
+pub type StrikeStakeRedeemer {
+  StakeStrike { stake_asset: AssetType }
+  RedeemStrikeRewards
+}
+
+pub type POSIXTime =
+  Int
+
+pub type StrikeStakeDatum {
+  owner_address_hash: VerificationKeyHash,
+  staked_at: POSIXTime,
+  mint_policy_id: PolicyId,
 }

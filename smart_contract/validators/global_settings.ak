@@ -9,14 +9,14 @@ use cardano/transaction.{
 }
 use lava/constants.{global_settings_nft}
 use lava/types.{
-  CreateGlobalSettings, GlobalSettingsDatum, GlobalSettingsRedeemer,
+  CreateGlobalSettings, GlobalSettingsDatum, GlobalSettingsRedeemer, StakeType,
   UpdateGlobalSettings,
 }
 use lava/utils.{is_multisig_signing}
-use mocktail/virgin_address.{mock_pub_key_address}
+use mocktail/virgin_address.{mock_pub_key_address, mock_script_address}
 use mocktail/virgin_key_hash.{mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
-use test_utils/constants_t.{utxo_ref_t}
+use test_utils/constants_t.{allowed_ast_one, utxo_ref_t}
 use test_utils/fns_t.{get_admin_input}
 
 validator global_settings(
@@ -201,6 +201,14 @@ test test_create_global_settings() {
           authorized_batchers: [admin_sc],
           allowed_assets: [],
           mint_validator_hash: mock_script_hash(15),
+          stake_details: [
+            StakeType {
+              asset_type: allowed_ast_one,
+              address: mock_script_address(14, None),
+              datum_verifier_hash: mock_script_hash(14),
+            },
+          ],
+          frost_address: mock_pub_key_address(16, None),
         },
       ),
       reference_script: None,
@@ -248,6 +256,14 @@ test test_update_global_settings() {
       authorized_batchers: [admin_sc],
       allowed_assets: [],
       mint_validator_hash: mock_script_hash(15),
+      stake_details: [
+        StakeType {
+          asset_type: allowed_ast_one,
+          address: mock_script_address(14, None),
+          datum_verifier_hash: mock_script_hash(14),
+        },
+      ],
+      frost_address: mock_pub_key_address(16, None),
     }
   let gs_input_utxo_ref = mock_utxo_ref(0, 11)
   let gs_input =
@@ -277,6 +293,14 @@ test test_update_global_settings() {
           authorized_batchers: [admin_sc, new_sc],
           allowed_assets: [],
           mint_validator_hash: mock_script_hash(15),
+          stake_details: [
+            StakeType {
+              asset_type: allowed_ast_one,
+              address: mock_script_address(14, None),
+              datum_verifier_hash: mock_script_hash(14),
+            },
+          ],
+          frost_address: mock_pub_key_address(16, None),
         },
       ),
       reference_script: None,
