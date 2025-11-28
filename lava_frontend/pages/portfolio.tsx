@@ -2,6 +2,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card } from "@/components/ui/card";
 import { LAVA_LOGO } from "@/lib/images";
+import portfolioGraphic from "@/assets/portfolio-graphic.png";
 
 const Portfolio = () => {
 	return (
@@ -10,8 +11,9 @@ const Portfolio = () => {
 
 			<section className="pt-32 pb-20">
 				<div className="container mx-auto px-4 max-w-6xl">
-					{/* Net Worth Section */}
-					<div className="mb-12">
+				{/* Net Worth Section with Graphic */}
+				<div className="mb-12 flex items-start gap-8">
+					<div className="flex-1">
 						<p className="text-muted-foreground mb-2">Net Worth</p>
 						<div className="flex items-baseline gap-4 mb-6">
 							<h1 className="text-5xl md:text-6xl font-bold">$50,321.43</h1>
@@ -38,6 +40,16 @@ const Portfolio = () => {
 							</div>
 						</div>
 					</div>
+					
+					{/* Desktop-only graphic */}
+					<div className="hidden lg:block flex-shrink-0 -mb-32">
+						<img 
+							src={portfolioGraphic.src} 
+							alt="Portfolio graphic" 
+							className="w-[480px] h-auto"
+						/>
+					</div>
+				</div>
 
 					{/* Holdings Section */}
 					<div>
@@ -50,16 +62,16 @@ const Portfolio = () => {
 									<table className="w-full">
 										<thead className="border-b border-border">
 											<tr>
-												<th className="text-left p-4 text-sm text-muted-foreground font-medium">
+												<th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">
 													Asset
 												</th>
-												<th className="text-right p-4 text-sm text-muted-foreground font-medium">
+												<th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">
 													Value
 												</th>
-												<th className="text-right p-4 text-sm text-muted-foreground font-medium">
+												<th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">
 													24h Gain/Loss
 												</th>
-												<th className="text-right p-4 text-sm text-muted-foreground font-medium">
+												<th className="text-center px-4 py-3 text-sm text-muted-foreground font-medium">
 													24h Gain/Loss %
 												</th>
 											</tr>
@@ -73,17 +85,17 @@ const Portfolio = () => {
 												{ value: "$10,433.12", change: "+$154.46", changePercent: "+1.43%", isPositive: true },
 											].map((holding, index) => (
 												<tr key={index} className="border-b border-border last:border-0">
-													<td className="p-4">
+													<td className="px-4 py-3">
 														<div className="flex items-center gap-2">
 															<img src={LAVA_LOGO.src} alt="stADA" className="w-6 h-6" />
 															<span className="font-medium">1,000 <span className="text-muted-foreground">stADA</span></span>
 														</div>
 													</td>
-													<td className="p-4 text-right font-medium">{holding.value}</td>
-													<td className={`p-4 text-right font-medium ${holding.isPositive ? 'text-green-500' : 'text-red-500'}`}>
+													<td className="px-4 py-3 font-medium text-left">{holding.value}</td>
+													<td className={`px-4 py-3 font-medium text-left ${holding.isPositive ? 'text-green-500' : 'text-red-500'}`}>
 														{holding.change}
 													</td>
-													<td className={`p-4 text-right font-medium ${holding.isPositive ? 'text-green-500' : 'text-red-500'}`}>
+													<td className={`px-4 py-3 font-medium text-center ${holding.isPositive ? 'text-green-500' : 'text-red-500'}`}>
 														{holding.changePercent}
 													</td>
 												</tr>
@@ -95,54 +107,42 @@ const Portfolio = () => {
 						</div>
 
 						{/* Mobile Cards */}
-<div className="md:hidden space-y-4">
-  {[
-    { value: "$10,433.12", change: "+$12.43", changePercent: "+1.43%", isPositive: true },
-    { value: "$10,433.12", change: "+$15.43", changePercent: "+1.43%", isPositive: true },
-    { value: "$10,433.12", change: "-$31.43", changePercent: "-1.43%", isPositive: false },
-    { value: "$10,433.12", change: "+$21.54", changePercent: "+1.43%", isPositive: true },
-  ].map((holding, index) => (
-    <Card key={index} className="bg-card border-border p-4">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <img src={LAVA_LOGO.src} alt="stADA" className="w-6 h-6" />
-          <span className="font-medium">
-            1,000 <span className="text-muted-foreground">stADA</span>
-          </span>
-        </div>
+						<div className="md:hidden space-y-4">
+							{[
+								{ value: "$10,433.12", change: "+$12.43", changePercent: "+1.43%", isPositive: true },
+								{ value: "$10,433.12", change: "+$15.43", changePercent: "+1.43%", isPositive: true },
+								{ value: "$10,433.12", change: "-$31.43", changePercent: "-1.43%", isPositive: false },
+								{ value: "$10,433.12", change: "+$21.54", changePercent: "+1.43%", isPositive: true },
+							].map((holding, index) => (
+								<Card key={index} className="bg-card border-border p-4">
+									<div className="grid grid-cols-2 gap-4">
+										{/* Row 1: Asset (left) | Value (right) */}
+										<div>
+											<div className="flex items-center gap-2">
+												<img src={LAVA_LOGO.src} alt="stADA" className="w-6 h-6" />
+												<span className="font-medium">1,000 <span className="text-muted-foreground">stADA</span></span>
+											</div>
+										</div>
 
-        {/* 24h Gain/Loss — aligned horizontally with Asset */}
-        <p
-          className={`font-medium ${
-            holding.isPositive ? "text-green-500" : "text-red-500"
-          }`}
-        >
-          {holding.change}
-        </p>
-      </div>
+										<div className="text-right">
+											<p className="text-sm text-muted-foreground mb-1">Value</p>
+											<p className="font-medium">{holding.value}</p>
+										</div>
 
-      {/* Value + 24h Gain/Loss % — aligned together */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground mb-1">Value</p>
-          <p className="font-medium">{holding.value}</p>
-        </div>
+										{/* Row 2: 24h Gain/Loss (left) | 24h Gain/Loss % (right) */}
+										<div>
+											<p className="text-sm text-muted-foreground mb-1">24h Gain/Loss</p>
+											<p className={`font-medium ${holding.isPositive ? 'text-green-500' : 'text-red-500'}`}>{holding.change}</p>
+										</div>
 
-        <div className="text-right">
-          <p className="text-sm text-muted-foreground mb-1">24h Gain/Loss %</p>
-          <p
-            className={`font-medium ${
-              holding.isPositive ? "text-green-500" : "text-red-500"
-            }`}
-          >
-            {holding.changePercent}
-          </p>
-        </div>
-      </div>
-    </Card>
-  ))}
-</div>
-
+										<div className="text-right">
+											<p className="text-sm text-muted-foreground mb-1">24h Gain/Loss %</p>
+											<p className={`font-medium ${holding.isPositive ? 'text-green-500' : 'text-red-500'}`}>{holding.changePercent}</p>
+										</div>
+									</div>
+								</Card>
+							))}
+						</div>
 					</div>
 				</div>
 			</section>

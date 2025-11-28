@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Search, ChevronDown } from "lucide-react";
-import { LAVA_LOGO } from "@/lib/images";
+import { LAVA_LOGO, PASHOV_LOGO, SPEARBIT_LOGO, ZENITH_LOGO, SSA_LOGO, CODE_ARENA_LOGO } from "@/lib/images";
 import {
   Table,
   TableBody,
@@ -13,6 +13,7 @@ import {
 const validators = [
   { 
     name: "Hyperlend", 
+    logo: PASHOV_LOGO.src,
     score: "87.87", 
     status: "Purring", 
     recentBlocks: 453,
@@ -21,6 +22,7 @@ const validators = [
   },
   { 
     name: "Pendle", 
+    logo: SPEARBIT_LOGO.src,
     score: "87.87", 
     status: "Purring", 
     recentBlocks: 423,
@@ -29,6 +31,7 @@ const validators = [
   },
   { 
     name: "Project X", 
+    logo: ZENITH_LOGO.src,
     score: "87.87", 
     status: "Purring", 
     recentBlocks: 543,
@@ -37,6 +40,7 @@ const validators = [
   },
   { 
     name: "Valantis", 
+    logo: SSA_LOGO.src,
     score: "87.87", 
     status: "Purring", 
     recentBlocks: 543,
@@ -45,6 +49,7 @@ const validators = [
   },
   { 
     name: "Hydra", 
+    logo: CODE_ARENA_LOGO.src,
     score: "87.87", 
     status: "Purring", 
     recentBlocks: 213,
@@ -125,7 +130,14 @@ export const ValidatorsTable = () => {
               >
 
                 {/* DESKTOP CELLS */}
-                <TableCell className="hidden md:table-cell font-semibold">{validator.name}</TableCell>
+                <TableCell className="hidden md:table-cell font-semibold">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center">
+                      <img src={validator.logo || LAVA_LOGO.src} alt={validator.name} className="w-full h-full object-cover" />
+                    </div>
+                    <span>{validator.name}</span>
+                  </div>
+                </TableCell>
                 <TableCell className="hidden md:table-cell">{validator.score}</TableCell>
 
                 <TableCell className="hidden md:table-cell">
@@ -150,8 +162,8 @@ export const ValidatorsTable = () => {
 
                 <TableCell className="hidden md:table-cell">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
-                      <span className="text-xs">₳</span>
+                    <div className="w-5 h-5 rounded-full bg-gradient-lava flex items-center justify-center p-1">
+                      <img src={LAVA_LOGO.src} alt="stADA" className="w-full h-full object-contain" />
                     </div>
                     <span>
                       {validator.staked} <span className="text-muted-foreground">ADA</span>
@@ -169,7 +181,12 @@ export const ValidatorsTable = () => {
       {/* Validator Name */}
       <div>
         <p className="text-xs text-muted-foreground">Validator</p>
-        <p className="font-semibold">{validator.name}</p>
+        <div className="flex items-center gap-2 mt-1">
+          <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center">
+            <img src={validator.logo || LAVA_LOGO.src} alt={validator.name} className="w-full h-full object-cover" />
+          </div>
+          <p className="font-semibold">{validator.name}</p>
+        </div>
       </div>
 
       {/* Status */}
@@ -212,8 +229,8 @@ export const ValidatorsTable = () => {
       <div>
         <p className="text-xs text-muted-foreground">Staked</p>
         <div className="flex justify-end items-center gap-1 mt-1">
-          <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
-            <span className="text-xs">₳</span>
+          <div className="w-5 h-5 rounded-full bg-gradient-lava flex items-center justify-center p-1">
+            <img src={LAVA_LOGO.src} alt="stADA" className="w-full h-full object-contain" />
           </div>
           <span>{validator.staked} ADA</span>
         </div>

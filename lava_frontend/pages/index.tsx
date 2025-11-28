@@ -28,11 +28,12 @@ const Index = () => {
 	});
 
 	return (
-		<div className="min-h-screen bg-background">
-			<Navigation />
+		<div className="index-container bg-background flex flex-col">
+				<Navigation />
 
-			{/* Hero Section */}
-			<section className="relative pt-32 pb-20 overflow-hidden">
+				<div className="flex-1">
+				  {/* Hero Section */}
+				  <section className="relative pt-32 pb-20 overflow-hidden">
 				<div 
 					className="absolute inset-0 opacity-30"
 					style={{
@@ -56,11 +57,26 @@ const Index = () => {
 				</div>
 			</section>
 
-			<ProtocolsSection />
-			<SecuritySection />
-			<CTASection />
+				<ProtocolsSection />
+				<SecuritySection />
+				<CTASection />
+			</div>
 
 			<Footer />
+
+			<style jsx>{`
+				.index-container {
+					/* default (desktop) exact height requested */
+					min-height: 2645.12px;
+				}
+
+				/* mobile: apply the requested mobile height */
+				@media (max-width: 767px) {
+					.index-container {
+						min-height: 2725.25px;
+					}
+				}
+			`}</style>
 		</div>
 	);
 };
