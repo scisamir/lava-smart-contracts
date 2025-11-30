@@ -1,55 +1,190 @@
-"use client";
-
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ChevronDown, Search } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+import {
+  FLUIDTOKENS_LOGO,
+  MINSWAP_LOGO,
+  SPLASH_LOGO,
+  LIQWID_LOGO,
+  IAGON_LOGO,
+  CIRCLE_LOGO,
+} from "@/lib/images";
 
 const protocols = [
   {
-    name: "Minswap",
-    reward: "8.4%",
-    tvl: "$5.2M",
-    borrowRate: "4.8%",
-    supplyRate: "2.1%",
+    name: "Hyperlend",
+    logo: FLUIDTOKENS_LOGO.src,
+    color: "bg-cyan-500",
+    rewards: [MINSWAP_LOGO.src, SPLASH_LOGO.src, LIQWID_LOGO.src],
+    tvl: "$3.43M",
+    borrowRate: "0.05% APY",
+    supplyRate: "0.05% APY",
     category: "DEX",
   },
   {
-    name: "Liqwid",
-    reward: "6.2%",
-    tvl: "$3.9M",
-    borrowRate: "5.6%",
-    supplyRate: "3.4%",
+    name: "Pendle",
+    logo: MINSWAP_LOGO.src,
+    color: "bg-slate-400",
+    rewards: [LIQWID_LOGO.src, IAGON_LOGO.src, CIRCLE_LOGO.src],
+    tvl: "$2.11M",
+    borrowRate: "0.07% APY",
+    supplyRate: "0.03% APY",
+    category: "Yield",
+  },
+  {
+    name: "Project X",
+    logo: SPLASH_LOGO.src,
+    color: "bg-white",
+    rewards: [FLUIDTOKENS_LOGO.src, MINSWAP_LOGO.src, SPLASH_LOGO.src],
+    tvl: "$5.20M",
+    borrowRate: "0.06% APY",
+    supplyRate: "0.04% APY",
+    category: "DEX",
+  },
+  {
+    name: "Valantis",
+    logo: LIQWID_LOGO.src,
+    color: "bg-slate-300",
+    rewards: [IAGON_LOGO.src, CIRCLE_LOGO.src, FLUIDTOKENS_LOGO.src],
+    tvl: "$1.89M",
+    borrowRate: "0.04% APY",
+    supplyRate: "0.02% APY",
     category: "Lending",
   },
   {
-    name: "Indigo",
-    reward: "7.1%",
-    tvl: "$2.4M",
-    borrowRate: "3.9%",
-    supplyRate: "1.8%",
-    category: "Synthetic Assets",
+    name: "Hydra",
+    logo: IAGON_LOGO.src,
+    color: "bg-cyan-600",
+    rewards: [SPLASH_LOGO.src, MINSWAP_LOGO.src, LIQWID_LOGO.src],
+    tvl: "$6.42M",
+    borrowRate: "0.08% APY",
+    supplyRate: "0.05% APY",
+    category: "Lending",
   },
 ];
 
-export function ProtocolsTable() {
+export const ProtocolsTable = () => {
   return (
-    <div className="mt-10">
+    <div className="space-y-6">
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold">Farm</h2>
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search"
+            className="pl-10 bg-muted/50 border-border"
+          />
+        </div>
+      </div>
+
+      {/* DESKTOP TABLE */}
+      <Card className="bg-card/50 backdrop-blur-lg border-border overflow-hidden hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border hover:bg-transparent">
+              <TableHead>
+                <div className="flex items-center gap-1">
+                  Protocol <ChevronDown className="w-4 h-4" />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-1">
+                  Borrow Rate <ChevronDown className="w-4 h-4" />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-1">
+                  Supply Rate <ChevronDown className="w-4 h-4" />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center justify-center">Rewards</div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-1">
+                  TVL <ChevronDown className="w-4 h-4" />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-1">
+                  Category <ChevronDown className="w-4 h-4" />
+                </div>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {protocols.map((p, index) => (
+              <TableRow
+                key={index}
+                className="border-border hover:bg-muted/50 transition-colors"
+              >
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-full ${p.color} flex items-center justify-center overflow-hidden`}
+                    >
+                      <img src={p.logo} alt={p.name} className="w-8 h-8 object-cover rounded-full" />
+                    </div>
+                    <span className="font-semibold ml-2">{p.name}</span>
+                  </div>
+                </TableCell>
+
+                <TableCell>{p.borrowRate}</TableCell>
+                <TableCell>{p.supplyRate}</TableCell>
+
+                <TableCell className="align-middle">
+                  <div className="flex items-center justify-center">
+                    <img src={p.rewards[0]} alt="reward-1" className="w-6 h-6 rounded-full border-2 border-white" />
+                    <img src={p.rewards[1]} alt="reward-2" className="-ml-2 w-6 h-6 rounded-full border-2 border-white" />
+                    <img src={p.rewards[2]} alt="reward-3" className="-ml-2 w-6 h-6 rounded-full border-2 border-white" />
+                  </div>
+                </TableCell>
+
+                <TableCell>{p.tvl}</TableCell>
+
+                <TableCell>
+                  <span className="text-muted-foreground">{p.category}</span>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+
       {/* MOBILE CARDS */}
-      <div className="space-y-4 md:hidden">
+      <div className="space-y-4 md:hidden mt-6">
         {protocols.map((p, index) => (
-          <Card
-            key={index}
-            className="p-4 rounded-xl border border-border bg-card"
-          >
+          <Card key={index} className="p-4 rounded-xl border border-border bg-card">
             <div className="flex justify-between gap-6">
               {/* LEFT SIDE */}
               <div className="flex flex-col space-y-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Name</p>
-                  <p className="font-semibold">{p.name}</p>
+                <div className="flex items-center gap-2">
+                    <div className={`w-10 h-10 rounded-full ${p.color} flex items-center justify-center overflow-hidden`}>
+                      <img src={p.logo} alt={p.name} className="w-8 h-8 object-cover rounded-full" />
+                    </div>
+                    <span className="font-semibold ml-1">{p.name}</span>
                 </div>
 
                 <div>
                   <p className="text-xs text-muted-foreground">Reward</p>
-                  <p className="font-medium">{p.reward}</p>
+                  <div className="font-medium">
+                    <div className="flex items-center">
+                      <img src={p.rewards[0]} alt="reward-1" className="w-6 h-6 rounded-full border-2 border-white" />
+                      <img src={p.rewards[1]} alt="reward-2" className="-ml-2 w-6 h-6 rounded-full border-2 border-white" />
+                      <img src={p.rewards[2]} alt="reward-3" className="-ml-2 w-6 h-6 rounded-full border-2 border-white" />
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -79,39 +214,6 @@ export function ProtocolsTable() {
           </Card>
         ))}
       </div>
-
-      {/* DESKTOP TABLE */}
-      <div className="hidden md:block">
-        <div className="overflow-hidden rounded-xl border border-border">
-          <table className="w-full text-left">
-            <thead className="bg-muted/20">
-              <tr>
-                <th className="p-4">Name</th>
-                <th className="p-4">Reward</th>
-                <th className="p-4">TVL</th>
-                <th className="p-4">Borrow Rate</th>
-                <th className="p-4">Supply Rate</th>
-                <th className="p-4">Category</th>
-              </tr>
-            </thead>
-            <tbody>
-              {protocols.map((p, index) => (
-                <tr
-                  key={index}
-                  className="border-t border-border hover:bg-muted/10 transition"
-                >
-                  <td className="p-4 font-medium">{p.name}</td>
-                  <td className="p-4">{p.reward}</td>
-                  <td className="p-4">{p.tvl}</td>
-                  <td className="p-4">{p.borrowRate}</td>
-                  <td className="p-4">{p.supplyRate}</td>
-                  <td className="p-4">{p.category}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
-}
+};

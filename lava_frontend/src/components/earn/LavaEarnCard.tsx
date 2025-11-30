@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { LAVA_LOGO } from "@/lib/images";
+import { LAVA_LOGO, FLUIDTOKENS_LOGO, MINSWAP_LOGO, SPLASH_LOGO } from "@/lib/images";
 
 export const LavaEarnCard = () => {
   return (
@@ -17,24 +17,28 @@ export const LavaEarnCard = () => {
         Lorem ipsum dolor sit amet consectetur. Lacinia et euismod consequat sit non vel. Enim ac nullam elementum massa sagittis.
       </p>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
+      <div className="grid grid-cols-4 gap-4 text-center items-center">
+        <div className="flex flex-col items-center">
           <p className="text-primary text-xs mb-1">APY</p>
           <p className="text-2xl font-bold">6.3%</p>
         </div>
-        <div>
+
+        <div className="flex flex-col items-center">
           <p className="text-primary text-xs mb-1">TVL</p>
           <p className="text-2xl font-bold">$32.43M</p>
         </div>
-        <div>
+
+        <div className="flex flex-col items-center">
           <p className="text-primary text-xs mb-1">Infra</p>
-          <p className="text-lg font-semibold">Veda</p>
+          <p className="text-2xl font-semibold">Veda</p>
         </div>
-        <div>
+
+        <div className="flex flex-col items-center">
           <p className="text-primary text-xs mb-1">Rewards</p>
-          <div className="flex items-center gap-1">
-            <span className="text-lg">🪙</span>
-            <span className="text-lg">🔥</span>
+          <div className="flex items-center justify-center">
+            <img src={FLUIDTOKENS_LOGO.src} alt="r1" className="w-6 h-6 rounded-full border-2 border-white object-cover" />
+            <img src={MINSWAP_LOGO.src} alt="r2" className="-ml-2 w-6 h-6 rounded-full border-2 border-white object-cover" />
+            <img src={SPLASH_LOGO.src} alt="r3" className="-ml-2 w-6 h-6 rounded-full border-2 border-white object-cover" />
           </div>
         </div>
       </div>
