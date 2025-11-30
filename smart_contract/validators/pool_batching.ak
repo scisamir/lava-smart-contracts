@@ -13,12 +13,15 @@ use lava/types.{
   AssetType, BatchingRedeemer, GlobalSettingsDatum, OptIn, OrderDatum, PoolDatum,
   Redeem,
 }
-use lava/utils.{find_gs_ref_input}
+use lava/utils.{
+  find_gs_ref_input, find_pool_input, get_global_settings, get_signer_hash,
+  is_signed_by,
+}
 use mocktail/virgin_address.{mock_pub_key_address, mock_script_credential}
 use mocktail/virgin_key_hash.{mock_policy_id, mock_pub_key_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
 use test_utils/constants_t.{
-  gs_validator_hash_t, mint_validator_hash_t, pool_batching_cred_t,
+  admin_t, gs_validator_hash_t, mint_validator_hash_t, pool_batching_cred_t,
   pool_validator_hash_t,
 }
 use test_utils/fns_t.{get_global_settings_input}
@@ -28,26 +31,27 @@ validator pool_batching(
   pool_validator_hash: ScriptHash,
 ) {
   withdraw(redeemer: BatchingRedeemer, _stake_cred: Credential, tx: Transaction) {
-    let Transaction { inputs, outputs, mint, reference_inputs, .. } = tx
+    let Transaction {
+      inputs,
+      outputs,
+      mint,
+      reference_inputs,
+      extra_signatories,
+      withdrawals,
+      ..
+    } = tx
 
     let BatchingRedeemer { batcher_index, batching_asset } = redeemer
 
-    // find global settings from reference inputs
-    expect Some(global_settings_ref) =
-      find_gs_ref_input(
-        reference_inputs,
-        gs_validator_hash,
-        global_settings_nft,
-      )
-    expect InlineDatum(global_settings) = global_settings_ref.output.datum
     expect GlobalSettingsDatum {
       allowed_assets,
       authorized_batchers,
       mint_validator_hash,
       ..
-    } = global_settings
+    } = get_global_settings(reference_inputs, gs_validator_hash)
 
     expect Some(batcher) = list.at(authorized_batchers, batcher_index)
+    let batcher_hash = get_signer_hash(batcher)
 
     // find pool input, make sure it's only one
     expect [pool_input] = find_pool_input(inputs, pool_validator_hash)
@@ -75,8 +79,8 @@ validator pool_batching(
           let order_payment_cred = input.output.address.payment_credential
           and {
             order_payment_cred != Script(pool_validator_hash),
-            order_payment_cred != Script(batcher),
-            order_payment_cred != VerificationKey(batcher),
+            order_payment_cred != Script(batcher_hash),
+            order_payment_cred != VerificationKey(batcher_hash),
           }
         },
       )
@@ -104,6 +108,8 @@ validator pool_batching(
       mint |> assets.tokens(mint_validator_hash) |> dict.to_pairs
 
     and {
+      // batcher signs transaction
+      is_signed_by(extra_signatories, inputs, withdrawals, batcher)?,
       // pool asset is the batching asset
       (pool_asset == batching_asset)?,
       // Check if it's an allowed asset (in case where allowed_assets has been updated but pool still exists)
@@ -241,22 +247,6 @@ fn process_orders(
       )
     }
   }
-}
-
-fn find_pool_input(inputs: List<Input>, pool_validator_hash: ScriptHash) {
-  list.filter(
-    inputs,
-    fn(input) {
-      and {
-        (input.output.address.payment_credential == Script(pool_validator_hash))?,
-        (quantity_of(
-          input.output.value,
-          pool_validator_hash,
-          lava_pool_nft_name,
-        ) == 1)?,
-      }
-    },
-  )
 }
 
 fn verify_pool_output(
@@ -448,6 +438,7 @@ test test_batching_opt_in() {
       outputs: [pool_output, user_order_output],
       mint,
       reference_inputs: [gs_input],
+      withdrawals: [Pair(Script(admin_t), 0)],
     }
 
   pool_batching.withdraw(
@@ -583,6 +574,7 @@ test test_batching_redeem() {
       outputs: [pool_output, user_order_output],
       mint,
       reference_inputs: [gs_input],
+      withdrawals: [Pair(Script(admin_t), 0)],
     }
 
   pool_batching.withdraw(

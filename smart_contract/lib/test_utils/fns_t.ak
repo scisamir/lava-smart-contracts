@@ -2,7 +2,7 @@ use cardano/address.{Address, Script}
 use cardano/assets.{from_asset, from_lovelace}
 use cardano/transaction.{InlineDatum, Input, NoDatum, Output}
 use lava/constants.{global_settings_nft}
-use lava/types.{GlobalSettingsDatum, StakeType}
+use lava/types.{GlobalSettingsDatum, StakeType, WithdrawScriptSigner}
 use mocktail/virgin_address.{mock_pub_key_address, mock_script_address}
 use mocktail/virgin_key_hash.{mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
@@ -34,7 +34,7 @@ pub fn get_global_settings_input() {
   let gs_input_datum =
     GlobalSettingsDatum {
       admin: admin_t,
-      authorized_batchers: [admin_t],
+      authorized_batchers: [WithdrawScriptSigner { script_hash: admin_t }],
       allowed_assets: [allowed_ast_one],
       mint_validator_hash: mint_validator_hash_t,
       stake_details: [

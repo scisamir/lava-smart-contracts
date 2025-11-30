@@ -15,9 +15,15 @@ pub type StakeType {
   datum_verifier_hash: ScriptHash,
 }
 
+pub type SignerType {
+  VerificationKeySigner { verification_key_hash: VerificationKeyHash }
+  SpendScriptSigner { script_hash: ScriptHash }
+  WithdrawScriptSigner { script_hash: ScriptHash }
+}
+
 pub type GlobalSettingsDatum {
   admin: ScriptHash,
-  authorized_batchers: List<ScriptHash>,
+  authorized_batchers: List<SignerType>,
   allowed_assets: List<AssetType>,
   mint_validator_hash: ScriptHash,
   stake_details: List<StakeType>,
@@ -90,4 +96,9 @@ pub type StrikeStakeDatum {
   owner_address_hash: VerificationKeyHash,
   staked_at: POSIXTime,
   mint_policy_id: PolicyId,
+}
+
+pub type RewardsRedeemer {
+  AddRewards { asset: AssetType, batcher_index: Int }
+  SwapRewards { asset: AssetType, batcher_index: Int }
 }

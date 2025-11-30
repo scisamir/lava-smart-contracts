@@ -9,8 +9,8 @@ use cardano/transaction.{
 }
 use lava/constants.{global_settings_nft}
 use lava/types.{
-  CreateGlobalSettings, GlobalSettingsDatum, GlobalSettingsRedeemer, StakeType,
-  UpdateGlobalSettings,
+  CreateGlobalSettings, GlobalSettingsDatum, GlobalSettingsRedeemer,
+  SpendScriptSigner, StakeType, UpdateGlobalSettings, WithdrawScriptSigner,
 }
 use lava/utils.{is_multisig_signing}
 use mocktail/virgin_address.{mock_pub_key_address, mock_script_address}
@@ -198,7 +198,7 @@ test test_create_global_settings() {
       datum: InlineDatum(
         GlobalSettingsDatum {
           admin: admin_sc,
-          authorized_batchers: [admin_sc],
+          authorized_batchers: [WithdrawScriptSigner { script_hash: admin_sc }],
           allowed_assets: [],
           mint_validator_hash: mock_script_hash(15),
           stake_details: [
@@ -253,7 +253,7 @@ test test_update_global_settings() {
   let gs_input_datum =
     GlobalSettingsDatum {
       admin: admin_sc,
-      authorized_batchers: [admin_sc],
+      authorized_batchers: [WithdrawScriptSigner { script_hash: admin_sc }],
       allowed_assets: [],
       mint_validator_hash: mock_script_hash(15),
       stake_details: [
@@ -290,7 +290,10 @@ test test_update_global_settings() {
       datum: InlineDatum(
         GlobalSettingsDatum {
           admin: admin_sc,
-          authorized_batchers: [admin_sc, new_sc],
+          authorized_batchers: [
+            WithdrawScriptSigner { script_hash: admin_sc },
+            SpendScriptSigner { script_hash: new_sc },
+          ],
           allowed_assets: [],
           mint_validator_hash: mock_script_hash(15),
           stake_details: [
