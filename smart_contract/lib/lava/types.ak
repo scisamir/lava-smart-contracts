@@ -59,6 +59,7 @@ pub type OrderDatum {
 pub type PoolRedeemer {
   ProcessPool
   UpdatePoolProcessingState
+  AddRewardsPool { asset: AssetType }
 }
 
 pub type PoolDatum {

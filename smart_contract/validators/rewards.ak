@@ -7,7 +7,7 @@ use cardano/assets.{
 use cardano/transaction.{
   InlineDatum, NoDatum, OutputReference, Transaction, find_input,
 }
-use lava/constants.{lava_pool_nft_name}
+use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
 use lava/types.{
   AddRewards, AssetType, GlobalSettingsDatum, PoolDatum, RewardsRedeemer,
   SwapRewards,
@@ -80,15 +80,25 @@ validator rewards(
           list.filter(
             outputs,
             fn(output) {
+              let expected_pool_value =
+                assets.from_lovelace(min_pool_lovelace)
+                  |> assets.add(pool_validator_hash, lava_pool_nft_name, 1)
+                  |> assets.add(
+                      ra_pid,
+                      ra_an,
+                      quantity_of(output.value, ra_pid, ra_an),
+                    )
+                  |> assets.add(
+                      ra_pid,
+                      ra_an,
+                      quantity_of(own_input.output.value, ra_pid, ra_an),
+                    )
+
               and {
                 (output.address.payment_credential == Script(
                   pool_validator_hash,
                 ))?,
-                (quantity_of(
-                  output.value,
-                  pool_validator_hash,
-                  lava_pool_nft_name,
-                ) == 1)?,
+                (output.value == expected_pool_value)?,
               }
             },
           )
@@ -104,18 +114,26 @@ validator rewards(
           is_processing_open: is_processing_open_out,
         } = pool_out_datum
 
-        let updated_exchange_rate = 0
-        let updated_total_rewards_accrued = 0
+        let new_pool_amount = quantity_of(own_input.output.value, ra_pid, ra_an)
+        let rewards_accrued = new_pool_amount - total_underlying
+
+        let updated_total_underlying = total_underlying + rewards_accrued
+        let updated_total_underlying_precised =
+          updated_total_underlying * precision_factor
+        let updated_exchange_rate =
+          updated_total_underlying_precised / total_st_assets_minted
+        let updated_total_rewards_accrued =
+          total_rewards_accrued + rewards_accrued
 
         let is_pool_out_datum_correct = and {
             pool_batching_cred == pool_batching_cred_out,
             total_st_assets_minted == total_st_assets_minted_out,
-            total_underlying == total_underlying_out,
             pool_asset == pool_asset_out,
             pool_stake_asset_name == pool_stake_asset_name_out,
             is_processing_open == is_processing_open_out,
             // changed
-            exchange_rate == exchange_rate_out,
+            updated_total_underlying == total_underlying_out,
+            updated_exchange_rate == exchange_rate_out,
             updated_total_rewards_accrued == total_rewards_accrued_out,
           }
 

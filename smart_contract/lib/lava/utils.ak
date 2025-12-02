@@ -2,9 +2,9 @@ use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Credential, Script}
-use cardano/assets.{AssetName, Lovelace, Value, quantity_of}
-use cardano/transaction.{InlineDatum, Input}
-use lava/constants.{global_settings_nft, lava_pool_nft_name}
+use cardano/assets.{AssetName, Lovelace, PolicyId, Value, quantity_of}
+use cardano/transaction.{InlineDatum, Input, Output}
+use lava/constants.{global_settings_nft, lava_pool_nft_name, min_pool_lovelace}
 use lava/types.{
   GlobalSettingsDatum, SignerType, SpendScriptSigner, VerificationKeySigner,
   WithdrawScriptSigner,
@@ -120,4 +120,36 @@ pub fn find_pool_input(inputs: List<Input>, pool_validator_hash: ScriptHash) {
       }
     },
   )
+}
+
+/// Finds pool output
+pub fn find_pool_output(
+  outputs: List<Output>,
+  st_pid: PolicyId,
+  st_an: AssetName,
+  own_payment_cred: Credential,
+) -> Output {
+  expect Script(own_hash) = own_payment_cred
+
+  expect [pool_output] =
+    list.filter(
+      outputs,
+      fn(output) {
+        let expected_pool_value =
+          assets.from_lovelace(min_pool_lovelace)
+            |> assets.add(own_hash, lava_pool_nft_name, 1)
+            |> assets.add(
+                st_pid,
+                st_an,
+                quantity_of(output.value, st_pid, st_an),
+              )
+
+        and {
+          (output.address.payment_credential == own_payment_cred)?,
+          (output.value == expected_pool_value)?,
+        }
+      },
+    )
+
+  pool_output
 }

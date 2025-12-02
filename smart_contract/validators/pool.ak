@@ -12,10 +12,10 @@ use cardano/transaction.{
 }
 use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
 use lava/types.{
-  AssetType, GlobalSettingsDatum, PoolDatum, PoolRedeemer, ProcessPool,
-  UpdatePoolProcessingState,
+  AddRewardsPool, AssetType, GlobalSettingsDatum, PoolDatum, PoolRedeemer,
+  ProcessPool, UpdatePoolProcessingState,
 }
-use lava/utils.{get_global_settings, is_multisig_signing}
+use lava/utils.{find_pool_output, get_global_settings, is_multisig_signing}
 use mocktail/virgin_key_hash.{mock_policy_id, mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
 use test_utils/constants_t.{gs_validator_hash_t, pool_batching_cred_t}
@@ -119,17 +119,11 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
           pool_stake_asset_name,
           is_processing_open,
         } = datum_in
+        expect AssetType { policy_id: st_pid, asset_name: st_an, .. } =
+          pool_asset
 
-        expect [pool_output] =
-          list.filter(
-            outputs,
-            fn(output) {
-              and {
-                (output.address.payment_credential == own_payment_cred)?,
-                (quantity_of(output.value, own_hash, lava_pool_nft_name) == 1)?,
-              }
-            },
-          )
+        let pool_output =
+          find_pool_output(outputs, st_pid, st_an, own_payment_cred)
         expect InlineDatum(pool_out_datum) = pool_output.datum
         expect PoolDatum {
           pool_batching_cred: pool_batching_cred_out,
@@ -160,6 +154,31 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
           (is_processing_open != is_processing_open_out)?,
           // admin must sign transaction
           is_multisig_signing(inputs, admin)?,
+        }
+      }
+
+      AddRewardsPool { asset: stake_asset } -> {
+        expect Some(datum_in) = datum
+        let PoolDatum { pool_asset, .. } = datum_in
+        expect AssetType { policy_id: st_pid, asset_name: st_an, .. } =
+          pool_asset
+
+        let pool_output =
+          find_pool_output(outputs, st_pid, st_an, own_payment_cred)
+
+        // Make sure the pool datum remains pool datum
+        expect InlineDatum(pool_output_datum) = pool_output.datum
+        expect PoolDatum { .. } = pool_output_datum
+
+        and {
+          // pool asset is the right one
+          (pool_asset == stake_asset)?,
+          // quantity of assets in pool output should be higher than the one in the pool input
+          (quantity_of(pool_output.value, st_pid, st_an) > quantity_of(
+            own_input.output.value,
+            st_pid,
+            st_an,
+          ))?,
         }
       }
     }
