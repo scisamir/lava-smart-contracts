@@ -45,6 +45,9 @@ pub fn get_global_settings_input() {
         },
       ],
       frost_address: mock_pub_key_address(16, None),
+      authorized_swap_scripts: [mock_script_hash(17)],
+      stake_validator_hash: mock_script_hash(31),
+      rewards_validator_hash: mock_script_hash(19),
     }
   let gs_input_utxo_ref = mock_utxo_ref(0, 11)
   let gs_input =

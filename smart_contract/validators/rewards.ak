@@ -1,9 +1,8 @@
 use aiken/collection/list
+use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Script}
-use cardano/assets.{
-  from_asset, from_lovelace, lovelace_of, quantity_of, without_lovelace,
-}
+use cardano/assets.{from_asset, from_lovelace, lovelace_of, quantity_of}
 use cardano/transaction.{
   InlineDatum, NoDatum, OutputReference, Transaction, find_input,
 }
@@ -19,7 +18,7 @@ validator rewards(
   pool_validator_hash: ScriptHash,
 ) {
   spend(
-    datum: Option<Data>,
+    _datum: Option<Data>,
     redeemer: RewardsRedeemer,
     utxo: OutputReference,
     tx: Transaction,
@@ -35,7 +34,7 @@ validator rewards(
 
     when redeemer is {
       AddRewards { asset: reward_asset, batcher_index } -> {
-        expect GlobalSettingsDatum { authorized_batchers, .. } =
+        let GlobalSettingsDatum { authorized_batchers, .. } =
           get_global_settings(reference_inputs, gs_validator_hash)
         expect Some(batcher) = list.at(authorized_batchers, batcher_index)
 
@@ -44,7 +43,7 @@ validator rewards(
         // Reward UTxO should have no datum
         expect NoDatum = own_input.output.datum
 
-        expect AssetType { policy_id: ra_pid, asset_name: ra_an, .. } =
+        let AssetType { policy_id: ra_pid, asset_name: ra_an, .. } =
           reward_asset
         let is_ra_ada = ra_pid == "" && ra_an == "lovelace"
 
@@ -67,32 +66,41 @@ validator rewards(
         expect InlineDatum(pool_in_datum) = pool_input.output.datum
         expect PoolDatum {
           pool_batching_cred,
-          exchange_rate,
           total_rewards_accrued,
           pool_asset,
           total_underlying,
           total_st_assets_minted,
           pool_stake_asset_name,
           is_processing_open,
+          ..
         } = pool_in_datum
 
         expect [pool_output] =
           list.filter(
             outputs,
             fn(output) {
-              let expected_pool_value =
+              let raw_pool_value =
                 assets.from_lovelace(min_pool_lovelace)
                   |> assets.add(pool_validator_hash, lava_pool_nft_name, 1)
-                  |> assets.add(
-                      ra_pid,
-                      ra_an,
-                      quantity_of(output.value, ra_pid, ra_an),
-                    )
-                  |> assets.add(
-                      ra_pid,
-                      ra_an,
-                      quantity_of(own_input.output.value, ra_pid, ra_an),
-                    )
+              let expected_pool_value =
+                if is_ra_ada {
+                  raw_pool_value
+                    |> assets.add("", "", lovelace_of(output.value))
+                    |> assets.add("", "", lovelace_of(own_input.output.value))
+                    |> assets.add("", "", -min_pool_lovelace)
+                } else {
+                  raw_pool_value
+                    |> assets.add(
+                        ra_pid,
+                        ra_an,
+                        quantity_of(output.value, ra_pid, ra_an),
+                      )
+                    |> assets.add(
+                        ra_pid,
+                        ra_an,
+                        quantity_of(own_input.output.value, ra_pid, ra_an),
+                      )
+                }
 
               and {
                 (output.address.payment_credential == Script(
@@ -147,7 +155,19 @@ validator rewards(
         }
       }
 
-      SwapRewards { .. } -> True
+      SwapRewards -> {
+        let GlobalSettingsDatum { authorized_swap_scripts, .. } =
+          get_global_settings(reference_inputs, gs_validator_hash)
+
+        let is_sc_withdraw =
+          list.any(
+            authorized_swap_scripts,
+            fn(swap_script) { pairs.has_key(withdrawals, Script(swap_script)) },
+          )
+
+        // There must be a withdrawal from any of the authorized swap scripts
+        is_sc_withdraw?
+      }
     }
   }
 

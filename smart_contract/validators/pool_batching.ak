@@ -6,16 +6,13 @@ use cardano/assets.{AssetName, PolicyId, from_asset, from_lovelace, quantity_of}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, Transaction, placeholder,
 }
-use lava/constants.{
-  global_settings_nft, lava_pool_nft_name, min_pool_lovelace, precision_factor,
-}
+use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
 use lava/types.{
   AssetType, BatchingRedeemer, GlobalSettingsDatum, OptIn, OrderDatum, PoolDatum,
   Redeem,
 }
 use lava/utils.{
-  find_gs_ref_input, find_pool_input, get_global_settings, get_signer_hash,
-  is_signed_by,
+  find_pool_input, get_global_settings, get_signer_hash, is_signed_by,
 }
 use mocktail/virgin_address.{mock_pub_key_address, mock_script_credential}
 use mocktail/virgin_key_hash.{mock_policy_id, mock_pub_key_hash}
@@ -43,7 +40,7 @@ validator pool_batching(
 
     let BatchingRedeemer { batcher_index, batching_asset } = redeemer
 
-    expect GlobalSettingsDatum {
+    let GlobalSettingsDatum {
       allowed_assets,
       authorized_batchers,
       mint_validator_hash,

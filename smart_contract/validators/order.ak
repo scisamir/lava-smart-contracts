@@ -6,7 +6,9 @@ use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
   placeholder,
 }
-use lava/types.{CancelOrder, OptIn, OrderDatum, OrderRedeemer, ProcessOrder}
+use lava/types.{
+  CancelOrder, OptIn, OrderDatum, OrderRedeemer, ProcessOrder, Redeem,
+}
 use lava/utils.{signed_by}
 use mocktail/virgin_address.{mock_pub_key_address, mock_script_credential}
 use mocktail/virgin_key_hash.{mock_pub_key_hash}
@@ -74,7 +76,7 @@ validator order_validator(pool_batching_cred: Credential) {
   }
 }
 
-test test_process_order_opt_in() {
+test test_process_opt_in_order() {
   let receiver_address = mock_pub_key_address(6, None)
   let deposit_amount = 1000
   let extra = 100
@@ -98,6 +100,56 @@ test test_process_order_opt_in() {
         },
         value: from_lovelace(2_000_000)
           |> assets.add(mint_validator_hash_t, "test", deposit_amount + extra),
+        datum: InlineDatum(order_datum),
+        reference_script: None,
+      },
+    }
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [order_input],
+      withdrawals: [Pair(pool_batching_cred_t, 0), Pair(order_cred, 0)],
+    }
+
+  order_validator.spend(
+    pool_batching_cred_t,
+    Some(order_datum),
+    "",
+    order_utxo_ref,
+    tx,
+  ) && order_validator.withdraw(
+    pool_batching_cred_t,
+    ProcessOrder,
+    order_cred,
+    tx,
+  )
+}
+
+test test_process_redeem_order() {
+  let receiver_address = mock_pub_key_address(6, None)
+  let st_amount = 1000
+  let extra = 100
+  let order_cred = mock_script_credential(16)
+
+  let order_utxo_ref = mock_utxo_ref(0, 16)
+  let order_datum =
+    OrderDatum {
+      order_type: Redeem { st_amount },
+      receiver_address,
+      canceller: mock_pub_key_hash(6),
+    }
+
+  let order_input =
+    Input {
+      output_reference: order_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: order_cred,
+          stake_credential: Some(Inline(order_cred)),
+        },
+        value: from_lovelace(2_000_000)
+          |> assets.add(mint_validator_hash_t, "test", extra),
         datum: InlineDatum(order_datum),
         reference_script: None,
       },

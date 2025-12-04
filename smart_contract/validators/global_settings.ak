@@ -209,6 +209,9 @@ test test_create_global_settings() {
             },
           ],
           frost_address: mock_pub_key_address(16, None),
+          authorized_swap_scripts: [mock_script_hash(17)],
+          stake_validator_hash: mock_script_hash(31),
+          rewards_validator_hash: mock_script_hash(19),
         },
       ),
       reference_script: None,
@@ -264,6 +267,9 @@ test test_update_global_settings() {
         },
       ],
       frost_address: mock_pub_key_address(16, None),
+      authorized_swap_scripts: [mock_script_hash(17)],
+      stake_validator_hash: mock_script_hash(31),
+      rewards_validator_hash: mock_script_hash(19),
     }
   let gs_input_utxo_ref = mock_utxo_ref(0, 11)
   let gs_input =
@@ -304,6 +310,9 @@ test test_update_global_settings() {
             },
           ],
           frost_address: mock_pub_key_address(16, None),
+          authorized_swap_scripts: [mock_script_hash(17)],
+          stake_validator_hash: mock_script_hash(31),
+          rewards_validator_hash: mock_script_hash(19),
         },
       ),
       reference_script: None,

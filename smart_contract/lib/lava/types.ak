@@ -1,6 +1,7 @@
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Address, Credential}
 use cardano/assets.{AssetName, PolicyId}
+use lava/external_types.{Asset}
 
 pub type AssetType {
   is_stable: Bool,
@@ -28,6 +29,9 @@ pub type GlobalSettingsDatum {
   mint_validator_hash: ScriptHash,
   stake_details: List<StakeType>,
   frost_address: Address,
+  authorized_swap_scripts: List<ScriptHash>,
+  stake_validator_hash: ScriptHash,
+  rewards_validator_hash: ScriptHash,
 }
 
 pub type GlobalSettingsRedeemer {
@@ -59,7 +63,8 @@ pub type OrderDatum {
 pub type PoolRedeemer {
   ProcessPool
   UpdatePoolProcessingState
-  AddRewardsPool { asset: AssetType }
+  StakePool
+  AddRewardsPool
 }
 
 pub type PoolDatum {
@@ -80,9 +85,7 @@ pub type BatchingRedeemer {
 }
 
 pub type StakeRedeemer {
-  Stake { stake_asset: AssetType }
-  Rewards
-  Swap
+  stake_asset: AssetType,
 }
 
 pub type StrikeStakeRedeemer {
@@ -101,5 +104,12 @@ pub type StrikeStakeDatum {
 
 pub type RewardsRedeemer {
   AddRewards { asset: AssetType, batcher_index: Int }
-  SwapRewards { asset: AssetType, batcher_index: Int }
+  SwapRewards
+}
+
+pub type SwapRedeemer {
+  batcher_index: Int,
+  swap_from_asset: AssetType,
+  lp_asset: Asset,
+  max_batcher_fee: Int,
 }

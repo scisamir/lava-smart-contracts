@@ -3,17 +3,15 @@ use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Script}
-use cardano/assets.{
-  PolicyId, from_asset, from_lovelace, lovelace_of, quantity_of,
-}
+use cardano/assets.{PolicyId, from_asset, from_lovelace, lovelace_of}
 use cardano/transaction.{
-  InlineDatum, Input, Output, OutputReference, Transaction, find_input,
-  placeholder,
+  InlineDatum, Input, NoDatum, Output, OutputReference, Spend, Transaction,
+  find_input, placeholder,
 }
 use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
 use lava/types.{
-  AddRewardsPool, AssetType, GlobalSettingsDatum, PoolDatum, PoolRedeemer,
-  ProcessPool, UpdatePoolProcessingState,
+  AddRewards, AddRewardsPool, AssetType, GlobalSettingsDatum, PoolDatum,
+  PoolRedeemer, ProcessPool, StakePool, UpdatePoolProcessingState,
 }
 use lava/utils.{find_pool_output, get_global_settings, is_multisig_signing}
 use mocktail/virgin_key_hash.{mock_policy_id, mock_script_hash}
@@ -96,18 +94,27 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
     utxo: OutputReference,
     tx: Transaction,
   ) {
-    let Transaction { inputs, outputs, reference_inputs, .. } = tx
+    let Transaction {
+      inputs,
+      outputs,
+      reference_inputs,
+      withdrawals,
+      redeemers,
+      ..
+    } = tx
     expect Some(own_input) = find_input(inputs, utxo)
     let own_payment_cred = own_input.output.address.payment_credential
-    expect Script(own_hash) = own_payment_cred
 
     when redeemer is {
       ProcessPool -> {
         expect Some(PoolDatum { pool_batching_cred, .. }) = datum
-        pairs.has_key(tx.withdrawals, pool_batching_cred)?
+        pairs.has_key(withdrawals, pool_batching_cred)?
       }
 
       UpdatePoolProcessingState -> {
+        let GlobalSettingsDatum { admin, .. } =
+          get_global_settings(reference_inputs, gs_validator_hash)
+
         expect Some(datum_in) = datum
         let PoolDatum {
           pool_batching_cred,
@@ -119,8 +126,7 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
           pool_stake_asset_name,
           is_processing_open,
         } = datum_in
-        expect AssetType { policy_id: st_pid, asset_name: st_an, .. } =
-          pool_asset
+        let AssetType { policy_id: st_pid, asset_name: st_an, .. } = pool_asset
 
         let pool_output =
           find_pool_output(outputs, st_pid, st_an, own_payment_cred)
@@ -135,9 +141,6 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
           pool_stake_asset_name: pool_stake_asset_name_out,
           is_processing_open: is_processing_open_out,
         } = pool_out_datum
-
-        let GlobalSettingsDatum { admin, .. } =
-          get_global_settings(reference_inputs, gs_validator_hash)
 
         and {
           // pool in and out value must be unchaged
@@ -157,29 +160,33 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
         }
       }
 
-      AddRewardsPool { asset: stake_asset } -> {
-        expect Some(datum_in) = datum
-        let PoolDatum { pool_asset, .. } = datum_in
-        expect AssetType { policy_id: st_pid, asset_name: st_an, .. } =
-          pool_asset
+      StakePool -> {
+        let GlobalSettingsDatum { stake_validator_hash, .. } =
+          get_global_settings(reference_inputs, gs_validator_hash)
 
-        let pool_output =
-          find_pool_output(outputs, st_pid, st_an, own_payment_cred)
+        pairs.has_key(withdrawals, Script(stake_validator_hash))
+      }
 
-        // Make sure the pool datum remains pool datum
-        expect InlineDatum(pool_output_datum) = pool_output.datum
-        expect PoolDatum { .. } = pool_output_datum
+      AddRewardsPool -> {
+        let GlobalSettingsDatum { rewards_validator_hash, .. } =
+          get_global_settings(reference_inputs, gs_validator_hash)
 
-        and {
-          // pool asset is the right one
-          (pool_asset == stake_asset)?,
-          // quantity of assets in pool output should be higher than the one in the pool input
-          (quantity_of(pool_output.value, st_pid, st_an) > quantity_of(
-            own_input.output.value,
-            st_pid,
-            st_an,
-          ))?,
-        }
+        expect [reward_utxo] =
+          list.filter(
+            inputs,
+            fn(input) {
+              input.output.address.payment_credential == Script(
+                rewards_validator_hash,
+              )
+            },
+          )
+
+        expect [rewards_redeemer] =
+          pairs.get_all(redeemers, Spend(reward_utxo.output_reference))
+
+        expect AddRewards { .. } = rewards_redeemer
+
+        True
       }
     }
   }
@@ -189,6 +196,7 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
   }
 }
 
+/// Tests
 test test_create_pool() {
   let pool_hash = mock_script_hash(18)
   let mint = from_asset(pool_hash, lava_pool_nft_name, 1)
@@ -236,7 +244,7 @@ test test_create_pool() {
   pool_validator.mint(gs_validator_hash_t, "", pool_hash, tx)
 }
 
-test test_pool_spend() {
+test test_process_pool() {
   let pool_hash = mock_script_hash(18)
 
   let pool_utxo_ref = mock_utxo_ref(0, 18)
@@ -368,6 +376,149 @@ test test_update_pool_processing_state() {
     gs_validator_hash_t,
     Some(pool_datum_in),
     UpdatePoolProcessingState,
+    pool_utxo_ref,
+    tx,
+  )
+}
+
+test test_stake_pool() {
+  let pool_hash = mock_script_hash(18)
+  let gs_input = get_global_settings_input()
+
+  expect InlineDatum(gs_datum_data) = gs_input.output.datum
+  expect GlobalSettingsDatum { stake_validator_hash, .. } = gs_datum_data
+
+  let pool_utxo_ref = mock_utxo_ref(0, 18)
+  let pool_datum_in =
+    PoolDatum {
+      pool_batching_cred: pool_batching_cred_t,
+      total_st_assets_minted: 0,
+      total_underlying: 0,
+      exchange_rate: 1 * precision_factor,
+      total_rewards_accrued: 0,
+      pool_asset: AssetType {
+        is_stable: False,
+        policy_id: mock_policy_id(11),
+        asset_name: "test",
+        multiplier: 1_000_000,
+      },
+      pool_stake_asset_name: "stTest",
+      is_processing_open: True,
+    }
+  let pool_input =
+    Input {
+      output_reference: pool_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: Script(pool_hash),
+          stake_credential: None,
+        },
+        value: assets.merge(
+          from_lovelace(min_pool_lovelace),
+          from_asset(pool_hash, lava_pool_nft_name, 1),
+        ),
+        datum: InlineDatum(pool_datum_in),
+        reference_script: None,
+      },
+    }
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [pool_input],
+      reference_inputs: [gs_input],
+      withdrawals: [Pair(Script(stake_validator_hash), 0)],
+    }
+
+  pool_validator.spend(
+    gs_validator_hash_t,
+    Some(pool_datum_in),
+    StakePool,
+    pool_utxo_ref,
+    tx,
+  )
+}
+
+test test_add_rewards_to_pool() {
+  let pool_hash = mock_script_hash(18)
+  let gs_input = get_global_settings_input()
+
+  expect InlineDatum(gs_datum_data) = gs_input.output.datum
+  expect GlobalSettingsDatum { rewards_validator_hash, .. } = gs_datum_data
+
+  let pool_utxo_ref = mock_utxo_ref(0, 18)
+  let pool_datum_in =
+    PoolDatum {
+      pool_batching_cred: pool_batching_cred_t,
+      total_st_assets_minted: 0,
+      total_underlying: 0,
+      exchange_rate: 1 * precision_factor,
+      total_rewards_accrued: 0,
+      pool_asset: AssetType {
+        is_stable: False,
+        policy_id: mock_policy_id(11),
+        asset_name: "test",
+        multiplier: 1_000_000,
+      },
+      pool_stake_asset_name: "stTest",
+      is_processing_open: True,
+    }
+  let pool_input =
+    Input {
+      output_reference: pool_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: Script(pool_hash),
+          stake_credential: None,
+        },
+        value: assets.merge(
+          from_lovelace(min_pool_lovelace),
+          from_asset(pool_hash, lava_pool_nft_name, 1),
+        ),
+        datum: InlineDatum(pool_datum_in),
+        reference_script: None,
+      },
+    }
+
+  let reward_utxo_ref = mock_utxo_ref(0, 19)
+  let reward_input =
+    Input {
+      output_reference: reward_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: Script(rewards_validator_hash),
+          stake_credential: None,
+        },
+        value: from_lovelace(10_000_000),
+        datum: NoDatum,
+        reference_script: None,
+      },
+    }
+
+  let reward_redeemer =
+    AddRewards {
+      asset: AssetType {
+        is_stable: False,
+        policy_id: "",
+        asset_name: "lovelace",
+        multiplier: 1_000_000,
+      },
+      batcher_index: 0,
+    }
+  let reward_redeemer_data: Data = reward_redeemer
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [pool_input, reward_input],
+      reference_inputs: [gs_input],
+      redeemers: [Pair(Spend(reward_utxo_ref), reward_redeemer_data)],
+    }
+
+  pool_validator.spend(
+    gs_validator_hash_t,
+    Some(pool_datum_in),
+    AddRewardsPool,
     pool_utxo_ref,
     tx,
   )

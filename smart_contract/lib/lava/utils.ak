@@ -2,7 +2,7 @@ use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Credential, Script}
-use cardano/assets.{AssetName, Lovelace, PolicyId, Value, quantity_of}
+use cardano/assets.{AssetName, Lovelace, PolicyId, quantity_of}
 use cardano/transaction.{InlineDatum, Input, Output}
 use lava/constants.{global_settings_nft, lava_pool_nft_name, min_pool_lovelace}
 use lava/types.{
@@ -59,6 +59,9 @@ pub fn get_global_settings(
     mint_validator_hash,
     stake_details,
     frost_address,
+    authorized_swap_scripts,
+    stake_validator_hash,
+    rewards_validator_hash,
   } = global_settings
 
   GlobalSettingsDatum {
@@ -68,6 +71,9 @@ pub fn get_global_settings(
     mint_validator_hash,
     stake_details,
     frost_address,
+    authorized_swap_scripts,
+    stake_validator_hash,
+    rewards_validator_hash,
   }
 }
 
