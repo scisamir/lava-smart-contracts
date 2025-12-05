@@ -7,7 +7,7 @@ import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 export const BatchOrders = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   
-  const { connected, txBuilder, blockchainProvider, batchingCollateral, wallet, walletAddress, walletVK, walletUtxos } = useCardanoWallet();
+  const { txBuilder, blockchainProvider, batchingCollateral } = useCardanoWallet();
 
   // Toast
   const toastSuccess = (txHash: string) => {
@@ -42,11 +42,6 @@ export const BatchOrders = () => {
         txHash = await batchingTx(
           blockchainProvider,
           txBuilder,
-          wallet,
-          walletAddress,
-          batchingCollateral,
-          walletUtxos,
-          walletVK,
         );
         txBuilder.reset();
       } catch (e) {

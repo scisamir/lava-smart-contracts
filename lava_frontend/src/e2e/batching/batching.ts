@@ -1,4 +1,4 @@
-import { deserializeDatum, IWallet, mConStr0, mConStr1, MeshTxBuilder, serializeAddressObj, UTxO } from "@meshsdk/core";
+import { deserializeAddress, deserializeDatum, IWallet, mConStr0, mConStr1, MeshTxBuilder, MeshWallet, serializeAddressObj, UTxO } from "@meshsdk/core";
 import { setupE2e } from "../setup"
 import { OrderValidatorAddr, OrderValidatorRewardAddress, OrderValidatorScript } from "../order/validator";
 import { PoolValidatorAddr, PoolValidatorHash } from "../pool/validator";
@@ -10,16 +10,39 @@ import { MintingHash, MintingValidatorScript } from "../mint/validator";
 export const batchingTx = async (
     blockchainProvider: BlockchainProviderType,
     txBuilder: MeshTxBuilder,
-    wallet: IWallet,
-    walletAddress: string,
-    walletCollateral: UTxO,
-    walletUtxos: UTxO[],
-    walletVK: string,
 ) => {
+    const walletPassphrase = process.env.NEXT_PUBLIC_WALLET_PASSPHRASE_ONE;
+    if (!walletPassphrase) {
+        throw new Error("WALLET_PASSPHRASE_ONE does not exist");
+    }
+    const wallet = new MeshWallet({
+        networkId: 0,
+        fetcher: blockchainProvider,
+        submitter: blockchainProvider,
+        key: {
+            type: "mnemonic",
+            words: walletPassphrase.split(' ')
+        },
+    });
+
+    const walletAddress = await wallet.getChangeAddress();
+
+    const walletUtxos = await wallet.getUtxos();
+
+    const walletCollateral = (walletUtxos.filter(utxo => (utxo.output.amount.length === 1 && (Number(utxo.output.amount[0].quantity) >= 10000000 && Number(utxo.output.amount[0].quantity) <= 100000000))))[0];
+    if (!walletCollateral) {
+        throw new Error('No collateral utxo found');
+    }
+
+    const { pubKeyHash: walletVK } = deserializeAddress(walletAddress);
+
     const { alwaysSuccessMintValidatorHash, testUnit, batchingScriptTxHash, batchingScriptTxIdx, LavaPoolNftName, MinPoolLovelace, multiSigCbor, poolScriptTxHash, poolScriptTxIdx, poolStakeAssetName, testAssetName } = setupE2e();
 
     const orderUtxos = await blockchainProvider.fetchAddressUTxOs(OrderValidatorAddr);
     const poolUtxo = (await blockchainProvider.fetchAddressUTxOs(PoolValidatorAddr))[0];
+    if (orderUtxos.length === 0) {
+        throw new Error('No orders to batch');
+    }
 
     let totalMintAmount = 0;
     const filteredOrderUtxos = orderUtxos.filter(utxo => {
