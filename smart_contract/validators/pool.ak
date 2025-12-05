@@ -10,13 +10,18 @@ use cardano/transaction.{
 }
 use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
 use lava/types.{
-  AddRewards, AddRewardsPool, AssetType, GlobalSettingsDatum, PoolDatum,
-  PoolRedeemer, ProcessPool, StakePool, UpdatePoolProcessingState,
+  AddAdaRewardsPool, AddRewards, AddRewardsPool, AssetType, GlobalSettingsDatum,
+  PoolDatum, PoolRedeemer, ProcessPool, StakePool, UpdatePoolProcessingState,
 }
-use lava/utils.{find_pool_output, get_global_settings, is_multisig_signing}
+use lava/utils.{
+  find_pool_input, find_pool_output, get_global_settings, is_multisig_signing,
+  is_signed_by,
+}
 use mocktail/virgin_key_hash.{mock_policy_id, mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
-use test_utils/constants_t.{gs_validator_hash_t, pool_batching_cred_t}
+use test_utils/constants_t.{
+  admin_t, gs_validator_hash_t, pool_batching_cred_t, pool_validator_hash_t,
+}
 use test_utils/fns_t.{get_admin_input, get_global_settings_input}
 
 validator pool_validator(gs_validator_hash: ScriptHash) {
@@ -100,10 +105,12 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
       reference_inputs,
       withdrawals,
       redeemers,
+      extra_signatories,
       ..
     } = tx
     expect Some(own_input) = find_input(inputs, utxo)
     let own_payment_cred = own_input.output.address.payment_credential
+    expect Script(own_hash) = own_payment_cred
 
     when redeemer is {
       ProcessPool -> {
@@ -187,6 +194,87 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
         expect AddRewards { .. } = rewards_redeemer
 
         True
+      }
+
+      AddAdaRewardsPool { batcher_index } -> {
+        let GlobalSettingsDatum { authorized_batchers, .. } =
+          get_global_settings(reference_inputs, gs_validator_hash)
+        expect Some(batcher) = list.at(authorized_batchers, batcher_index)
+
+        // find ada reward input
+        expect [ada_rewards_utxo] =
+          list.filter(
+            inputs,
+            fn(input) {
+              and {
+                input.output.value == from_lovelace(
+                  lovelace_of(input.output.value),
+                ),
+                when input.output.datum is {
+                  NoDatum -> True
+                  _ -> False
+                },
+              }
+            },
+          )
+
+        let new_ada_rewards_amount = lovelace_of(ada_rewards_utxo.output.value)
+
+        // find pool input
+        expect [pool_input] = find_pool_input(inputs, own_hash)
+        expect InlineDatum(pool_in_datum) = pool_input.output.datum
+        expect PoolDatum {
+          pool_batching_cred,
+          total_st_assets_minted,
+          total_underlying,
+          total_rewards_accrued,
+          pool_asset,
+          pool_stake_asset_name,
+          is_processing_open,
+          ..
+        } = pool_in_datum
+        let AssetType { policy_id: st_pid, asset_name: st_an, .. } = pool_asset
+
+        // find pool output
+        let pool_output =
+          find_pool_output(outputs, st_pid, st_an, own_payment_cred)
+        expect InlineDatum(pool_out_datum) = pool_output.datum
+        expect PoolDatum {
+          pool_batching_cred: pool_batching_cred_out,
+          total_st_assets_minted: total_st_assets_minted_out,
+          total_underlying: total_underlying_out,
+          exchange_rate: exchange_rate_out,
+          total_rewards_accrued: total_rewards_accrued_out,
+          pool_asset: pool_asset_out,
+          pool_stake_asset_name: pool_stake_asset_name_out,
+          is_processing_open: is_processing_open_out,
+        } = pool_out_datum
+
+        let updated_total_underlying = total_underlying + new_ada_rewards_amount
+        let updated_total_underlying_precised =
+          updated_total_underlying * precision_factor
+        let updated_exchange_rate =
+          updated_total_underlying_precised / total_st_assets_minted
+        let updated_total_rewards_accrued =
+          total_rewards_accrued + new_ada_rewards_amount
+
+        let is_pool_out_datum_correct = and {
+            pool_batching_cred == pool_batching_cred_out,
+            total_st_assets_minted == total_st_assets_minted_out,
+            pool_asset == pool_asset_out,
+            pool_stake_asset_name == pool_stake_asset_name_out,
+            is_processing_open == is_processing_open_out,
+            // changed
+            updated_total_underlying == total_underlying_out,
+            updated_exchange_rate == exchange_rate_out,
+            updated_total_rewards_accrued == total_rewards_accrued_out,
+          }
+
+        and {
+          is_pool_out_datum_correct?,
+          // batcher signs transaction
+          is_signed_by(extra_signatories, inputs, withdrawals, batcher)?,
+        }
       }
     }
   }
@@ -519,6 +607,98 @@ test test_add_rewards_to_pool() {
     gs_validator_hash_t,
     Some(pool_datum_in),
     AddRewardsPool,
+    pool_utxo_ref,
+    tx,
+  )
+}
+
+test test_add_ada_rewards_pool() {
+  let mint = from_asset(pool_validator_hash_t, lava_pool_nft_name, 1)
+  let gs_input = get_global_settings_input()
+  let ada_asset =
+    AssetType {
+      is_stable: False,
+      policy_id: "",
+      asset_name: "lovelace",
+      multiplier: 1_000_000,
+    }
+
+  let pool_utxo_ref = mock_utxo_ref(0, 18)
+  let pool_datum_in =
+    PoolDatum {
+      pool_batching_cred: pool_batching_cred_t,
+      total_st_assets_minted: 10_000_000,
+      total_underlying: 10_000_000,
+      exchange_rate: 1 * precision_factor,
+      total_rewards_accrued: 0,
+      pool_asset: ada_asset,
+      pool_stake_asset_name: "stTest",
+      is_processing_open: False,
+    }
+  let pool_input =
+    Input {
+      output_reference: pool_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: Script(pool_validator_hash_t),
+          stake_credential: None,
+        },
+        value: assets.merge(from_lovelace(min_pool_lovelace), mint),
+        datum: InlineDatum(pool_datum_in),
+        reference_script: None,
+      },
+    }
+
+  let pool_datum_out =
+    PoolDatum {
+      pool_batching_cred: pool_batching_cred_t,
+      total_st_assets_minted: 10_000_000,
+      total_underlying: 11_000_000,
+      exchange_rate: 11 * precision_factor / 10,
+      total_rewards_accrued: 1_000_000,
+      pool_asset: ada_asset,
+      pool_stake_asset_name: "stTest",
+      is_processing_open: False,
+    }
+  let pool_output =
+    Output {
+      address: Address {
+        payment_credential: Script(pool_validator_hash_t),
+        stake_credential: None,
+      },
+      value: assets.merge(from_lovelace(min_pool_lovelace + 1_000_000), mint),
+      datum: InlineDatum(pool_datum_out),
+      reference_script: None,
+    }
+
+  let rewards_utxo_ref = mock_utxo_ref(0, 28)
+  let rewards_input =
+    Input {
+      output_reference: rewards_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: Script(pool_validator_hash_t),
+          stake_credential: None,
+        },
+        value: from_lovelace(1_000_000),
+        datum: NoDatum,
+        reference_script: None,
+      },
+    }
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [pool_input, rewards_input],
+      outputs: [pool_output],
+      reference_inputs: [gs_input],
+      withdrawals: [Pair(Script(admin_t), 0)],
+    }
+
+  pool_validator.spend(
+    gs_validator_hash_t,
+    Some(pool_datum_in),
+    AddAdaRewardsPool { batcher_index: 0 },
     pool_utxo_ref,
     tx,
   )
