@@ -5,13 +5,9 @@ import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
 import { toast } from "react-toastify";
 import { cancelOrder } from "@/e2e/order/cancel_order";
-import { UserOrderType } from "@/lib/types";
+import { OrderListProps, UserOrderType } from "@/lib/types";
 import { useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
-
-interface OrderListProps {
-  orders: UserOrderType[];
-}
 
 export const OrderList = ({ orders }: OrderListProps) => {
   if (orders.length === 0) return null;
@@ -87,7 +83,6 @@ export const OrderList = ({ orders }: OrderListProps) => {
 
   return (
     <Card className="max-w-lg mx-auto p-6 bg-card/80 backdrop-blur-lg border-border shadow-glow-md mt-8">
-      <span className="absolut top-1 right-1 text-red-600">GTO: {orders[0].grandTotalOrders ?? 0}</span>
       <h2 className="text-xl font-semibold mb-4 text-center">Your Orders</h2>
       <div className="space-y-3">
         {orders.map((order) => (

@@ -64,7 +64,7 @@ const Index = () => {
 					<StatsSection />
 					<StakingCard />
 					<OrderList orders={orders} />
-					<BatchOrders />
+					<BatchOrders orders={orders} />
 				</div>
 			</section>
 

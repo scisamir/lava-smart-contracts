@@ -4,3 +4,7 @@ export type UserOrderType = {
   isOptIn: boolean,
   grandTotalOrders: number,
 }
+
+export interface OrderListProps {
+  orders: UserOrderType[];
+}

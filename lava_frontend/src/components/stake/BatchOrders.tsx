@@ -3,8 +3,9 @@ import { Button } from "../ui/button"
 import { batchingTx } from "@/e2e/batching/batching";
 import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
+import { OrderListProps } from "@/lib/types";
 
-export const BatchOrders = () => {
+export const BatchOrders = ({ orders }: OrderListProps) => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   
   const { txBuilder, blockchainProvider } = useCardanoWallet();
@@ -69,8 +70,9 @@ export const BatchOrders = () => {
       <Button
         disabled={isProcessing}
         onClick={() => handleBatching()}
-        className="bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7"
+        className="relative bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7"
       >
+        <span className="absolute top-0 right-0 px-1 text-sm text-red-600 bg-white border border-r-2">GTO: {orders[0]?.grandTotalOrders ?? 0}</span>
         {isProcessing ? "Processing..." : "Batch Orders"}
       </Button>
     </div>
