@@ -14,6 +14,7 @@ batching tx hash: 15961cd375a36c44da168478152d46ff7f489620669aee4c2030a1e8954836
 Create redeem order tx hash: d7b83641bf2f13930d45bfa8ed1768bd533c1404cc12a12d4feff40c952c3f7a
 batching tx hash: 1b23efd41be7001a52c55b68acccbbe664393b5303e5773a81e57a2a11c6faef
 
+Bulk auto batching: 98455f0cc394c97836cfd57dfeb56c91e469eac94800bb3a702c6e5738bbfc67
 
 
 
@@ -30,14 +31,3 @@ Cancel order tx hash: e981a4c6f9a48b6c60660839cd2e711b3c82d11802be90b8ba2039cd90
 Create pool tx hash: 6eb2c034a31425097a107c47391d94cd5fd1464165cce0d20bebf261f1159416
 
 register all stake certificate tx hash: a01f21e1c6a35829a379753af4a9e66bb779e3c36a3f4fe95dce132ed61847a9
-
-
------------------------
-- complete batching tx ///////
-- remove the multisig signing in mint //////
-
-- pause deposits (optin order creation date in order datum) ///////
-- contract accumulate rewards; any batcher adds rewards to pool
-
-Actions in pool
-- stake ada, stake to contracts (other tokens), stake using frost on strike

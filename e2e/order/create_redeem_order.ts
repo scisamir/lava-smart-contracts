@@ -3,7 +3,7 @@ import { poolStakeAssetName, txBuilder, wallet1, wallet1Address, wallet1Collater
 import { OrderValidatorAddr } from "./validator.js";
 import { MintingHash } from "../mint/validator.js";
 
-const stAmount = 1000;
+const stAmount = 200;
 const orderType = mConStr1([ stAmount ]);
 
 const orderDatum = mConStr0([
