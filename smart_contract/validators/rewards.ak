@@ -1,10 +1,11 @@
 use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
-use cardano/address.{Script}
+use cardano/address.{Address, Script}
 use cardano/assets.{from_asset, from_lovelace, lovelace_of, quantity_of}
 use cardano/transaction.{
-  InlineDatum, NoDatum, OutputReference, Transaction, find_input,
+  InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
+  placeholder,
 }
 use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
 use lava/types.{
@@ -12,8 +13,16 @@ use lava/types.{
   SwapRewards,
 }
 use lava/utils.{find_pool_input, get_global_settings, is_signed_by}
+use mocktail/virgin_address.{mock_script_address}
+use mocktail/virgin_key_hash.{mock_script_hash}
+use mocktail/virgin_output_reference.{mock_utxo_ref}
+use test_utils/constants_t.{
+  admin_t, allowed_ast_one, allowed_ast_one_an, allowed_ast_one_pid,
+  gs_validator_hash_t, pool_batching_cred_t, pool_validator_hash_t,
+}
+use test_utils/fns_t.{get_global_settings_input}
 
-validator rewards(
+validator rewards_validator(
   gs_validator_hash: ScriptHash,
   pool_validator_hash: ScriptHash,
 ) {
@@ -93,7 +102,7 @@ validator rewards(
                     |> assets.add(
                         ra_pid,
                         ra_an,
-                        quantity_of(output.value, ra_pid, ra_an),
+                        quantity_of(pool_input.output.value, ra_pid, ra_an),
                       )
                     |> assets.add(
                         ra_pid,
@@ -174,4 +183,118 @@ validator rewards(
   else(_) {
     fail
   }
+}
+
+test test_add_rewards() {
+  let mint = from_asset(pool_validator_hash_t, lava_pool_nft_name, 1)
+  let staking_asset_value =
+    from_asset(allowed_ast_one_pid, allowed_ast_one_an, 11_000_000)
+  let gs_input = get_global_settings_input()
+
+  let pool_utxo_ref = mock_utxo_ref(0, 18)
+  let pool_datum_in =
+    PoolDatum {
+      pool_batching_cred: pool_batching_cred_t,
+      total_st_assets_minted: 10_000_000,
+      total_underlying: 10_000_000,
+      exchange_rate: 1 * precision_factor,
+      total_rewards_accrued: 0,
+      pool_asset: allowed_ast_one,
+      pool_stake_asset_name: "stTest",
+      is_processing_open: False,
+    }
+  let pool_input =
+    Input {
+      output_reference: pool_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: Script(pool_validator_hash_t),
+          stake_credential: None,
+        },
+        value: assets.merge(from_lovelace(min_pool_lovelace), mint),
+        datum: InlineDatum(pool_datum_in),
+        reference_script: None,
+      },
+    }
+
+  let pool_datum_out =
+    PoolDatum {
+      pool_batching_cred: pool_batching_cred_t,
+      total_st_assets_minted: 10_000_000,
+      total_underlying: 11_000_000,
+      exchange_rate: 11 * precision_factor / 10,
+      total_rewards_accrued: 1_000_000,
+      pool_asset: allowed_ast_one,
+      pool_stake_asset_name: "stTest",
+      is_processing_open: False,
+    }
+  let pool_output =
+    Output {
+      address: Address {
+        payment_credential: Script(pool_validator_hash_t),
+        stake_credential: None,
+      },
+      value: assets.merge(
+        from_lovelace(min_pool_lovelace),
+        assets.merge(mint, staking_asset_value),
+      ),
+      datum: InlineDatum(pool_datum_out),
+      reference_script: None,
+    }
+
+  let rewards_utxo_ref = mock_utxo_ref(0, 28)
+  let rewards_input =
+    Input {
+      output_reference: rewards_utxo_ref,
+      output: Output {
+        address: mock_script_address(14, None),
+        value: assets.merge(from_lovelace(10_000_000), staking_asset_value),
+        datum: NoDatum,
+        reference_script: None,
+      },
+    }
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [pool_input, rewards_input],
+      outputs: [pool_output],
+      reference_inputs: [gs_input],
+      withdrawals: [Pair(Script(admin_t), 0)],
+    }
+
+  let rewards_datum: Data = ""
+
+  rewards_validator.spend(
+    gs_validator_hash_t,
+    pool_validator_hash_t,
+    Some(rewards_datum),
+    AddRewards { asset: allowed_ast_one, batcher_index: 0 },
+    rewards_utxo_ref,
+    tx,
+  )
+}
+
+test test_swap_rewards() {
+  let gs_input = get_global_settings_input()
+
+  let rewards_utxo_ref = mock_utxo_ref(0, 28)
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      reference_inputs: [gs_input],
+      withdrawals: [Pair(Script(mock_script_hash(17)), 0)],
+    }
+
+  let rewards_datum: Data = ""
+
+  rewards_validator.spend(
+    gs_validator_hash_t,
+    pool_validator_hash_t,
+    Some(rewards_datum),
+    SwapRewards,
+    rewards_utxo_ref,
+    tx,
+  )
 }

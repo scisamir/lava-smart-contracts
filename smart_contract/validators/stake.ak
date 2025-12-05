@@ -1,48 +1,51 @@
 use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
-use cardano/address.{Credential, Script}
-use cardano/assets.{quantity_of}
-use cardano/transaction.{InlineDatum, Transaction}
-use lava/constants.{lava_pool_nft_name}
+use cardano/address.{Address, Credential, Script}
+use cardano/assets.{from_asset, from_lovelace, quantity_of}
+use cardano/transaction.{
+  InlineDatum, Input, NoDatum, Output, Transaction, placeholder,
+}
+use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
 use lava/types.{
   AssetType, GlobalSettingsDatum, PoolDatum, StakeRedeemer, StakeType,
 }
-use lava/utils.{get_global_settings}
+use lava/utils.{find_pool_input, get_global_settings, is_signed_by}
+use mocktail/virgin_address.{mock_script_address, mock_script_credential}
+use mocktail/virgin_key_hash.{mock_script_hash}
+use mocktail/virgin_output_reference.{mock_utxo_ref}
+use test_utils/constants_t.{
+  admin_t, allowed_ast_one, allowed_ast_one_an, allowed_ast_one_pid,
+  gs_validator_hash_t, pool_batching_cred_t, pool_validator_hash_t,
+}
+use test_utils/fns_t.{get_global_settings_input}
 
-validator stake(
+validator stake_validator(
   gs_validator_hash: ScriptHash,
   pool_validator_hash: ScriptHash,
 ) {
   withdraw(redeemer: StakeRedeemer, _credential: Credential, tx: Transaction) {
-    let Transaction { inputs, outputs, reference_inputs, withdrawals, .. } = tx
+    let Transaction {
+      inputs,
+      outputs,
+      reference_inputs,
+      withdrawals,
+      extra_signatories,
+      ..
+    } = tx
 
-    let StakeRedeemer { stake_asset } = redeemer
+    let StakeRedeemer { stake_asset, batcher_index } = redeemer
 
-    expect [pool_input] =
-      list.filter(
-        inputs,
-        fn(input) {
-          and {
-            (input.output.address.payment_credential == Script(
-              pool_validator_hash,
-            ))?,
-            (quantity_of(
-              input.output.value,
-              pool_validator_hash,
-              lava_pool_nft_name,
-            ) == 1)?,
-          }
-        },
-      )
+    let GlobalSettingsDatum { authorized_batchers, stake_details, .. } =
+      get_global_settings(reference_inputs, gs_validator_hash)
+    expect Some(batcher) = list.at(authorized_batchers, batcher_index)
+
+    expect [pool_input] = find_pool_input(inputs, pool_validator_hash)
 
     expect InlineDatum(pool_in_datum) = pool_input.output.datum
     expect PoolDatum { pool_asset, .. } = pool_in_datum
     let AssetType { policy_id: pool_asset_pid, asset_name: pool_asset_an, .. } =
       pool_asset
-
-    let GlobalSettingsDatum { stake_details, .. } =
-      get_global_settings(reference_inputs, gs_validator_hash)
 
     expect Some(StakeType { address: stake_address, datum_verifier_hash, .. }) =
       list.find(
@@ -69,13 +72,16 @@ validator stake(
       )
 
     // pool output must be returned
-    expect [_pool_output] =
+    expect [pool_output] =
       list.filter(
         outputs,
         fn(output) {
           and {
             (output.address.payment_credential == Script(pool_validator_hash))?,
-            (quantity_of(output.value, pool_validator_hash, lava_pool_nft_name) == 1)?,
+            (output.value == assets.merge(
+              from_lovelace(min_pool_lovelace),
+              from_asset(pool_validator_hash, lava_pool_nft_name, 1),
+            ))?,
           }
         },
       )
@@ -83,12 +89,103 @@ validator stake(
     and {
       // The right stake asset is being used
       (stake_asset == pool_asset)?,
+      // Pool datum remains the same
+      (pool_input.output.datum == pool_output.datum)?,
       // Stake datum is being verified
-      pairs.has_key(withdrawals, Script(datum_verifier_hash)),
+      pairs.has_key(withdrawals, Script(datum_verifier_hash))?,
+      // batcher must sign transaction
+      is_signed_by(extra_signatories, inputs, withdrawals, batcher)?,
     }
   }
 
   else(_) {
     fail
   }
+}
+
+test test_staking() {
+  let mint = from_asset(pool_validator_hash_t, lava_pool_nft_name, 1)
+  let staking_asset_value =
+    from_asset(allowed_ast_one_pid, allowed_ast_one_an, 10_000_000)
+  let gs_input = get_global_settings_input()
+  let datum_verifier_hash = mock_script_hash(14)
+
+  let pool_utxo_ref = mock_utxo_ref(0, 18)
+  let pool_datum_in =
+    PoolDatum {
+      pool_batching_cred: pool_batching_cred_t,
+      total_st_assets_minted: 0,
+      total_underlying: 0,
+      exchange_rate: 1 * precision_factor,
+      total_rewards_accrued: 0,
+      pool_asset: allowed_ast_one,
+      pool_stake_asset_name: "stTest",
+      is_processing_open: False,
+    }
+  let pool_input =
+    Input {
+      output_reference: pool_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: Script(pool_validator_hash_t),
+          stake_credential: None,
+        },
+        value: assets.merge(
+          from_lovelace(min_pool_lovelace),
+          assets.merge(mint, staking_asset_value),
+        ),
+        datum: InlineDatum(pool_datum_in),
+        reference_script: None,
+      },
+    }
+
+  let pool_datum_out =
+    PoolDatum {
+      pool_batching_cred: pool_batching_cred_t,
+      total_st_assets_minted: 0,
+      total_underlying: 0,
+      exchange_rate: 1 * precision_factor,
+      total_rewards_accrued: 0,
+      pool_asset: allowed_ast_one,
+      pool_stake_asset_name: "stTest",
+      is_processing_open: False,
+    }
+  let pool_output =
+    Output {
+      address: Address {
+        payment_credential: Script(pool_validator_hash_t),
+        stake_credential: None,
+      },
+      value: assets.merge(from_lovelace(min_pool_lovelace), mint),
+      datum: InlineDatum(pool_datum_out),
+      reference_script: None,
+    }
+
+  let stake_output =
+    Output {
+      address: mock_script_address(14, None),
+      value: assets.merge(from_lovelace(10_000_000), staking_asset_value),
+      datum: NoDatum,
+      reference_script: None,
+    }
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [pool_input],
+      outputs: [pool_output, stake_output],
+      reference_inputs: [gs_input],
+      withdrawals: [
+        Pair(Script(datum_verifier_hash), 0),
+        Pair(Script(admin_t), 0),
+      ],
+    }
+
+  stake_validator.withdraw(
+    gs_validator_hash_t,
+    pool_validator_hash_t,
+    StakeRedeemer { stake_asset: allowed_ast_one, batcher_index: 0 },
+    mock_script_credential(17),
+    tx,
+  )
 }

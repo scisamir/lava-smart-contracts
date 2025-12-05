@@ -6,38 +6,24 @@ use cardano/assets.{
 }
 use cardano/transaction.{InlineDatum, Transaction}
 use lava/external_types.{EODNoDatum, MinswapOrderDatum}
-use lava/types.{AssetType, GlobalSettingsDatum, SwapRedeemer}
-use lava/utils.{get_global_settings, is_signed_by}
+use lava/types.{AssetType, SwapRedeemer}
 
 validator minswap_swap(
-  gs_validator_hash: ScriptHash,
   minswap_order_validator_hash: ScriptHash,
   rewards_address: Address,
 ) {
   withdraw(redeemer: SwapRedeemer, _account: Credential, tx: Transaction) {
-    let Transaction {
-      inputs,
-      outputs,
-      reference_inputs,
-      extra_signatories,
-      withdrawals,
-      ..
-    } = tx
+    let Transaction { inputs, outputs, .. } = tx
 
     expect Script(rewards_validator_hash) = rewards_address.payment_credential
 
     let SwapRedeemer {
-      batcher_index,
       swap_from_asset,
       lp_asset: lp_asset_r,
       max_batcher_fee: max_batcher_fee_r,
     } = redeemer
     let AssetType { policy_id: fa_pid, asset_name: fa_an, .. } = swap_from_asset
     let is_fa_ada = fa_pid == "" && fa_an == "lovelace"
-
-    let GlobalSettingsDatum { authorized_batchers, .. } =
-      get_global_settings(reference_inputs, gs_validator_hash)
-    expect Some(batcher) = list.at(authorized_batchers, batcher_index)
 
     // Reward utxo must contain only the specified asset apart from ADA
     expect [reward_utxo] =
@@ -108,11 +94,7 @@ validator minswap_swap(
         (max_batcher_fee == max_batcher_fee_r)?,
       }
 
-    and {
-      // batcher must sign transaction
-      is_signed_by(extra_signatories, inputs, withdrawals, batcher)?,
-      is_order_datum_valid?,
-    }
+    is_order_datum_valid?
   }
 
   else(_) {

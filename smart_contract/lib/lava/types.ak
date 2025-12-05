@@ -65,6 +65,7 @@ pub type PoolRedeemer {
   UpdatePoolProcessingState
   StakePool
   AddRewardsPool
+  AddAdaRewardsPool { batcher_index: Int }
 }
 
 pub type PoolDatum {
@@ -86,6 +87,7 @@ pub type BatchingRedeemer {
 
 pub type StakeRedeemer {
   stake_asset: AssetType,
+  batcher_index: Int,
 }
 
 pub type StrikeStakeRedeemer {
@@ -108,7 +110,6 @@ pub type RewardsRedeemer {
 }
 
 pub type SwapRedeemer {
-  batcher_index: Int,
   swap_from_asset: AssetType,
   lp_asset: Asset,
   max_batcher_fee: Int,

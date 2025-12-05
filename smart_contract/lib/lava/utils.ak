@@ -2,7 +2,7 @@ use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Credential, Script}
-use cardano/assets.{AssetName, Lovelace, PolicyId, quantity_of}
+use cardano/assets.{AssetName, Lovelace, PolicyId, lovelace_of, quantity_of}
 use cardano/transaction.{InlineDatum, Input, Output}
 use lava/constants.{global_settings_nft, lava_pool_nft_name, min_pool_lovelace}
 use lava/types.{
@@ -136,19 +136,29 @@ pub fn find_pool_output(
   own_payment_cred: Credential,
 ) -> Output {
   expect Script(own_hash) = own_payment_cred
+  let is_ada_asset = st_pid == "" && st_an == "lovelace"
 
   expect [pool_output] =
     list.filter(
       outputs,
       fn(output) {
-        let expected_pool_value =
+        let raw_pool_value =
           assets.from_lovelace(min_pool_lovelace)
             |> assets.add(own_hash, lava_pool_nft_name, 1)
-            |> assets.add(
-                st_pid,
-                st_an,
-                quantity_of(output.value, st_pid, st_an),
-              )
+
+        let expected_pool_value =
+          if is_ada_asset {
+            raw_pool_value
+              |> assets.add("", "", lovelace_of(output.value))
+              |> assets.add("", "", -min_pool_lovelace)
+          } else {
+            raw_pool_value
+              |> assets.add(
+                  st_pid,
+                  st_an,
+                  quantity_of(output.value, st_pid, st_an),
+                )
+          }
 
         and {
           (output.address.payment_credential == own_payment_cred)?,

@@ -15,10 +15,14 @@ pub const mint_validator_hash_t = mock_script_hash(15)
 
 pub const pool_validator_hash_t = mock_script_hash(18)
 
+pub const allowed_ast_one_pid = mock_policy_id(11)
+
+pub const allowed_ast_one_an = "test"
+
 pub const allowed_ast_one =
   AssetType {
     is_stable: False,
-    policy_id: mock_policy_id(11),
-    asset_name: "test",
+    policy_id: allowed_ast_one_pid,
+    asset_name: allowed_ast_one_an,
     multiplier: 1_000_000,
   }
