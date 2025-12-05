@@ -149,19 +149,23 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
           is_processing_open: is_processing_open_out,
         } = pool_out_datum
 
+        let is_pool_out_datum_correct = and {
+            // other datum parameters must be unchanged
+            pool_batching_cred == pool_batching_cred_out,
+            total_st_assets_minted == total_st_assets_minted_out,
+            total_underlying == total_underlying_out,
+            exchange_rate == exchange_rate_out,
+            total_rewards_accrued == total_rewards_accrued_out,
+            pool_asset == pool_asset_out,
+            pool_stake_asset_name == pool_stake_asset_name_out,
+            // changed datum paramter
+            (is_processing_open != is_processing_open_out)?,
+          }
+
         and {
           // pool in and out value must be unchaged
           own_input.output.value == pool_output.value,
-          // other datum parameters must be unchanged
-          pool_batching_cred == pool_batching_cred_out,
-          total_st_assets_minted == total_st_assets_minted_out,
-          total_underlying == total_underlying_out,
-          exchange_rate == exchange_rate_out,
-          total_rewards_accrued == total_rewards_accrued_out,
-          pool_asset == pool_asset_out,
-          pool_stake_asset_name == pool_stake_asset_name_out,
-          // changed datum paramter
-          (is_processing_open != is_processing_open_out)?,
+          is_pool_out_datum_correct?,
           // admin must sign transaction
           is_multisig_signing(inputs, admin)?,
         }
@@ -171,7 +175,7 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
         let GlobalSettingsDatum { stake_validator_hash, .. } =
           get_global_settings(reference_inputs, gs_validator_hash)
 
-        pairs.has_key(withdrawals, Script(stake_validator_hash))
+        pairs.has_key(withdrawals, Script(stake_validator_hash))?
       }
 
       AddRewardsPool -> {
