@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowDown } from "lucide-react";
 import { LAVA_LOGO } from "@/lib/images";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import { createOptInOrder } from "@/e2e/order/create_opt_in_order";
 import { createRedeemOrder } from "@/e2e/order/create_redeem_order";
 
@@ -67,7 +67,8 @@ export const StakingCard = () => {
     console.log("blockchainProvider:", blockchainProvider);
 
     if (!txBuilder || !walletCollateral || !blockchainProvider) {
-      toastFailure("Error: Check collateral")
+      toastFailure("Error: Check collateral");
+      setIsProcessing(false);
       return;
     }
 
@@ -108,7 +109,8 @@ export const StakingCard = () => {
     console.log("blockchainProvider:", blockchainProvider);
 
     if (!txBuilder || !walletCollateral || !blockchainProvider) {
-      toastFailure("Error: Check collateral")
+      toastFailure("Error: Check collateral");
+      setIsProcessing(false);
       return;
     }
 

@@ -29,7 +29,7 @@ export const batchingTx = async (
 
     const walletUtxos = await wallet.getUtxos();
 
-    const walletCollateral = (walletUtxos.filter(utxo => (utxo.output.amount.length === 1 && (Number(utxo.output.amount[0].quantity) >= 10000000 && Number(utxo.output.amount[0].quantity) <= 100000000))))[0];
+    const walletCollateral = (walletUtxos.filter(utxo => (utxo.output.amount.length === 1 && (Number(utxo.output.amount[0].quantity) >= 10000000 && Number(utxo.output.amount[0].quantity) <= 1000000000))))[0];
     if (!walletCollateral) {
         throw new Error('No collateral utxo found');
     }

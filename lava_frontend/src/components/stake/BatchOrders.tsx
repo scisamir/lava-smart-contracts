@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Button } from "../ui/button"
 import { batchingTx } from "@/e2e/batching/batching";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 
 export const BatchOrders = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   
-  const { txBuilder, blockchainProvider, batchingCollateral } = useCardanoWallet();
+  const { txBuilder, blockchainProvider } = useCardanoWallet();
 
   // Toast
   const toastSuccess = (txHash: string) => {
@@ -29,11 +29,11 @@ export const BatchOrders = () => {
   const handleBatching = async () => {
       setIsProcessing(true);
       console.log("txBuilder:", txBuilder);
-      console.log("batchingCollateral:", batchingCollateral);
       console.log("blockchainProvider:", blockchainProvider);
 
-      if (!txBuilder || !batchingCollateral || !blockchainProvider) {
-        toastFailure("Error: Check collateral")
+      if (!txBuilder || !blockchainProvider) {
+        toastFailure("Error: Check collateral");
+        setIsProcessing(false);
         return;
       }
 

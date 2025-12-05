@@ -27,6 +27,7 @@ const fetchUserOrders = async (blockchainProvider: BlockchainProviderType, addre
         // amount: Number(orderDatum.fields[0].fields[0].int) / 1_000_000,
         txHash: utxo.input.txHash,
         isOptIn,
+        grandTotalOrders: orderUtxos.length,
       };
       userOrders.push(newOrder);
 

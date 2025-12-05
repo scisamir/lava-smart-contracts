@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import { cancelOrder } from "@/e2e/order/cancel_order";
 import { UserOrderType } from "@/lib/types";
 import { useState } from "react";
@@ -48,7 +48,8 @@ export const OrderList = ({ orders }: OrderListProps) => {
       console.log("blockchainProvider:", blockchainProvider);
   
       if (!txBuilder || !walletCollateral || !blockchainProvider) {
-        toastFailure("Error: Check collateral")
+        toastFailure("Error: Check collateral");
+        setIsProcessing(false);
         return;
       }
   
@@ -86,9 +87,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
 
   return (
     <Card className="max-w-lg mx-auto p-6 bg-card/80 backdrop-blur-lg border-border shadow-glow-md mt-8">
-      {/* Toast */}
-      <ToastContainer position='top-right' autoClose={5000} />
-
+      <span className="absolut top-1 right-1 text-red-600">GTO: {orders[0].grandTotalOrders ?? 0}</span>
       <h2 className="text-xl font-semibold mb-4 text-center">Your Orders</h2>
       <div className="space-y-3">
         {orders.map((order) => (

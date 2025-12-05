@@ -17,7 +17,6 @@ export function useCardanoWallet() {
   const [walletSK, setWalletSK] = useState<string>("");
   const [walletUtxos, setWalletUtxos] = useState<UTxO[]>([]);
   const [walletCollateral, setWalletCollateral] = useState<UTxO | null>(null);
-  const [batchingCollateral, setBatchingCollateral] = useState<UTxO | null>(null);
 
   // Reconnect last wallet from localStorage
   useEffect(() => {
@@ -46,7 +45,6 @@ export function useCardanoWallet() {
           const walletUtxos = await wallet.getUtxos();
           // const walletCollateral = (await wallet.getCollateral())[0];
           const walletCollateral = (walletUtxos.filter(utxo => (utxo.output.amount.length === 1 && (Number(utxo.output.amount[0].quantity) >= 5000000 && Number(utxo.output.amount[0].quantity) <= 100000000))))[0];
-          const batchingCollateral = (walletUtxos.filter(utxo => (utxo.output.amount.length === 1 && (Number(utxo.output.amount[0].quantity) >= 10000000 && Number(utxo.output.amount[0].quantity) <= 100000000))))[0];
 
           // Persist the connected wallet
           if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
@@ -74,7 +72,6 @@ export function useCardanoWallet() {
           setWalletSK(walletSK);
           setWalletCollateral(walletCollateral);
           setWalletUtxos(walletUtxos);
-          setBatchingCollateral(batchingCollateral);
         } catch (err) {
           console.error("Error fetching wallet data:", err);
         }
@@ -113,6 +110,5 @@ export function useCardanoWallet() {
     walletSK,
     walletCollateral,
     walletUtxos,
-    batchingCollateral: batchingCollateral,
   };
 }
