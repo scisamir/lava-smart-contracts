@@ -12,7 +12,7 @@ import {
     serializeNativeScript,
     stringToHex,
 } from "@meshsdk/core";
-import blueprint from "../../../smart_contract/plutus_copy.json" with { type: "json" };
+import blueprint from "../../../smart_contract/plutus.json" with { type: "json" };
 
 export const setupE2e = () => {
     const wallet1VK = "96cbb27c96daf8cab890de6d7f87f5ffd025bf8ac80717cbc4fae7da";
