@@ -1,7 +1,7 @@
 import { applyParamsToScript, builtinByteString, outputReference, resolveScriptHash, serializePlutusScript } from "@meshsdk/core";
 import { blueprint, multisigHash } from "../setup.js";
 
-const gsParamTxHash = "84b63258348f3b0e132da52df8247309c9e1042ddfdb62e1ec452398b0c21ddd";
+const gsParamTxHash = "114c2af26b5d0b8e94d4aa0cc4e5000178b45b2dd82c1e2e63021697f47a0054";
 const gsParamTxIdx = 1;
 
 const GlobalSettingsValidator = blueprint.validators.filter(v => 

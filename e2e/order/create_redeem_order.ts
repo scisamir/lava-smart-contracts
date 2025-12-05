@@ -1,9 +1,10 @@
-import { mConStr0, mConStr1, mPubKeyAddress, mScriptAddress, stringToHex } from "@meshsdk/core";
-import { alwaysSuccessMintValidatorHash, testUnit, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1SK, wallet1Utxos, wallet1VK } from "../setup.js";
+import { mConStr0, mConStr1, mPubKeyAddress } from "@meshsdk/core";
+import { poolStakeAssetName, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1SK, wallet1Utxos, wallet1VK } from "../setup.js";
 import { OrderValidatorAddr } from "./validator.js";
+import { MintingHash } from "../mint/validator.js";
 
-const depositAmount = 1000;
-const orderType = mConStr0([ depositAmount ]);
+const stAmount = 1000;
+const orderType = mConStr1([ stAmount ]);
 
 const orderDatum = mConStr0([
     orderType,
@@ -15,7 +16,7 @@ const unsignedTx = await txBuilder
     .txOut(
         OrderValidatorAddr,
         [
-            { unit: testUnit, quantity: String(depositAmount) },
+            { unit: MintingHash + poolStakeAssetName, quantity: String(stAmount) },
         ]
     )
     .txOutInlineDatumValue(orderDatum)
@@ -32,4 +33,4 @@ const unsignedTx = await txBuilder
 const signedTx = await wallet1.signTx(unsignedTx);
 const txHash = await wallet1.submitTx(signedTx);
 
-console.log("Create optin order tx hash:", txHash);
+console.log("Create redeem order tx hash:", txHash);

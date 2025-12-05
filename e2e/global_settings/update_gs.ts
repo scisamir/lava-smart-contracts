@@ -1,5 +1,5 @@
-import { mConStr0, mConStr1, stringToHex } from "@meshsdk/core";
-import { alwaysSuccessMintValidatorHash, blockchainProvider, GlobalSettingsNft, multiSigAddress, multiSigCbor, multisigHash, multiSigUtxos, testAssetName, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1Utxos, wallet2 } from "../setup.js";
+import { mConStr0, mConStr1, mScriptAddress, stringToHex } from "@meshsdk/core";
+import { alwaysSuccessMintValidatorHash, blockchainProvider, GlobalSettingsNft, multiSigAddress, multiSigCbor, multisigHash, multiSigUtxos, testAssetName, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1Utxos, wallet1VK, wallet2 } from "../setup.js";
 import { GlobalSettingsAddr, GlobalSettingsHash, GlobalSettingsValidatorScript } from "./validator.js";
 import { MintingHash } from "../mint/validator.js";
 
@@ -21,9 +21,23 @@ const AllowedAssets = [
 
 const GlobalSettingsDatum = mConStr0([
   multisigHash, // admin
-  [multisigHash], // authorized batchers
+  [mConStr1([multisigHash]), mConStr0([wallet1VK])], // authorized batchers
   AllowedAssets,
   MintingHash,
+  [mConStr0([ // stake details
+    mConStr0([
+      mConStr0([]),
+      alwaysSuccessMintValidatorHash,
+      testAssetName,
+      1_000_000,
+    ]),
+    mScriptAddress(alwaysSuccessMintValidatorHash),
+    alwaysSuccessMintValidatorHash,
+  ])],
+  mScriptAddress(alwaysSuccessMintValidatorHash), // frost address
+  [alwaysSuccessMintValidatorHash], // authorized swap scripts
+  alwaysSuccessMintValidatorHash, // stake_validator_hash
+  alwaysSuccessMintValidatorHash, // rewards_validator_hash
 ]);
 
 

@@ -20,6 +20,7 @@ const PoolDatum = mConStr0([
   0, // total_rewards_accrued
   poolAsset,
   poolStakeAssetName,
+  mConStr1([]),
 ]);
 
 if (!multiSigCbor) {

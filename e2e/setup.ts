@@ -51,8 +51,9 @@ const wallet1 = new MeshWallet({
 const wallet1Address = await wallet1.getChangeAddress();
 
 const wallet1Utxos = await wallet1.getUtxos();
-// const wallet1Collateral: UTxO = (await blockchainProvider.fetchUTxOs("5d69f9d07b31dc6562c0cc9967edc78cf46f76a417f03b235a664b02797731dd", 1))[0]
-const wallet1Collateral: UTxO = (await wallet1.getCollateral())[0]
+
+const wallet1Collateral: UTxO = (await blockchainProvider.fetchUTxOs("59c1948af8f7fc5b51291b5aa644e4ee75bb79c7b88d6d365c46d3b2abfe630f", 1))[0]
+// const wallet1Collateral: UTxO = (await wallet1.getCollateral())[0]
 if (!wallet1Collateral) {
     throw new Error('No collateral utxo found');
 }
@@ -136,8 +137,10 @@ const testUnit = alwaysSuccessMintValidatorHash + testAssetName;
 const poolStakeAssetName = stringToHex("stTest");
 
 // Reference scripts
-const batchingScriptTxHash = "6d08fef4a6e91e345348443c0ddf1a0ea337c7e42d98d0dddf1096b2f6757f9b";
+const batchingScriptTxHash = "63fb5c611cedb66a55f367c94f3e1f0263b40f6391a9a74b903f38253884c7b8";
 const batchingScriptTxIdx = 0;
+const poolScriptTxHash = "b8fc5e1c3ddd1a10adc307536639c83d9c2928c05732015c045af272d0f8e45c";
+const poolScriptTxIdx = 0;
 
 export {
     blueprint,
@@ -170,4 +173,6 @@ export {
     // Ref scripts
     batchingScriptTxHash,
     batchingScriptTxIdx,
+    poolScriptTxHash,
+    poolScriptTxIdx,
 }
