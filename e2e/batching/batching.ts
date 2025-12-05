@@ -121,13 +121,19 @@ const unsignedTx1 = orderInputs
     .withdrawal(BatchingRewardAddress, "0")
     .withdrawalTxInReference(batchingScriptTxHash, batchingScriptTxIdx, undefined, BatchingHash)
     .withdrawalRedeemerValue(BatchingRedeemer)
-    // mint stake tokens
-    .mintPlutusScriptV3()
-    .mint(String(totalMintAmount), MintingHash, poolStakeAssetName)
-    .mintingScript(MintingValidatorScript)
-    .mintRedeemerValue("")
 
-let orderOutputs = unsignedTx1
+const mintTx = unsignedTx1
+
+if (totalMintAmount !== 0) {
+    mintTx
+        // mint stake tokens
+        .mintPlutusScriptV3()
+        .mint(String(totalMintAmount), MintingHash, poolStakeAssetName)
+        .mintingScript(MintingValidatorScript)
+        .mintRedeemerValue("")
+}
+
+let orderOutputs = mintTx
 for (let i = 0; i < batchingOrderUtxos.length; i++) {
     const orderUtxo = batchingOrderUtxos[i];
 

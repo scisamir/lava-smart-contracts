@@ -11,9 +11,11 @@ import { useEffect, useState } from "react";
 import { fetchUserOrders } from "@/e2e/utils";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { UserOrderType } from "@/lib/types";
+import { BatchOrders } from "@/components/stake/BatchOrders";
+import { ToastContainer } from "react-toastify";
 
 const Index = () => {
-	const { blockchainProvider, walletAddress } = useCardanoWallet();
+	const { blockchainProvider, walletAddress, walletUtxos, wallet } = useCardanoWallet();
 	const [orders, setOrders] = useState<UserOrderType[]>([]);
 
 	useEffect(() => {
@@ -21,14 +23,22 @@ const Index = () => {
 			const awaitFetchUserOrders = async () => {
 				const userOrders = await fetchUserOrders(blockchainProvider, walletAddress);
 				setOrders(userOrders);
+				console.log("userOrders:", userOrders);
 			}
 
 			awaitFetchUserOrders();
+
+			const interval = setInterval(awaitFetchUserOrders, 10000);
+
+			return () => clearInterval(interval);
 		}
-	});
+	}, [blockchainProvider, walletAddress]);
 
 	return (
 		<div className="index-container bg-background flex flex-col">
+				{/* Toast */}
+				<ToastContainer className="absolute" position='bottom-left' autoClose={5000} />
+
 				<Navigation />
 
 				<div className="flex-1">
@@ -42,7 +52,7 @@ const Index = () => {
 						backgroundPosition: 'center',
 					}}
 				/>
-        
+
 				<div className="container mx-auto px-4 relative z-10">
 					<div className="text-center max-w-4xl mx-auto mb-16">
 						<h1 className="text-5xl md:text-7xl font-bold mb-6">
@@ -54,6 +64,7 @@ const Index = () => {
 					<StatsSection />
 					<StakingCard />
 					<OrderList orders={orders} />
+					<BatchOrders />
 				</div>
 			</section>
 

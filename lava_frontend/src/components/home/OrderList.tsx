@@ -97,7 +97,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
             className="flex items-center justify-between bg-muted/40 rounded-lg p-3"
           >
             <div>
-              <p className="font-semibold">₳ {order.amount.toFixed(2)}</p>
+              <p className="font-semibold">{order.amount.toFixed(2)} {order.isOptIn ? "test" : "stTest"} <span className="text-gray-400">({order.isOptIn ? "OptIn Order" : "Redeem Order"})</span></p>
               <a
                 href={`https://preprod.cardanoscan.io/transaction/${order.txHash}`}
                 target="_blank"

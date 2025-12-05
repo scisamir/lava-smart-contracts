@@ -1,4 +1,4 @@
-import { AssetName, BuiltinByteString, ConStr0, ConStr1, Integer, MaestroProvider, PolicyId, PubKeyAddress, ScriptHash } from "@meshsdk/core";
+import { AssetName, Bool, BuiltinByteString, ConStr0, ConStr1, Integer, MaestroProvider, PolicyId, PubKeyAddress, ScriptHash } from "@meshsdk/core";
 
 type OrderType = ConStr0<[Integer]> | ConStr1<[Integer]>;
 
@@ -25,6 +25,7 @@ export type PoolDatumType = ConStr0<[
   Integer,
   AssetType,
   AssetName,
+  Bool,
 ]>;
 
 export type BlockchainProviderType = MaestroProvider;

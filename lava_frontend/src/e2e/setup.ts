@@ -59,8 +59,10 @@ export const setupE2e = () => {
     const poolStakeAssetName = stringToHex("stTest");
 
     // Reference scripts
-    const batchingScriptTxHash = "6d08fef4a6e91e345348443c0ddf1a0ea337c7e42d98d0dddf1096b2f6757f9b";
+    const batchingScriptTxHash = "63fb5c611cedb66a55f367c94f3e1f0263b40f6391a9a74b903f38253884c7b8";
     const batchingScriptTxIdx = 0;
+    const poolScriptTxHash = "b8fc5e1c3ddd1a10adc307536639c83d9c2928c05732015c045af272d0f8e45c";
+    const poolScriptTxIdx = 0;
 
     return {
         blueprint,
@@ -82,5 +84,7 @@ export const setupE2e = () => {
         // Ref scripts
         batchingScriptTxHash,
         batchingScriptTxIdx,
+        poolScriptTxHash,
+        poolScriptTxIdx,
     }
 }

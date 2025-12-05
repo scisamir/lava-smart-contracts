@@ -2,7 +2,7 @@ import { IWallet, mConStr0, mConStr1, MeshTxBuilder, mPubKeyAddress, mScriptAddr
 import { setupE2e } from "../setup";
 import { OrderValidatorAddr } from "./validator";
 
-export const createOrder = async (
+export const createOptInOrder = async (
     txBuilder: MeshTxBuilder,
     wallet: IWallet,
     walletAddress: string,
@@ -12,8 +12,9 @@ export const createOrder = async (
     walletSK: string,
     amount: number,
 ) => {
-    const { alwaysSuccessMintValidatorHash, testUnit } = setupE2e();
-    const depositAmount = amount * 1_000_000; // to lovelaces
+    const { testUnit } = setupE2e();
+    const depositAmount = amount; // to lovelaces
+    // const depositAmount = amount * 1_000_000; // to lovelaces
     const orderType = mConStr0([depositAmount]);
 
     const orderDatum = mConStr0([
@@ -26,11 +27,9 @@ export const createOrder = async (
         .txOut(
             OrderValidatorAddr,
             [
-                { unit: "lovelace", quantity: String(depositAmount) },
+                { unit: "lovelace", quantity: String(2_000_000) },
+                { unit: testUnit, quantity: String(depositAmount) },
             ]
-            // [
-            //     { unit: testUnit, quantity: String(depositAmount) },
-            // ]
         )
         .txOutInlineDatumValue(orderDatum)
         .txInCollateral(
