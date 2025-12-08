@@ -5,7 +5,7 @@ import { StakingInputCard } from "@/components/stake/StakingInputCard";
 import { FAQSection } from "@/components/stake/FAQSection";
 const Stake = () => {
 	return (
-		<div className="min-h-screen bg-background">
+	<div className="min-h-screen">
 			<Navigation />
 
 			{/* Hero Section */}

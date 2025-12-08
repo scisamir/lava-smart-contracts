@@ -6,7 +6,7 @@ import portfolioGraphic from "@/assets/portfolio-graphic.png";
 
 const Portfolio = () => {
 	return (
-		<div className="min-h-screen bg-background">
+	<div className="min-h-screen">
 			<Navigation />
 
 			<section className="pt-32 pb-20">

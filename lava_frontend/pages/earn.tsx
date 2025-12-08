@@ -5,7 +5,7 @@ import { ProtocolsTable } from "@/components/earn/ProtocolsTable";
 
 const Earn = () => {
 	return (
-		<div className="min-h-screen bg-background">
+	<div className="min-h-screen">
 			<Navigation />
 
 			<section className="pt-32 pb-20">

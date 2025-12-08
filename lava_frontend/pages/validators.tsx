@@ -6,7 +6,7 @@ import { ValidatorsTable } from "@/components/validators/ValidatorsTable";
 
 const Validators = () => {
 	return (
-		<div className="min-h-screen bg-background">
+	<div className="min-h-screen">
 			<Navigation />
 
 			<section className="pt-32 pb-20">
