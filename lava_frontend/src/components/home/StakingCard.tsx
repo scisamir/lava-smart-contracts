@@ -15,7 +15,7 @@ export const StakingCard = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isSwapped, setIsSwapped] = useState<boolean>(false);
 
-  const { connected, txBuilder, blockchainProvider, walletCollateral, wallet, walletAddress, walletVK, walletSK, walletUtxos, balance } = useCardanoWallet();
+  const { connected, txBuilder, blockchainProvider, wallet, walletAddress, walletVK, walletSK, walletUtxos, balance } = useCardanoWallet();
 
   const conversionRate = 0.996;
   const usdRate = 0.32;
@@ -63,11 +63,10 @@ export const StakingCard = () => {
   const handleCreateOptInOrder = async (amount: number) => {
     setIsProcessing(true);
     console.log("txBuilder:", txBuilder);
-    console.log("walletCollateral:", walletCollateral);
     console.log("blockchainProvider:", blockchainProvider);
 
-    if (!txBuilder || !walletCollateral || !blockchainProvider) {
-      toastFailure("Error: Check collateral");
+    if (!txBuilder || !blockchainProvider) {
+      toastFailure("Error: Blockchain not initialized!");
       setIsProcessing(false);
       return;
     }
@@ -78,7 +77,6 @@ export const StakingCard = () => {
         txBuilder,
         wallet,
         walletAddress,
-        walletCollateral,
         walletUtxos,
         walletVK,
         walletSK,
@@ -105,11 +103,10 @@ export const StakingCard = () => {
   const handleCreateRedeemOrder = async (amount: number) => {
     setIsProcessing(true);
     console.log("txBuilder:", txBuilder);
-    console.log("walletCollateral:", walletCollateral);
     console.log("blockchainProvider:", blockchainProvider);
 
-    if (!txBuilder || !walletCollateral || !blockchainProvider) {
-      toastFailure("Error: Check collateral");
+    if (!txBuilder || !blockchainProvider) {
+      toastFailure("Error: Blockchain not initialized!");
       setIsProcessing(false);
       return;
     }
@@ -120,7 +117,6 @@ export const StakingCard = () => {
         txBuilder,
         wallet,
         walletAddress,
-        walletCollateral,
         walletUtxos,
         walletVK,
         walletSK,

@@ -1,4 +1,4 @@
-import { IWallet, mConStr0, mConStr1, MeshTxBuilder, mPubKeyAddress, mScriptAddress, stringToHex, UTxO } from "@meshsdk/core";
+import { IWallet, mConStr0, mConStr1, MeshTxBuilder, mPubKeyAddress, UTxO } from "@meshsdk/core";
 import { setupE2e } from "../setup";
 import { OrderValidatorAddr } from "./validator";
 import { MintingHash } from "../mint/validator";
@@ -7,7 +7,6 @@ export const createRedeemOrder = async (
     txBuilder: MeshTxBuilder,
     wallet: IWallet,
     walletAddress: string,
-    walletCollateral: UTxO,
     walletUtxos: UTxO[],
     walletVK: string,
     walletSK: string,
@@ -33,12 +32,6 @@ export const createRedeemOrder = async (
             ]
         )
         .txOutInlineDatumValue(orderDatum)
-        .txInCollateral(
-            walletCollateral.input.txHash,
-            walletCollateral.input.outputIndex,
-            walletCollateral.output.amount,
-            walletCollateral.output.address,
-        )
         .changeAddress(walletAddress)
         .selectUtxosFrom(walletUtxos)
         .complete()

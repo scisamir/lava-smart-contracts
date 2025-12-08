@@ -30,9 +30,8 @@ const unsignedTx = await txBuilder
     .txInCollateral(
         wallet1Collateral.input.txHash,
         wallet1Collateral.input.outputIndex,
-        wallet1Collateral.output.amount,
-        wallet1Collateral.output.address,
     )
+    .setTotalCollateral("5000000")
     .changeAddress(wallet1Address)
     .selectUtxosFrom(wallet1Utxos)
     .requiredSignerHash(wallet1VK)

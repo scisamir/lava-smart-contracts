@@ -1,8 +1,8 @@
 import { mConStr0, mPubKeyAddress } from "@meshsdk/core";
-import { testUnit, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1SK, wallet1Utxos, wallet1VK } from "../setup.js";
+import { testUnit, txBuilder, wallet1, wallet1Address, wallet1SK, wallet1Utxos, wallet1VK } from "../setup.js";
 import { OrderValidatorAddr } from "./validator.js";
 
-const depositAmount = 1000;
+const depositAmount = 200;
 const orderType = mConStr0([ depositAmount ]);
 
 const orderDatum = mConStr0([
@@ -19,12 +19,6 @@ const unsignedTx = await txBuilder
         ]
     )
     .txOutInlineDatumValue(orderDatum)
-    .txInCollateral(
-        wallet1Collateral.input.txHash,
-        wallet1Collateral.input.outputIndex,
-        wallet1Collateral.output.amount,
-        wallet1Collateral.output.address,
-    )
     .changeAddress(wallet1Address)
     .selectUtxosFrom(wallet1Utxos)
     .complete()

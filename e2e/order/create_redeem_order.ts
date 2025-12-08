@@ -1,5 +1,5 @@
 import { mConStr0, mConStr1, mPubKeyAddress } from "@meshsdk/core";
-import { poolStakeAssetName, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1SK, wallet1Utxos, wallet1VK } from "../setup.js";
+import { poolStakeAssetName, txBuilder, wallet1, wallet1Address, wallet1SK, wallet1Utxos, wallet1VK } from "../setup.js";
 import { OrderValidatorAddr } from "./validator.js";
 import { MintingHash } from "../mint/validator.js";
 
@@ -20,12 +20,6 @@ const unsignedTx = await txBuilder
         ]
     )
     .txOutInlineDatumValue(orderDatum)
-    .txInCollateral(
-        wallet1Collateral.input.txHash,
-        wallet1Collateral.input.outputIndex,
-        wallet1Collateral.output.amount,
-        wallet1Collateral.output.address,
-    )
     .changeAddress(wallet1Address)
     .selectUtxosFrom(wallet1Utxos)
     .complete()

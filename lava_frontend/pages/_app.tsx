@@ -7,6 +7,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { MeshProvider } from "@meshsdk/react";
 import { useRouter } from "next/router";
 import appBg from "@/assets/app-bg.png";
+import { ToastContainer } from "react-toastify";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,8 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     <QueryClientProvider client={queryClient}>
       <MeshProvider>
         <TooltipProvider>
+          {/* Toast */}
+				  <ToastContainer position='bottom-left' autoClose={5000} />
           <Toaster />
           <Sonner />
           {isIndex ? (

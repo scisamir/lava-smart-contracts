@@ -12,7 +12,6 @@ import { fetchUserOrders } from "@/e2e/utils";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { UserOrderType } from "@/lib/types";
 import { BatchOrders } from "@/components/stake/BatchOrders";
-import { ToastContainer } from "react-toastify";
 
 const Index = () => {
 	const { blockchainProvider, walletAddress, walletUtxos, wallet } = useCardanoWallet();
@@ -36,9 +35,6 @@ const Index = () => {
 
 	return (
 		<div className="index-container bg-background flex flex-col">
-				{/* Toast */}
-				<ToastContainer className="absolute" position='bottom-left' autoClose={5000} />
-
 				<Navigation />
 
 				<div className="flex-1">

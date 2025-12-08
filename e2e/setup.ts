@@ -52,8 +52,11 @@ const wallet1Address = await wallet1.getChangeAddress();
 
 const wallet1Utxos = await wallet1.getUtxos();
 
-const wallet1Collateral: UTxO = (await blockchainProvider.fetchUTxOs("94552ccfcde87c8aefaad3a64be2270bd75a5c23bb93aa358e1361ed050c34d5", 2))[0]
+// const wallet1Collateral: UTxO = (await blockchainProvider.fetchUTxOs("94552ccfcde87c8aefaad3a64be2270bd75a5c23bb93aa358e1361ed050c34d5", 2))[0]
 // const wallet1Collateral: UTxO = (await wallet1.getCollateral())[0]
+const wallet1Collateral: UTxO = wallet1Utxos.filter(utxo => Number(utxo.output.amount[0].quantity) >= 8000000)[0];
+console.log("wallet1Utxos:", wallet1Utxos);
+console.log("wallet1Collateral:", wallet1Collateral);
 if (!wallet1Collateral) {
     throw new Error('No collateral utxo found');
 }

@@ -29,7 +29,7 @@ export const batchingTx = async (
 
     const walletUtxos = await wallet.getUtxos();
 
-    const walletCollateral = (walletUtxos.filter(utxo => (utxo.output.amount.length === 1 && (Number(utxo.output.amount[0].quantity) >= 10000000 && Number(utxo.output.amount[0].quantity) <= 1000000000))))[0];
+    const walletCollateral = walletUtxos.filter(utxo => Number(utxo.output.amount[0].quantity) >= 8000000)[0];
     if (!walletCollateral) {
         throw new Error('No collateral utxo found');
     }
@@ -217,9 +217,8 @@ export const batchingTx = async (
         .txInCollateral(
             walletCollateral.input.txHash,
             walletCollateral.input.outputIndex,
-            walletCollateral.output.amount,
-            walletCollateral.output.address,
         )
+        .setTotalCollateral("6500000")
         .requiredSignerHash(walletVK)
         .changeAddress(walletAddress)
         .selectUtxosFrom(walletUtxos)

@@ -40,9 +40,8 @@ export const cancelOrder = async (
         .txInCollateral(
             walletCollateral.input.txHash,
             walletCollateral.input.outputIndex,
-            walletCollateral.output.amount,
-            walletCollateral.output.address,
         )
+        .setTotalCollateral("5000000")
         .changeAddress(walletAddress)
         .selectUtxosFrom(walletUtxos)
         .requiredSignerHash(walletVK)
