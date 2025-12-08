@@ -14,7 +14,7 @@ const Earn = () => {
 						{/* Left Side - Title */}
 						<div className="lg:col-span-2">
 							<h1 className="text-5xl md:text-7xl font-bold mb-6">
-								Yield <span className="text-transparent bg-clip-text bg-gradient-lava">Farming</span>
+								Yield <span className="text-gradient-lava">Farming</span>
 							</h1>
 							<div className="space-y-2 text-muted-foreground">
 								<p>Use Lava assets in DeFi.</p>

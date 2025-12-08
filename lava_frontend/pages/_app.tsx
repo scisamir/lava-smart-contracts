@@ -23,14 +23,10 @@ export default function MyApp({ Component, pageProps }: AppProps) {
           {isIndex ? (
             <Component {...pageProps} />
           ) : (
+            // Render the background via a pseudo-element so filters don't affect children.
             <div
-              style={{
-                backgroundImage: `url(${appBg.src})`,
-                backgroundRepeat: "no-repeat",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                minHeight: "100vh",
-              }}
+              className="app-bg-wrapper"
+              style={{ ["--app-bg" as any]: `url(${appBg.src})` } as React.CSSProperties}
             >
               <Component {...pageProps} />
             </div>

@@ -34,7 +34,7 @@ export const SecuritySection = () => {
           <div className="order-1 lg:order-2">
             <h2 className="text-4xl md:text-5xl font-bold mb-8">
               Secured by industry
-              <br />leading <span className="text-transparent bg-clip-text bg-gradient-lava">auditors</span>
+              <br />leading <span className="text-gradient-lava">auditors</span>
             </h2>
 
             <div className="space-y-6">

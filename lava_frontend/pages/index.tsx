@@ -55,10 +55,10 @@ const Index = () => {
 
 				<div className="container mx-auto px-4 relative z-10">
 					<div className="text-center max-w-4xl mx-auto mb-16">
-						<h1 className="text-5xl md:text-7xl font-bold mb-6">
-							Powering <span className="text-transparent bg-clip-text bg-gradient-lava">Liquid Staking</span>
-							<br />on Cardano
-						</h1>
+						  <h1 className="text-5xl md:text-7xl font-bold mb-6">
+										Powering <span className="text-gradient-lava">Liquid Staking</span>
+										<br />on Cardano
+									</h1>
 					</div>
 
 					<StatsSection />

@@ -30,7 +30,7 @@ export const ProtocolsSection = () => {
           <div>
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
               Working with top protocols
-              <br />across <span className="text-transparent bg-clip-text bg-gradient-lava">Cardano</span>
+              <br />across <span className="text-gradient-lava">Cardano</span>
             </h2>
             
             <div className="space-y-6 mt-8">

@@ -57,3 +57,50 @@ All colors MUST be HSL.
     @apply text-foreground;
   }
 }
+
+/* Ensure the project's bg-gradient-lava utility uses the exact requested gradient.
+   This will make all uses of `bg-gradient-lava` render the precise linear-gradient
+   without changing individual components. */
+@layer utilities {
+  .bg-gradient-lava {
+    background: linear-gradient(181.52deg, #FFD13F -26.73%, #F41B00 98.71%);
+  }
+}
+
+
+@layer utilities {
+  .text-gradient-lava {
+    background: linear-gradient(181.52deg, #FFD13F -26.73%, #F41B00 98.71%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+}
+
+/* App background wrapper: renders the background image in a ::before pseudo-element
+   so that filters can be applied (brightness/dimming) without affecting child content. */
+@layer components {
+  .app-bg-wrapper {
+    position: relative;
+    min-height: 100vh;
+  }
+
+  .app-bg-wrapper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--app-bg);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+    filter: brightness(0.50);
+    z-index: 0;
+  }
+
+  /* Ensure children stack above the background pseudo-element */
+  .app-bg-wrapper > * {
+    position: relative;
+    z-index: 1;
+  }
+}

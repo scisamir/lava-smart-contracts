@@ -2,7 +2,7 @@ export const ValidatorHeader = () => {
   return (
     <div>
       <h1 className="text-5xl md:text-6xl font-bold mb-6">
-        Lava <span className="text-transparent bg-clip-text bg-gradient-lava">Validators</span>
+        Lava <span className="text-gradient-lava">Validators</span>
       </h1>
       <p className="text-muted-foreground mb-8 max-w-lg">
         Lorem ipsum dolor sit amet consectetur. Placerat pharetra aliquam fusce quis semper. 

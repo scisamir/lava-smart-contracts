@@ -36,7 +36,7 @@ export const FAQSection = () => {
   return (
     <div className="max-w-3xl mx-auto mt-20">
       <h2 className="text-4xl md:text-5xl font-bold mb-8 text-center">
-        Frequently Asked <span className="text-transparent bg-clip-text bg-gradient-lava">Questions</span>
+        Frequently Asked <span className="text-gradient-lava">Questions</span>
       </h2>
       
       <Accordion type="single" collapsible className="space-y-4">

@@ -9,7 +9,7 @@ export const LavaEarnCard = () => {
           <img src={LAVA_LOGO.src} alt="Lava" className="w-full h-full object-contain" />
         </div>
         <h3 className="text-2xl font-bold">
-          Lava <span className="text-transparent bg-clip-text bg-gradient-lava">Earn</span>
+          Lava <span className="text-gradient-lava">Earn</span>
         </h3>
       </div>
       

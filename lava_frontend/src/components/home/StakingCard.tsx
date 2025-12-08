@@ -15,7 +15,7 @@ export const StakingCard = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isSwapped, setIsSwapped] = useState<boolean>(false);
 
-  const { connected, txBuilder, blockchainProvider, walletCollateral, wallet, walletAddress, walletVK, walletSK, walletUtxos } = useCardanoWallet();
+  const { connected, txBuilder, blockchainProvider, walletCollateral, wallet, walletAddress, walletVK, walletSK, walletUtxos, balance } = useCardanoWallet();
 
   const conversionRate = 0.996;
   const usdRate = 0.32;
@@ -225,9 +225,22 @@ export const StakingCard = () => {
           </div>
         </div>
 
+        {/* Info */}
+        <div className="text-sm text-muted-foreground space-y-1">
+          <div className="flex justify-between">
+            <span>1 stADA</span>
+            <span>0.996 ADA ($0.32)</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Balance</span>
+            <span>{balance?.toFixed(2)} ADA</span>
+          </div>
+        </div>
+
         {/* Wallet button */}
         <Button
-          className="w-full bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-lg py-6"
+          className="w-full hover:opacity-90 transition-opacity shadow-glow text-lg py-6 text-white"
+          style={{ background: 'linear-gradient(181.52deg, #FFD13F -26.73%, #F41B00 98.71%)' }}
           disabled={!connected || isProcessing || numAmount === 0}
           onClick={async () => isSwapped ?
             await handleCreateRedeemOrder(numAmount) :
@@ -236,7 +249,7 @@ export const StakingCard = () => {
         >
           {isProcessing
             ? "Processing..."
-            : isSwapped ? "Unstake" : "Stake"
+            : isSwapped ? "Unstake" : "Stake Now"
           }
         </Button>
       </div>
