@@ -5,7 +5,8 @@ import { StatsSection } from "@/components/home/StatsSection";
 import { ProtocolsSection } from "@/components/home/ProtocolsSection";
 import { SecuritySection } from "@/components/home/SecuritySection";
 import { CTASection } from "@/components/home/CTASection";
-import { LAVA_WAVE } from "@/lib/images";
+import tpHalfBg from "@/assets/tp-halfbg.png";
+import appBg from "@/assets/app-bg.png";
 import { OrderList } from "@/components/home/OrderList";
 import { useEffect, useState } from "react";
 import { fetchUserOrders } from "@/e2e/utils";
@@ -40,14 +41,24 @@ const Index = () => {
 				<div className="flex-1">
 				  {/* Hero Section */}
 				  <section className="relative pt-32 pb-20 overflow-hidden">
-				<div 
-					className="absolute inset-0 opacity-30"
-					style={{
-						backgroundImage: `url(${LAVA_WAVE.src})`,
-						backgroundSize: 'cover',
-						backgroundPosition: 'center',
-					}}
-				/>
+								<div className="absolute inset-0 pointer-events-none">
+									<div
+										className="absolute top-0 left-0 right-0 h-1/2 opacity-30"
+										style={{
+											backgroundImage: `url(${tpHalfBg.src})`,
+											backgroundSize: 'cover',
+											backgroundPosition: 'center',
+										}}
+									/>
+									<div
+										className="absolute left-0 right-0 top-1/2 bottom-0 opacity-30"
+										style={{
+											backgroundImage: `url(${appBg.src})`,
+											backgroundSize: 'cover',
+											backgroundPosition: 'center',
+										}}
+									/>
+								</div>
 
 				<div className="container mx-auto px-4 relative z-10">
 					<div className="text-center max-w-4xl mx-auto mb-16">
