@@ -1,7 +1,7 @@
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Address, Credential}
 use cardano/assets.{AssetName, PolicyId}
-use lava/external_types.{Asset}
+use external/minswap_types.{Asset}
 
 pub type AssetType {
   is_stable: Bool,
@@ -88,20 +88,6 @@ pub type BatchingRedeemer {
 pub type StakeRedeemer {
   stake_asset: AssetType,
   batcher_index: Int,
-}
-
-pub type StrikeStakeRedeemer {
-  StakeStrike { stake_asset: AssetType }
-  RedeemStrikeRewards
-}
-
-pub type POSIXTime =
-  Int
-
-pub type StrikeStakeDatum {
-  owner_address_hash: VerificationKeyHash,
-  staked_at: POSIXTime,
-  mint_policy_id: PolicyId,
 }
 
 pub type RewardsRedeemer {

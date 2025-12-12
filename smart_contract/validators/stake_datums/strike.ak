@@ -4,10 +4,8 @@ use aiken/crypto.{ScriptHash}
 use cardano/address.{Credential, Script, VerificationKey}
 use cardano/assets
 use cardano/transaction.{InlineDatum, Transaction}
-use lava/types.{
-  GlobalSettingsDatum, StakeStrike, StakeType, StrikeStakeDatum,
-  StrikeStakeRedeemer,
-}
+use external/strike_types.{StakeStrike, StrikeStakeDatum, StrikeStakeRedeemer}
+use lava/types.{GlobalSettingsDatum, StakeType}
 use lava/utils.{get_global_settings}
 
 validator strike(gs_validator_hash: ScriptHash) {
