@@ -35,7 +35,7 @@ const Index = () => {
 	}, [blockchainProvider, walletAddress]);
 
 	return (
-		<div className="index-container bg-background flex flex-col">
+		<div className="index-container bg-background flex flex-col min-h-screen">
 				<Navigation />
 
 				<div className="flex-1">
@@ -82,19 +82,9 @@ const Index = () => {
 
 			<Footer />
 
-			<style jsx>{`
-				.index-container {
-					/* default (desktop) exact height requested */
-					min-height: 2645.12px;
-				}
-
-				/* mobile: apply the requested mobile height */
-				@media (max-width: 767px) {
-					.index-container {
-						min-height: 2725.25px;
-					}
-				}
-			`}</style>
+			{/* Use flex layout + `min-h-screen` on the root so desktop pages resize dynamically
+				Footer will naturally sit at the bottom because the main content uses `flex-1`.
+				Removed hard-coded pixel min-heights to allow the page to fit large screens. */}
 		</div>
 	);
 };

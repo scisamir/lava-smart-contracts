@@ -3,89 +3,136 @@
 import { useEffect, useState } from "react";
 import { useWallet } from "@meshsdk/react";
 import { BlockchainProviderType } from "@/e2e/types";
-import { deserializeAddress, MaestroProvider, MeshTxBuilder, UTxO } from "@meshsdk/core";
+import {
+  deserializeAddress,
+  MaestroProvider,
+  MeshTxBuilder,
+  UTxO,
+} from "@meshsdk/core";
 
 const LOCAL_STORAGE_KEY = "connectedWallet";
 
+// Convert UTF-8 asset name → hex (Cardano format)
+const toHex = (text: string) =>
+  Buffer.from(text, "utf8").toString("hex");
+
 export function useCardanoWallet() {
   const { wallet, connected, connect, disconnect, name } = useWallet();
+
   const [walletAddress, setWalletAddress] = useState("");
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(0); 
   const [txBuilder, setTxBuilder] = useState<MeshTxBuilder | null>(null);
-  const [blockchainProvider, setBlockchainProvider] = useState<BlockchainProviderType | null>(null);
+  const [blockchainProvider, setBlockchainProvider] =
+    useState<BlockchainProviderType | null>(null);
   const [walletVK, setWalletVK] = useState<string>("");
   const [walletSK, setWalletSK] = useState<string>("");
   const [walletUtxos, setWalletUtxos] = useState<UTxO[]>([]);
   const [walletCollateral, setWalletCollateral] = useState<UTxO | null>(null);
 
-  // Reconnect last wallet from localStorage
+  const [testBalance, setTestBalance] = useState(0);
+  const [stTestBalance, setStTestBalance] = useState(0);
+
+  // Helper to get token balance from current walletUtxos
+  const getTokenBalance = (policyId: string, assetName: string): number => {
+    if (!walletUtxos.length) return 0;
+
+    const assetHex = toHex(assetName);
+    const unit = policyId + assetHex;
+
+    let total = 0;
+
+    walletUtxos.forEach((utxo) => {
+      utxo.output.amount.forEach((amt) => {
+        if (amt.unit === unit) {
+          total += Number(amt.quantity);
+        }
+      });
+    });
+
+    return total;
+  };
+
+  // Reconnect last used wallet
   useEffect(() => {
     const lastWallet = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (lastWallet && !connected) {
-      connect(lastWallet).catch(() => {
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-      });
+      connect(lastWallet).catch(() => localStorage.removeItem(LOCAL_STORAGE_KEY));
     }
   }, [connect, connected]);
 
-  // Fetch wallet address & balance whenever connected wallet changes
+  // Fetch wallet data (UTxOs and token balances)
   useEffect(() => {
-    const fetchWalletData = async () => {
-      if (connected && wallet) {
-        try {
-          const addr = await wallet.getChangeAddress();
-          setWalletAddress(addr);
-
-          const assets = await wallet.getAssets();
-          const adaAsset = assets.find((a) => a.unit === "lovelace");
-          const balanceInAda = adaAsset ? Number(adaAsset.quantity) / 1_000_000 : 0;
-          setBalance(balanceInAda);
-
-          const { pubKeyHash: walletVK, stakeCredentialHash: walletSK } = deserializeAddress(addr);
-          const walletUtxos = await wallet.getUtxos();
-          // const walletCollateral = (walletUtxos.filter(utxo => (utxo.output.amount.length === 1 && (Number(utxo.output.amount[0].quantity) >= 5000000 && Number(utxo.output.amount[0].quantity) <= 100000000))))[0];
-          const walletCollateral = walletUtxos.filter(utxo => Number(utxo.output.amount[0].quantity) >= 5000000)[0];
-
-          // Persist the connected wallet
-          if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
-
-          const maestroKey = process.env.NEXT_PUBLIC_MAESTRO_KEY;
-          if (!maestroKey) {
-            throw new Error("MAESTRO_KEY does not exist");
-          }
-
-          const bp = new MaestroProvider({
-            network: 'Preprod',
-            apiKey: maestroKey,
-          });
-          const tb = new MeshTxBuilder({
-            fetcher: bp,
-            submitter: bp,
-            evaluator: bp,
-            verbose: true,
-          });
-          tb.setNetwork('preprod');
-
-          setTxBuilder(tb);
-          setBlockchainProvider(bp);
-          setWalletVK(walletVK);
-          setWalletSK(walletSK);
-          setWalletCollateral(walletCollateral);
-          setWalletUtxos(walletUtxos);
-        } catch (err) {
-          console.error("Error fetching wallet data:", err);
-        }
-      } else {
+    const fetchWallet = async () => {
+      if (!connected || !wallet) {
         setWalletAddress("");
         setBalance(0);
+        setWalletUtxos([]);
+        setTestBalance(0);
+        setStTestBalance(0);
         localStorage.removeItem(LOCAL_STORAGE_KEY);
+        return;
+      }
+
+      try {
+        const addr = await wallet.getChangeAddress();
+        setWalletAddress(addr);
+
+        const utxos = await wallet.getUtxos();
+        setWalletUtxos(utxos);
+
+        //ADA balance calculation removed. set balance to 0
+        setBalance(0);
+
+        const { pubKeyHash, stakeCredentialHash } = deserializeAddress(addr);
+        setWalletVK(pubKeyHash ?? "");
+        setWalletSK(stakeCredentialHash ?? "");
+
+        const walletCollateral = utxos.filter(
+          (u) => Number(u.output.amount[0].quantity) >= 5_000_000
+        )[0];
+        setWalletCollateral(walletCollateral);
+
+        if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
+
+        const maestroKey = process.env.NEXT_PUBLIC_MAESTRO_KEY;
+        if (!maestroKey) throw new Error("Missing Maestro API key");
+
+        const provider = new MaestroProvider({
+          network: "Preprod",
+          apiKey: maestroKey,
+        });
+
+        const tb = new MeshTxBuilder({
+          fetcher: provider,
+          submitter: provider,
+          evaluator: provider,
+          verbose: true,
+        });
+        tb.setNetwork("preprod");
+
+        setBlockchainProvider(provider);
+        setTxBuilder(tb);
+
+        // Fetch test and stTest balances
+        const test = getTokenBalance(
+          "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea",
+          "test"
+        );
+        const stTest = getTokenBalance(
+          "c91f6168d72eb3d1f5db0636fedfde2e5e4bc08726fefc857f611e71",
+          "stTest"
+        );
+
+        setTestBalance(test);
+        setStTestBalance(stTest);
+      } catch (err) {
+        console.error("Wallet load error:", err);
       }
     };
 
-    fetchWalletData();
+    fetchWallet();
   }, [connected, wallet, name]);
 
-  // Override connect/disconnect to keep localStorage in sync
   const connectWallet = async (walletName: string) => {
     await connect(walletName);
     localStorage.setItem(LOCAL_STORAGE_KEY, walletName);
@@ -102,6 +149,8 @@ export function useCardanoWallet() {
     walletName: name,
     walletAddress,
     balance,
+    testBalance,
+    stTestBalance,
     connect: connectWallet,
     disconnect: disconnectWallet,
     blockchainProvider,
@@ -110,5 +159,6 @@ export function useCardanoWallet() {
     walletSK,
     walletCollateral,
     walletUtxos,
+    getTokenBalance,
   };
 }
