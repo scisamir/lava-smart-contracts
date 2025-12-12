@@ -92,8 +92,8 @@ export function useCardanoWallet() {
   };
 
   const disconnectWallet = async () => {
-    await disconnect();
     localStorage.removeItem(LOCAL_STORAGE_KEY);
+    await disconnect();
   };
 
   return {
