@@ -44,7 +44,7 @@ export function useCardanoWallet() {
           const { pubKeyHash: walletVK, stakeCredentialHash: walletSK } = deserializeAddress(addr);
           const walletUtxos = await wallet.getUtxos();
           // const walletCollateral = (walletUtxos.filter(utxo => (utxo.output.amount.length === 1 && (Number(utxo.output.amount[0].quantity) >= 5000000 && Number(utxo.output.amount[0].quantity) <= 100000000))))[0];
-          const walletCollateral = walletUtxos.filter(utxo => Number(utxo.output.amount[0].quantity) >= 5000000)[0];
+          const walletCollateral = walletUtxos.filter(utxo => Number(utxo.output.amount[0].quantity) >= 7000000)[0];
 
           // Persist the connected wallet
           if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
