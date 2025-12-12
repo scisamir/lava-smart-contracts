@@ -3,7 +3,7 @@ import { setupE2e } from "../setup";
 
 const { blueprint, multisigHash } = setupE2e();
 
-const gsParamTxHash = "114c2af26b5d0b8e94d4aa0cc4e5000178b45b2dd82c1e2e63021697f47a0054";
+const gsParamTxHash = "a65532a96c8c1ab316f4f6e9bfdf01f04d8b1750f3269ecf74a8e8fe04279bea";
 const gsParamTxIdx = 1;
 
 const GlobalSettingsValidator = blueprint.validators.filter(v =>

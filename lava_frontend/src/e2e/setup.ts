@@ -59,9 +59,9 @@ export const setupE2e = () => {
     const poolStakeAssetName = stringToHex("stTest");
 
     // Reference scripts
-    const batchingScriptTxHash = "63fb5c611cedb66a55f367c94f3e1f0263b40f6391a9a74b903f38253884c7b8";
+    const batchingScriptTxHash = "1bdcbd9d779f426ecf8a4a5e6b2fea600b80998416d4c3ad005db8bb4ac0c1d4";
     const batchingScriptTxIdx = 0;
-    const poolScriptTxHash = "b8fc5e1c3ddd1a10adc307536639c83d9c2928c05732015c045af272d0f8e45c";
+    const poolScriptTxHash = "42fde81fd6f9cc66792b16c6f3934e5084216501f9324d900655a1e209b55296";
     const poolScriptTxIdx = 0;
 
     return {
