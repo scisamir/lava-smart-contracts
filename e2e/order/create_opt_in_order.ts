@@ -1,5 +1,5 @@
 import { mConStr0, mPubKeyAddress } from "@meshsdk/core";
-import { testUnit, txBuilder, wallet1, wallet1Address, wallet1SK, wallet1Utxos, wallet1VK } from "../setup.js";
+import { testUnit, tStrikeUnit, txBuilder, wallet1, wallet1Address, wallet1SK, wallet1Utxos, wallet1VK } from "../setup.js";
 import { OrderValidatorAddr } from "./validator.js";
 
 const depositAmount = 200;
@@ -15,8 +15,9 @@ const unsignedTx = await txBuilder
     .txOut(
         OrderValidatorAddr,
         [
+            { unit: "lovelace", quantity: "2000000" }, // 2 ADA min UTxO input
+            // { unit: tStrikeUnit, quantity: String(depositAmount) },
             { unit: testUnit, quantity: String(depositAmount) },
-            // { unit: testUnit, quantity: String(depositAmount) },
         ]
     )
     .txOutInlineDatumValue(orderDatum)

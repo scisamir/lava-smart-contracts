@@ -53,11 +53,11 @@ export const setupE2e = () => {
     const poolStakeAssetName = stringToHex("stTest");
 
     const tStrikeAssetName = stringToHex("tStrike");
-    const tStrikeUnit = alwaysSuccessMintValidatorHash + testAssetName;
+    const tStrikeUnit = alwaysSuccessMintValidatorHash + tStrikeAssetName;
     const tStrikePoolStakeAssetName = stringToHex("LStrike");
 
     const tPulseAssetName = stringToHex("tPulse");
-    const tPulseUnit = alwaysSuccessMintValidatorHash + testAssetName;
+    const tPulseUnit = alwaysSuccessMintValidatorHash + tPulseAssetName;
     const tPulsePoolStakeAssetName = stringToHex("LPulse");
 
     // Reference scripts
