@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Button } from "../ui/button"
-import { batchingTx } from "@/e2e/batching/batching";
 import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
-import { OrderListProps } from "@/lib/types";
+import { mintTestTokens } from "@/e2e/utils/mintTestTokens";
 
-export const BatchOrders = ({ orders }: OrderListProps) => {
+export const MintTestTokens = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   
-  const { txBuilder, blockchainProvider } = useCardanoWallet();
+  const { txBuilder, blockchainProvider, wallet, walletAddress, walletCollateral, walletUtxos } = useCardanoWallet();
 
   // Toast
   const toastSuccess = (txHash: string) => {
@@ -27,22 +26,25 @@ export const BatchOrders = ({ orders }: OrderListProps) => {
   };
   const toastFailure = (err: any) => toast.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
 
-  const handleBatching = async () => {
+  const handleMintTestTokens = async () => {
       setIsProcessing(true);
       console.log("txBuilder:", txBuilder);
       console.log("blockchainProvider:", blockchainProvider);
 
-      if (!txBuilder || !blockchainProvider) {
-        toastFailure("Error: Check collateral");
+      if (!txBuilder || !blockchainProvider || !walletCollateral) {
+        toastFailure("Error: Blockchain provider/txBuilder not initialized");
         setIsProcessing(false);
         return;
       }
 
       let txHash = "";
       try {
-        txHash = await batchingTx(
-          blockchainProvider,
+        txHash = await mintTestTokens(
           txBuilder,
+          wallet,
+          walletAddress,
+          walletCollateral,
+          walletUtxos,
         );
         txBuilder.reset();
       } catch (e) {
@@ -50,7 +52,7 @@ export const BatchOrders = ({ orders }: OrderListProps) => {
         setIsProcessing(false);
         toastFailure(e);
         console.error("e tx:", e);
-        console.log("Err in handle batching");
+        console.log("Err in handle mint test tokens");
         return;
       }
   
@@ -58,20 +60,19 @@ export const BatchOrders = ({ orders }: OrderListProps) => {
         txBuilder.reset();
         setIsProcessing(false);
         toastSuccess(txHash);
-        console.log("batching tx hash:", txHash);
+        console.log(`Mint test tokens tx hash:`, txHash);
       });
     }
 
   return (
-    <div className="w-full flex justify-center mt-5">
+    // <div className="w-full flex justify-center mt-5">
       <Button
         disabled={isProcessing}
-        onClick={() => handleBatching()}
-        className="relative bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7"
+        onClick={() => handleMintTestTokens()}
+        className="bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow px-2 py-4"
       >
-        <span className="absolute top-0 right-0 px-1 text-sm text-red-600 bg-white border border-r-2">GTO: {orders[0]?.grandTotalOrders ?? 0}</span>
-        {isProcessing ? "Processing..." : "Batch Orders"}
+        {isProcessing ? "Processing..." : "Mint Test Tokens"}
       </Button>
-    </div>
+    // </div>
   )
 }

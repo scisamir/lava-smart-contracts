@@ -1,9 +1,10 @@
 import { stringToHex } from "@meshsdk/core";
-import { alwaysSuccessMintValidatorHash, alwaysSuccessValidatorMintScript, testAssetName, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1Utxos } from "../setup.js";
+import { alwaysSuccessMintValidatorHash, alwaysSuccessValidatorMintScript, testAssetName, tPulseAssetName, tStrikeAssetName, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1Utxos } from "../setup.js";
 
 const unsignedTx = await txBuilder
     .mintPlutusScriptV3()
-    .mint("30000", alwaysSuccessMintValidatorHash, testAssetName)
+    .mint("1000", alwaysSuccessMintValidatorHash, tStrikeAssetName)
+    .mint("1000", alwaysSuccessMintValidatorHash, tPulseAssetName)
     .mintingScript(alwaysSuccessValidatorMintScript)
     .mintRedeemerValue("")
     .txInCollateral(

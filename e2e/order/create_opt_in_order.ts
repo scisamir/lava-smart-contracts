@@ -16,6 +16,7 @@ const unsignedTx = await txBuilder
         OrderValidatorAddr,
         [
             { unit: testUnit, quantity: String(depositAmount) },
+            // { unit: testUnit, quantity: String(depositAmount) },
         ]
     )
     .txOutInlineDatumValue(orderDatum)

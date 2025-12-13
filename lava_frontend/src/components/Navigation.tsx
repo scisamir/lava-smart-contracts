@@ -10,6 +10,7 @@ import { WalletConnectModal } from "./wallet/WalletConnectModal";
 import { ConnectedWalletModal } from "./wallet/ConnectedWalletModal";
 import { LAVA_LOGO } from "@/lib/images";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
+import { MintTestTokens } from "./stake/MinTestTokens";
 
 const Navigation = () => {
   const router = useRouter();
@@ -73,6 +74,10 @@ const Navigation = () => {
               ))}
             </div>
 
+            <div className="hidden md:inline-block">
+              <MintTestTokens />
+            </div>
+
             {/* Right Side Buttons */}
             <div className="flex items-center gap-2">
               {/* Wallet Button */}
@@ -114,6 +119,7 @@ const Navigation = () => {
                         {item.label}
                       </button>
                     ))}
+                    <MintTestTokens />
                   </div>
                 </SheetContent>
               </Sheet>

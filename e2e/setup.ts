@@ -139,6 +139,14 @@ const testAssetName = stringToHex("test");
 const testUnit = alwaysSuccessMintValidatorHash + testAssetName;
 const poolStakeAssetName = stringToHex("stTest");
 
+const tStrikeAssetName = stringToHex("tStrike");
+const tStrikeUnit = alwaysSuccessMintValidatorHash + testAssetName;
+const tStrikePoolStakeAssetName = stringToHex("LStrike");
+
+const tPulseAssetName = stringToHex("tPulse");
+const tPulseUnit = alwaysSuccessMintValidatorHash + testAssetName;
+const tPulsePoolStakeAssetName = stringToHex("LPulse");
+
 // Reference scripts
 const batchingScriptTxHash = "1bdcbd9d779f426ecf8a4a5e6b2fea600b80998416d4c3ad005db8bb4ac0c1d4";
 const batchingScriptTxIdx = 0;
@@ -173,6 +181,12 @@ export {
     testAssetName,
     testUnit,
     poolStakeAssetName,
+    tStrikeAssetName,
+    tStrikeUnit,
+    tStrikePoolStakeAssetName,
+    tPulseAssetName,
+    tPulseUnit,
+    tPulsePoolStakeAssetName,
     // Ref scripts
     batchingScriptTxHash,
     batchingScriptTxIdx,
