@@ -12,9 +12,10 @@ import {
 
 const LOCAL_STORAGE_KEY = "connectedWallet";
 
-// Convert UTF-8 asset name → hex (Cardano format)
+
 const toHex = (text: string) =>
   Buffer.from(text, "utf8").toString("hex");
+console.log(toHex("test")); // for testing
 
 export function useCardanoWallet() {
   const { wallet, connected, connect, disconnect, name } = useWallet();
