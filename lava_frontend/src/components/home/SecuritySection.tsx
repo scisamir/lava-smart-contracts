@@ -1,23 +1,8 @@
-import {
-  SHIELD_ICON,
-  PASHOV_LOGO,
-  SPEARBIT_LOGO,
-  CODE_ARENA_LOGO,
-  ZENITH_LOGO,
-  SSA_LOGO,
-} from "@/lib/images";
+import { SHIELD_ICON, AUDITO_LOGO } from "@/lib/images";
 
 export const SecuritySection = () => {
-  const auditorsTop = [
-  { name: "Pashov Audit Group", logo: PASHOV_LOGO.src },
-  { name: "SPEARBIT", logo: SPEARBIT_LOGO.src },
-  ];
-
-  const auditorsBottom = [
-  { name: "code4rena", logo: CODE_ARENA_LOGO.src },
-  { name: "Zenith", logo: ZENITH_LOGO.src },
-  { name: "Secure Staking Alliance", logo: SSA_LOGO.src },
-  ];
+  // Single auditor (UTxO Company)
+  const auditor = { name: "UTxO Company", logo: AUDITO_LOGO.src };
 
   return (
     <section className="py-20 bg-background">
@@ -38,44 +23,27 @@ export const SecuritySection = () => {
             </h2>
 
             <div className="space-y-6">
-              {/* Top Row - 2 auditors */}
-              <div className="grid grid-cols-2 gap-6">
-                {auditorsTop.map((auditor, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center justify-center p-4"
-                  >
+              <div className="flex flex-col items-center gap-2">
+                <a
+                  href="https://x.com/utxo_company"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex flex-col items-center no-underline"
+                >
+                  <div className="p-8 bg-card/50 rounded-lg border border-border shadow-sm flex items-center justify-center">
                     {auditor.logo ? (
-                      <img 
-                        src={auditor.logo} 
-                        alt={auditor.name} 
-                        className="max-w-full h-auto"
-                      />
+                      <img src={auditor.logo} alt={auditor.name} className="h-28 object-contain" />
                     ) : (
                       <p className="font-semibold text-muted-foreground">{auditor.name}</p>
                     )}
                   </div>
-                ))}
-              </div>
 
-              {/* Bottom Row - 3 auditors */}
-              <div className="grid grid-cols-3 gap-6">
-                {auditorsBottom.map((auditor, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center justify-center p-4"
-                  >
-                    {auditor.logo ? (
-                      <img 
-                        src={auditor.logo} 
-                        alt={auditor.name} 
-                        className="max-w-full h-auto"
-                      />
-                    ) : (
-                      <p className="font-semibold text-muted-foreground">{auditor.name}</p>
-                    )}
+                  <div className="text-center mt-1">
+                    <p className="font-semibold text-xl text-inherit">{auditor.name}</p>
                   </div>
-                ))}
+                </a>
+
+                <p className="text-sm text-muted-foreground">Security auditor</p>
               </div>
             </div>
           </div>
