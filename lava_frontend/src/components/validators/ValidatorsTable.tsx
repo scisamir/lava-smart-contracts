@@ -64,7 +64,7 @@ export const ValidatorsTable = () => {
       
       {/* HEADER + SEARCH */}
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold">Validators</h2>
+        <h2 className="text-3xl font-bold">Vaults</h2>
 
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -85,7 +85,7 @@ export const ValidatorsTable = () => {
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  Validator <ChevronDown className="w-4 h-4" />
+                  Vault <ChevronDown className="w-4 h-4" />
                 </div>
               </TableHead>
 
@@ -180,7 +180,7 @@ export const ValidatorsTable = () => {
 
       {/* Validator Name */}
       <div>
-        <p className="text-xs text-muted-foreground">Validator</p>
+        <p className="text-xs text-muted-foreground">Vault</p>
         <div className="flex items-center gap-2 mt-1">
           <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center">
             <img src={validator.logo || LAVA_LOGO.src} alt={validator.name} className="w-full h-full object-cover" />

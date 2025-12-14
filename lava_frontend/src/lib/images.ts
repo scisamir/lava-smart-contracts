@@ -17,6 +17,7 @@ import splashLogo from "@/assets/splash-logo.png";
 import strikefinanceLogo from "@/assets/strikefinance-logo.png";
 import worldMap from "@/assets/world-map.png";
 import zenithLogo from "@/assets/zenith-logo.png";
+import auditorLogo from "@/assets/auditor.png";
 
 export const LAVA_LOGO = lavaColorful;
 export const LAVA_WAVE = lavaWave;
@@ -36,6 +37,7 @@ export const SPLASH_LOGO = splashLogo;
 export const STRIKEFINANCE_LOGO = strikefinanceLogo;
 export const WORLD_MAP = worldMap;
 export const ZENITH_LOGO = zenithLogo;
+export const AUDITO_LOGO = auditorLogo;
 
 export default {
   LAVA_LOGO,
@@ -56,4 +58,5 @@ export default {
   STRIKEFINANCE_LOGO,
   WORLD_MAP,
   ZENITH_LOGO,
+  AUDITO_LOGO,
 };

@@ -9,9 +9,9 @@ const Footer = () => {
       style={{
         backgroundImage: `url(${footerBg.src})`,
         backgroundRepeat: 'no-repeat',
-        /* use explicit image pixel dimensions so the full image is visible */
-        backgroundSize: '1600.500244140625px 130.7198486328125px',
-        backgroundPosition: '-69px 0.15px',
+        /* make footer background scale horizontally on large desktops */
+        backgroundSize: 'cover',
+        backgroundPosition: 'center bottom',
         height: '120.7198486328125px',
       }}
     >
