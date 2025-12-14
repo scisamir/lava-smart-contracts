@@ -107,6 +107,8 @@ const multiSigUtxos = await blockchainProvider.fetchAddressUTxOs(multiSigAddress
 // console.log("multiSigUtxos:", multiSigUtxos);
 // console.log("multiSigUtxos:", multiSigUtxos[0].output.amount);
 
+console.log("w1 asdcfg:", (await wallet1.getAssets()).find(ast => ast.unit === "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea74657374")?.quantity);
+
 // Create transaction builder
 const txBuilder = new MeshTxBuilder({
     fetcher: blockchainProvider,
