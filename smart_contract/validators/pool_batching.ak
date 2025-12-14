@@ -2,7 +2,10 @@ use aiken/collection/dict
 use aiken/collection/list
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Credential, Inline, Script, VerificationKey}
-use cardano/assets.{AssetName, PolicyId, from_asset, from_lovelace, quantity_of}
+use cardano/assets.{
+  AssetName, PolicyId, ada_asset_name, ada_policy_id, from_asset, from_lovelace,
+  lovelace_of, quantity_of,
+}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, Transaction, placeholder,
 }
@@ -156,11 +159,17 @@ fn process_orders(
       expect InlineDatum(order_datum) = current_order.output.datum
       expect OrderDatum { receiver_address, order_type, .. } = order_datum
 
+      let is_ada_asset = policy_id == "" && asset_name == "lovelace"
+
       let (order_amount, asset_amt_to_mint_or_burn) =
         when order_type is {
           OptIn { deposit_amount } -> {
             let order_amount =
-              quantity_of(current_order.output.value, policy_id, asset_name)
+              if is_ada_asset {
+                lovelace_of(current_order.output.value) / 1_000_000
+              } else {
+                quantity_of(current_order.output.value, policy_id, asset_name)
+              }
 
             expect order_amount >= deposit_amount
 
@@ -169,9 +178,20 @@ fn process_orders(
             // Calculate amount of st asset to mint based on current exchange rate
             let asset_amt_to_mint = da_precised / exchange_rate
 
+            let partial_expected_oov =
+              if is_ada_asset {
+                current_order.output.value
+                  |> assets.add(
+                      ada_policy_id,
+                      ada_asset_name,
+                      -deposit_amount * 1_000_000,
+                    )
+              } else {
+                current_order.output.value
+                  |> assets.add(policy_id, asset_name, -deposit_amount)
+              }
             let expected_order_output_value =
-              current_order.output.value
-                |> assets.add(policy_id, asset_name, -deposit_amount)
+              partial_expected_oov
                 |> assets.add(
                     mint_validator_hash,
                     pool_stake_asset_name,
@@ -206,9 +226,20 @@ fn process_orders(
             let order_amount_precised = st_amount * exchange_rate
             let order_amount = order_amount_precised / precision_factor
 
+            let partial_expected_oov =
+              if is_ada_asset {
+                current_order.output.value
+                  |> assets.add(
+                      ada_policy_id,
+                      ada_asset_name,
+                      order_amount * 1_000_000,
+                    )
+              } else {
+                current_order.output.value
+                  |> assets.add(policy_id, asset_name, order_amount)
+              }
             let expected_order_output_value =
-              current_order.output.value
-                |> assets.add(policy_id, asset_name, order_amount)
+              partial_expected_oov
                 |> assets.add(
                     mint_validator_hash,
                     pool_stake_asset_name,

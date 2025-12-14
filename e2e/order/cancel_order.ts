@@ -3,7 +3,6 @@ import { blockchainProvider, txBuilder, wallet1, wallet1Address, wallet1Collater
 import { OrderValidatorAddr, OrderValidatorRewardAddress, OrderValidatorScript } from "./validator.js";
 
 const orderUtxos = await blockchainProvider.fetchAddressUTxOs(OrderValidatorAddr);
-console.log(orderUtxos);
 const orderUtxo = orderUtxos[orderUtxos.length - 1];
 if (!orderUtxo) {
     throw new Error("order utxo not found!");

@@ -63,8 +63,52 @@ export function useCardanoWallet() {
 
   // Fetch wallet data (UTxOs and token balances)
   useEffect(() => {
-    const fetchWallet = async () => {
-      if (!connected || !wallet) {
+    const fetchWalletData = async () => {
+      if (connected && wallet) {
+        try {
+          const addr = await wallet.getChangeAddress();
+          setWalletAddress(addr);
+
+          const assets = await wallet.getAssets();
+          const adaAsset = assets.find((a) => a.unit === "lovelace");
+          const balanceInAda = adaAsset ? Number(adaAsset.quantity) / 1_000_000 : 0;
+          setBalance(balanceInAda);
+
+          const { pubKeyHash: walletVK, stakeCredentialHash: walletSK } = deserializeAddress(addr);
+          const walletUtxos = await wallet.getUtxos();
+          // const walletCollateral = (walletUtxos.filter(utxo => (utxo.output.amount.length === 1 && (Number(utxo.output.amount[0].quantity) >= 5000000 && Number(utxo.output.amount[0].quantity) <= 100000000))))[0];
+          const walletCollateral = walletUtxos.filter(utxo => Number(utxo.output.amount[0].quantity) >= 7000000 && utxo.output.amount.length <= 4)[0];
+
+          // Persist the connected wallet
+          if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
+
+          const maestroKey = process.env.NEXT_PUBLIC_MAESTRO_KEY;
+          if (!maestroKey) {
+            throw new Error("MAESTRO_KEY does not exist");
+          }
+
+          const bp = new MaestroProvider({
+            network: 'Preprod',
+            apiKey: maestroKey,
+          });
+          const tb = new MeshTxBuilder({
+            fetcher: bp,
+            submitter: bp,
+            evaluator: bp,
+            verbose: true,
+          });
+          tb.setNetwork('preprod');
+
+          setTxBuilder(tb);
+          setBlockchainProvider(bp);
+          setWalletVK(walletVK);
+          setWalletSK(walletSK);
+          setWalletCollateral(walletCollateral);
+          setWalletUtxos(walletUtxos);
+        } catch (err) {
+          console.error("Error fetching wallet data:", err);
+        }
+      } else {
         setWalletAddress("");
         setBalance(0);
         setWalletUtxos([]);
@@ -140,8 +184,8 @@ export function useCardanoWallet() {
   };
 
   const disconnectWallet = async () => {
-    await disconnect();
     localStorage.removeItem(LOCAL_STORAGE_KEY);
+    await disconnect();
   };
 
   return {

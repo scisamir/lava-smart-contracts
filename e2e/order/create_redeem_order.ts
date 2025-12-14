@@ -16,6 +16,7 @@ const unsignedTx = await txBuilder
     .txOut(
         OrderValidatorAddr,
         [
+            { unit: "lovelace", quantity: "2000000" }, // 2 ADA min UTxO input
             { unit: MintingHash + poolStakeAssetName, quantity: String(stAmount) },
         ]
     )

@@ -1,5 +1,5 @@
 import { deserializeDatum, mConStr0, mConStr1, serializeAddressObj } from "@meshsdk/core";
-import { alwaysSuccessMintValidatorHash, batchingScriptTxHash, batchingScriptTxIdx, blockchainProvider, LavaPoolNftName, MinPoolLovelace, multiSigCbor, poolScriptTxHash, poolScriptTxIdx, poolStakeAssetName, testAssetName, testUnit, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1Utxos, wallet1VK } from "../setup.js"
+import { alwaysSuccessMintValidatorHash, batchingScriptTxHash, batchingScriptTxIdx, blockchainProvider, LavaPoolNftName, MinPoolLovelace, multiSigCbor, poolScriptTxHash, poolScriptTxIdx, poolStakeAssetName, testAssetName, testUnit, tStrikeAssetName, tStrikePoolStakeAssetName, tStrikeUnit, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1Utxos, wallet1VK } from "../setup.js"
 import { OrderValidatorAddr, OrderValidatorRewardAddress, OrderValidatorScript } from "../order/validator.js";
 import { PoolValidatorAddr, PoolValidatorHash } from "../pool/validator.js";
 import { BatchingHash, BatchingRewardAddress } from "./validator.js";
@@ -7,8 +7,31 @@ import { GlobalSettingsAddr } from "../global_settings/validator.js";
 import { OrderDatumType, PoolDatumType } from "../types.js";
 import { MintingHash, MintingValidatorScript } from "../mint/validator.js";
 
+// Variable data
+// ----------------- test ----------------------
+// const poolSAN = poolStakeAssetName;
+// const orderAssetName = testAssetName;
+// const orderOptInUnit = testUnit;
+// const orderOptOutUnit = MintingHash + poolSAN;
+// ----------------- tStrike ----------------------
+const poolSAN = tStrikePoolStakeAssetName;
+const orderOptInUnit = tStrikeUnit;
+const orderOptOutUnit = MintingHash + poolSAN;
+const orderAssetName = tStrikeAssetName;
+
 const orderUtxos = await blockchainProvider.fetchAddressUTxOs(OrderValidatorAddr);
-const poolUtxo = (await blockchainProvider.fetchAddressUTxOs(PoolValidatorAddr))[0];
+const poolUtxos = await blockchainProvider.fetchAddressUTxOs(PoolValidatorAddr);
+
+const poolUtxo = poolUtxos.find(utxo => {
+    const poolPlutusData = utxo.output.plutusData;
+    if (!poolPlutusData) throw new Error('No plutus data');
+    const poolDatum = deserializeDatum<PoolDatumType>(poolPlutusData);
+
+    const fpoolSAN = poolDatum.fields[6].bytes;
+
+    return (fpoolSAN === poolSAN);
+});
+if (!poolUtxo) throw new Error('Pool UTxO not found!');
 
 let totalMintAmount = 0;
 const filteredOrderUtxos = orderUtxos.filter(utxo => {
@@ -24,10 +47,20 @@ const filteredOrderUtxos = orderUtxos.filter(utxo => {
     const mintAmount = isOptIn ? mintAmtDatum : -1 * mintAmtDatum;
     console.log("mintAmtDatum:", mintAmtDatum);
 
-    totalMintAmount += mintAmount;
+    let isRightOrder = false;
+    const utxoAmount = utxo.output.amount;
+    for (let i = 0; i < utxoAmount.length; i++) {
+        const utxoAsset = utxoAmount[i];
+        if (utxoAsset.unit === orderOptInUnit || utxoAsset.unit === orderOptOutUnit) {
+            isRightOrder = true;
+            totalMintAmount += mintAmount;
+            break;
+        }
+    }
 
-    return mintAmtDatum > 0
+    return (mintAmtDatum > 0 && isRightOrder)
 })
+if (!filteredOrderUtxos) throw new Error('No order UTxOs to batch!');
 const noOfUtxosToBatch = 10;
 const batchingOrderUtxos = filteredOrderUtxos.slice(0, noOfUtxosToBatch);
 
@@ -55,14 +88,14 @@ const BatchingRedeemer = mConStr0([
     mConStr0([ // batching asset
         mConStr0([]),
         alwaysSuccessMintValidatorHash,
-        testAssetName,
+        orderAssetName,
         1_000_000,
   ]),
 ]);
 
 const gsUtxo = (await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr))[0];
 
-const poolAssetAmount = poolUtxo.output.amount.find(amt => amt.unit === testUnit)?.quantity;
+const poolAssetAmount = poolUtxo.output.amount.find(amt => amt.unit === orderOptInUnit)?.quantity;
 const updatedPoolAssetAmount = Number(poolAssetAmount ?? "0") + totalMintAmount;
 
 const poolPlutusData = poolUtxo.output.plutusData;
@@ -83,7 +116,7 @@ const poolAsset =
   mConStr0([
     mConStr0([]),
     alwaysSuccessMintValidatorHash,
-    testAssetName,
+    orderAssetName,
     1_000_000,
   ]);
 const upatedPoolDatum = mConStr0([
@@ -93,7 +126,7 @@ const upatedPoolDatum = mConStr0([
   poolDatum.fields[3].int, // exchange_rate
   poolDatum.fields[4].int, // total_rewards_accrued
   poolAsset,
-  poolStakeAssetName,
+  poolSAN,
   mConStr1([]),
 ]);
 
@@ -128,7 +161,7 @@ if (totalMintAmount !== 0) {
     mintTx
         // mint stake tokens
         .mintPlutusScriptV3()
-        .mint(String(totalMintAmount), MintingHash, poolStakeAssetName)
+        .mint(String(totalMintAmount), MintingHash, poolSAN)
         .mintingScript(MintingValidatorScript)
         .mintRedeemerValue("")
 }
@@ -158,10 +191,10 @@ for (let i = 0; i < batchingOrderUtxos.length; i++) {
         // tx out (user order output)
         .txOut(orderReceiverAddr, mintAmount > 0 ? [
             { unit: "lovelace", quantity: orderLovelaceAmount },
-            { unit: MintingHash + poolStakeAssetName, quantity: String(mintAmount) },
+            { unit: orderOptOutUnit, quantity: String(mintAmount) },
         ] : [
             { unit: "lovelace", quantity: orderLovelaceAmount },
-            { unit: testUnit, quantity: String(-1 * mintAmount) },
+            { unit: orderOptInUnit, quantity: String(-1 * mintAmount) },
         ])
 }
 
@@ -170,7 +203,7 @@ const unsignedTx = await unsignedTx1
     .txOut(PoolValidatorAddr, updatedPoolAssetAmount > 0 ? [
         { unit: "lovelace", quantity: String(MinPoolLovelace) },
         { unit: PoolValidatorHash + LavaPoolNftName, quantity: "1" },
-        { unit: testUnit, quantity: String(updatedPoolAssetAmount) }
+        { unit: orderOptInUnit, quantity: String(updatedPoolAssetAmount) }
     ] : [
         { unit: "lovelace", quantity: String(MinPoolLovelace) },
         { unit: PoolValidatorHash + LavaPoolNftName, quantity: "1" },
@@ -182,12 +215,14 @@ const unsignedTx = await unsignedTx1
         wallet1Collateral.input.txHash,
         wallet1Collateral.input.outputIndex,
     )
-    .setTotalCollateral("6500000")
+    .setTotalCollateral("10000000")
     .requiredSignerHash(wallet1VK)
     .changeAddress(wallet1Address)
     .selectUtxosFrom(wallet1Utxos)
     .setFee(String(3766409 + (500000 * batchingOrderUtxos.length)))
     .complete()
+
+console.log("batchingOrderUtxos.length:", batchingOrderUtxos.length);
 
 const signedTx = await wallet1.signTx(unsignedTx);
 

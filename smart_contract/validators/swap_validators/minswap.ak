@@ -5,7 +5,7 @@ use cardano/assets.{
   from_asset, from_lovelace, lovelace_of, quantity_of, without_lovelace,
 }
 use cardano/transaction.{InlineDatum, Transaction}
-use lava/external_types.{EODNoDatum, MinswapOrderDatum}
+use external/minswap_types.{EODNoDatum, MinswapOrderDatum}
 use lava/types.{AssetType, SwapRedeemer}
 
 validator minswap_swap(

@@ -54,9 +54,9 @@ const wallet1Utxos = await wallet1.getUtxos();
 
 // const wallet1Collateral: UTxO = (await blockchainProvider.fetchUTxOs("94552ccfcde87c8aefaad3a64be2270bd75a5c23bb93aa358e1361ed050c34d5", 2))[0]
 // const wallet1Collateral: UTxO = (await wallet1.getCollateral())[0]
-const wallet1Collateral: UTxO = wallet1Utxos.filter(utxo => Number(utxo.output.amount[0].quantity) >= 8000000)[0];
-console.log("wallet1Utxos:", wallet1Utxos);
-console.log("wallet1Collateral:", wallet1Collateral);
+const wallet1Collateral: UTxO = wallet1Utxos.filter(utxo => Number(utxo.output.amount[0].quantity) >= 12000000 && utxo.output.amount.length <= 4)[0];
+// console.log("wallet1Utxos:", wallet1Utxos);
+// console.log("wallet1Collateral:", wallet1Collateral);
 if (!wallet1Collateral) {
     throw new Error('No collateral utxo found');
 }
@@ -139,10 +139,18 @@ const testAssetName = stringToHex("test");
 const testUnit = alwaysSuccessMintValidatorHash + testAssetName;
 const poolStakeAssetName = stringToHex("stTest");
 
+const tStrikeAssetName = stringToHex("tStrike");
+const tStrikeUnit = alwaysSuccessMintValidatorHash + tStrikeAssetName;
+const tStrikePoolStakeAssetName = stringToHex("LStrike");
+
+const tPulseAssetName = stringToHex("tPulse");
+const tPulseUnit = alwaysSuccessMintValidatorHash + tPulseAssetName;
+const tPulsePoolStakeAssetName = stringToHex("LPulse");
+
 // Reference scripts
-const batchingScriptTxHash = "63fb5c611cedb66a55f367c94f3e1f0263b40f6391a9a74b903f38253884c7b8";
+const batchingScriptTxHash = "1bdcbd9d779f426ecf8a4a5e6b2fea600b80998416d4c3ad005db8bb4ac0c1d4";
 const batchingScriptTxIdx = 0;
-const poolScriptTxHash = "b8fc5e1c3ddd1a10adc307536639c83d9c2928c05732015c045af272d0f8e45c";
+const poolScriptTxHash = "42fde81fd6f9cc66792b16c6f3934e5084216501f9324d900655a1e209b55296";
 const poolScriptTxIdx = 0;
 
 export {
@@ -173,6 +181,12 @@ export {
     testAssetName,
     testUnit,
     poolStakeAssetName,
+    tStrikeAssetName,
+    tStrikeUnit,
+    tStrikePoolStakeAssetName,
+    tPulseAssetName,
+    tPulseUnit,
+    tPulsePoolStakeAssetName,
     // Ref scripts
     batchingScriptTxHash,
     batchingScriptTxIdx,

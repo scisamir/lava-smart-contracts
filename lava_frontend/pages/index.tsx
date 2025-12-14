@@ -9,7 +9,7 @@ import tpHalfBg from "@/assets/tp-halfbg.png";
 import appBg from "@/assets/app-bg.png";
 import { OrderList } from "@/components/home/OrderList";
 import { useEffect, useState } from "react";
-import { fetchUserOrders } from "@/e2e/utils";
+import { fetchUserOrders, getTotalOrderNumbers } from "@/e2e/utils";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { UserOrderType } from "@/lib/types";
 import { BatchOrders } from "@/components/stake/BatchOrders";
@@ -17,6 +17,7 @@ import { BatchOrders } from "@/components/stake/BatchOrders";
 const Index = () => {
 	const { blockchainProvider, walletAddress, walletUtxos, wallet } = useCardanoWallet();
 	const [orders, setOrders] = useState<UserOrderType[]>([]);
+	const [totalOrder, setTotalOrder] = useState({});
 
 	useEffect(() => {
 		if (blockchainProvider) {
@@ -24,6 +25,9 @@ const Index = () => {
 				const userOrders = await fetchUserOrders(blockchainProvider, walletAddress);
 				setOrders(userOrders);
 				console.log("userOrders:", userOrders);
+
+				const orderTotals = await getTotalOrderNumbers(blockchainProvider);
+				setTotalOrder(orderTotals);
 			}
 
 			awaitFetchUserOrders();
@@ -71,7 +75,7 @@ const Index = () => {
 					<StatsSection />
 					<StakingCard />
 					<OrderList orders={orders} />
-					<BatchOrders orders={orders} />
+					<BatchOrders totalOrder={totalOrder} />
 				</div>
 			</section>
 

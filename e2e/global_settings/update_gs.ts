@@ -1,9 +1,8 @@
 import { mConStr0, mConStr1, mScriptAddress, stringToHex } from "@meshsdk/core";
-import { alwaysSuccessMintValidatorHash, blockchainProvider, GlobalSettingsNft, multiSigAddress, multiSigCbor, multisigHash, multiSigUtxos, testAssetName, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1Utxos, wallet1VK, wallet2 } from "../setup.js";
+import { alwaysSuccessMintValidatorHash, blockchainProvider, GlobalSettingsNft, multiSigAddress, multiSigCbor, multisigHash, multiSigUtxos, testAssetName, tPulseAssetName, tStrikeAssetName, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1Utxos, wallet1VK, wallet2 } from "../setup.js";
 import { GlobalSettingsAddr, GlobalSettingsHash, GlobalSettingsValidatorScript } from "./validator.js";
 import { MintingHash } from "../mint/validator.js";
 
-const newAssetName = stringToHex("newTest");
 const AllowedAssets = [
   mConStr0([
     mConStr0([]),
@@ -14,7 +13,13 @@ const AllowedAssets = [
   mConStr0([
     mConStr0([]),
     alwaysSuccessMintValidatorHash,
-    newAssetName,
+    tStrikeAssetName,
+    1_000_000,
+  ]),
+  mConStr0([
+    mConStr0([]),
+    alwaysSuccessMintValidatorHash,
+    tPulseAssetName,
     1_000_000,
   ]),
 ];
@@ -39,7 +44,6 @@ const GlobalSettingsDatum = mConStr0([
   alwaysSuccessMintValidatorHash, // stake_validator_hash
   alwaysSuccessMintValidatorHash, // rewards_validator_hash
 ]);
-
 
 if (!multiSigCbor) {
     throw new Error("multisig cbor doesn't exist");

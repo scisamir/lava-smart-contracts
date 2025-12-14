@@ -1,5 +1,4 @@
-import { IWallet, mConStr0, mConStr1, MeshTxBuilder, mPubKeyAddress, UTxO } from "@meshsdk/core";
-import { setupE2e } from "../setup";
+import { IWallet, mConStr0, mConStr1, MeshTxBuilder, mPubKeyAddress, stringToHex, UTxO } from "@meshsdk/core";
 import { OrderValidatorAddr } from "./validator";
 import { MintingHash } from "../mint/validator";
 
@@ -11,8 +10,8 @@ export const createRedeemOrder = async (
     walletVK: string,
     walletSK: string,
     amount: number,
+    tokenName: string,
 ) => {
-    const { poolStakeAssetName } = setupE2e();
     const stAmount = amount; // to lovelaces
     // const depositAmount = amount * 1_000_000; // to lovelaces
     const orderType = mConStr1([stAmount]);
@@ -28,7 +27,7 @@ export const createRedeemOrder = async (
             OrderValidatorAddr,
             [
                 { unit: "lovelace", quantity: String(2_000_000) },
-                { unit: MintingHash + poolStakeAssetName, quantity: String(stAmount) },
+                { unit: MintingHash + stringToHex(tokenName), quantity: String(stAmount) },
             ]
         )
         .txOutInlineDatumValue(orderDatum)
