@@ -8,6 +8,7 @@ import { cancelOrder } from "@/e2e/order/cancel_order";
 import { OrderListProps, UserOrderType } from "@/lib/types";
 import { useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
+import { tokenName } from "@meshsdk/core";
 
 export const OrderList = ({ orders }: OrderListProps) => {
   if (orders.length === 0) return null;
@@ -91,7 +92,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
             className="flex items-center justify-between bg-muted/40 rounded-lg p-3"
           >
             <div>
-              <p className="font-semibold">{order.amount.toFixed(2)} {order.isOptIn ? "test" : "stTest"} <span className="text-gray-400">({order.isOptIn ? "OptIn Order" : "Redeem Order"})</span></p>
+              <p className="font-semibold">{order.amount.toFixed(2)} {order.tokenName} <span className="text-gray-400">({order.isOptIn ? "OptIn Order" : "Redeem Order"})</span></p>
               <a
                 href={`https://preprod.cardanoscan.io/transaction/${order.txHash}`}
                 target="_blank"

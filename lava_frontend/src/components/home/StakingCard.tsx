@@ -9,11 +9,13 @@ import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from 'react-toastify';
 import { createOptInOrder } from "@/e2e/order/create_opt_in_order";
 import { createRedeemOrder } from "@/e2e/order/create_redeem_order";
+import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
 
 export const StakingCard = () => {
   const [amount, setAmount] = useState<string>("0.00");
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isSwapped, setIsSwapped] = useState<boolean>(false);
+  const [selectedToken, setSelectedToken] = useState<TokenPair>(TOKEN_PAIRS[1]);
 
   const { connected, txBuilder, blockchainProvider, wallet, walletAddress, walletVK, walletSK, walletUtxos, balance } = useCardanoWallet();
 
@@ -60,7 +62,7 @@ export const StakingCard = () => {
   };
   const toastFailure = (err: any) => toast.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
 
-  const handleCreateOptInOrder = async (amount: number) => {
+  const handleCreateOptInOrder = async (amount: number, tokenName: string) => {
     setIsProcessing(true);
     console.log("txBuilder:", txBuilder);
     console.log("blockchainProvider:", blockchainProvider);
@@ -81,6 +83,7 @@ export const StakingCard = () => {
         walletVK,
         walletSK,
         amount,
+        tokenName,
       );
       txBuilder.reset();
     } catch (e) {
@@ -100,7 +103,7 @@ export const StakingCard = () => {
     });
   }
 
-  const handleCreateRedeemOrder = async (amount: number) => {
+  const handleCreateRedeemOrder = async (amount: number, tokenName: string) => {
     setIsProcessing(true);
     console.log("txBuilder:", txBuilder);
     console.log("blockchainProvider:", blockchainProvider);
@@ -121,6 +124,7 @@ export const StakingCard = () => {
         walletVK,
         walletSK,
         amount,
+        tokenName,
       );
       txBuilder.reset();
     } catch (e) {
@@ -128,7 +132,7 @@ export const StakingCard = () => {
       setIsProcessing(false);
       toastFailure(e);
       console.error("e tx:", e);
-      console.log("Err in handle create order");
+      console.log("Err in handle create redeem order");
       return;
     }
 
@@ -136,7 +140,7 @@ export const StakingCard = () => {
       txBuilder.reset();
       setIsProcessing(false);
       toastSuccess(txHash);
-      console.log("Create order tx hash:", txHash);
+      console.log("Create redeem order tx hash:", txHash);
     });
   }
 
@@ -166,7 +170,7 @@ export const StakingCard = () => {
               </div>
               <div className="flex items-center justify-between flex-1">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-14 h-14 rounded-full bg-gradient-lava flex items-center justify-center shadow-glow p-2 flex-shrink-0">
                     {isSwapped ?
                       <img
                         src={LAVA_LOGO.src}
@@ -176,7 +180,36 @@ export const StakingCard = () => {
                       <span className="text-2xl">t</span>
                     }
                   </div>
-                  <span className="font-semibold text-lg">{isSwapped ? "stTest" : "test"}</span>
+                  <div className="relative">
+                    {/* Fake dropdown (what user sees) */}
+                    <span className="font-semibold text-lg cursor-pointer flex items-center gap-1">
+                      {isSwapped ? selectedToken.derivative : selectedToken.base}
+                      <svg
+                        className="w-4 h-4 opacity-70"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </span>
+
+                    {/* Real select (hidden but clickable) */}
+                    <select
+                      value={selectedToken.base}
+                      onChange={(e) => {
+                        const token = TOKEN_PAIRS.find(t => t.base === e.target.value);
+                        if (token) setSelectedToken(token);
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    >
+                      {TOKEN_PAIRS.map(token => (
+                        <option key={token.base} value={token.base} className="text-black">
+                          {token.base}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="flex flex-col items-end">
                   <input
@@ -225,7 +258,10 @@ export const StakingCard = () => {
                       />
                     }
                   </div>
-                  <span className="font-semibold text-lg">{isSwapped ? "test" : "stTest"}</span>
+                  <span className="font-semibold text-lg">
+                    {isSwapped ? selectedToken.base : selectedToken.derivative}
+                  </span>
+                  {/* <span className="font-semibold text-lg">{isSwapped ? "test" : "stTest"}</span> */}
                 </div>
                 <div className="flex flex-col items-end">
                   <p className="text-2xl font-bold">
@@ -278,8 +314,8 @@ export const StakingCard = () => {
           style={{ background: 'linear-gradient(181.52deg, #FFD13F -26.73%, #F41B00 98.71%)' }}
           disabled={!connected || isProcessing || numAmount === 0}
           onClick={async () => isSwapped ?
-            await handleCreateRedeemOrder(numAmount) :
-            await handleCreateOptInOrder(numAmount)
+            await handleCreateRedeemOrder(numAmount, selectedToken.derivative) :
+            await handleCreateOptInOrder(numAmount, selectedToken.base)
           }
         >
           {isProcessing

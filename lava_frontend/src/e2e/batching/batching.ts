@@ -10,6 +10,10 @@ import { MintingHash, MintingValidatorScript } from "../mint/validator";
 export const batchingTx = async (
     blockchainProvider: BlockchainProviderType,
     txBuilder: MeshTxBuilder,
+    poolSAN: string,
+    orderAssetName: string,
+    orderOptInUnit: string,
+    orderOptOutUnit: string,
 ) => {
     const walletPassphrase = process.env.NEXT_PUBLIC_WALLET_PASSPHRASE_ONE;
     if (!walletPassphrase) {
@@ -29,20 +33,28 @@ export const batchingTx = async (
 
     const walletUtxos = await wallet.getUtxos();
 
-    const walletCollateral = walletUtxos.filter(utxo => Number(utxo.output.amount[0].quantity) >= 8000000)[0];
+    const walletCollateral = walletUtxos.filter(utxo => Number(utxo.output.amount[0].quantity) >= 12000000 && utxo.output.amount.length <= 4)[0];
     if (!walletCollateral) {
         throw new Error('No collateral utxo found');
     }
 
     const { pubKeyHash: walletVK } = deserializeAddress(walletAddress);
 
-    const { alwaysSuccessMintValidatorHash, testUnit, batchingScriptTxHash, batchingScriptTxIdx, LavaPoolNftName, MinPoolLovelace, multiSigCbor, poolScriptTxHash, poolScriptTxIdx, poolStakeAssetName, testAssetName } = setupE2e();
+    const { alwaysSuccessMintValidatorHash, batchingScriptTxHash, batchingScriptTxIdx, LavaPoolNftName, MinPoolLovelace, multiSigCbor, poolScriptTxHash, poolScriptTxIdx } = setupE2e();
 
     const orderUtxos = await blockchainProvider.fetchAddressUTxOs(OrderValidatorAddr);
-    const poolUtxo = (await blockchainProvider.fetchAddressUTxOs(PoolValidatorAddr))[0];
-    if (orderUtxos.length === 0) {
-        throw new Error('No orders to batch');
-    }
+    const poolUtxos = await blockchainProvider.fetchAddressUTxOs(PoolValidatorAddr);
+
+    const poolUtxo = poolUtxos.find(utxo => {
+        const poolPlutusData = utxo.output.plutusData;
+        if (!poolPlutusData) throw new Error('No plutus data');
+        const poolDatum = deserializeDatum<PoolDatumType>(poolPlutusData);
+
+        const fpoolSAN = poolDatum.fields[6].bytes;
+
+        return (fpoolSAN === poolSAN);
+    });
+    if (!poolUtxo) throw new Error('Pool UTxO not found!');
 
     let totalMintAmount = 0;
     const filteredOrderUtxos = orderUtxos.filter(utxo => {
@@ -58,17 +70,25 @@ export const batchingTx = async (
         const mintAmount = isOptIn ? mintAmtDatum : -1 * mintAmtDatum;
         console.log("mintAmtDatum:", mintAmtDatum);
 
-        totalMintAmount += mintAmount;
+        let isRightOrder = false;
+        const utxoAmount = utxo.output.amount;
+        for (let i = 0; i < utxoAmount.length; i++) {
+            const utxoAsset = utxoAmount[i];
+            if (utxoAsset.unit === orderOptInUnit || utxoAsset.unit === orderOptOutUnit) {
+                isRightOrder = true;
+                totalMintAmount += mintAmount;
+                break;
+            }
+        }
 
-        return mintAmtDatum > 0
+        return (mintAmtDatum > 0 && isRightOrder)
     })
+    if (!filteredOrderUtxos) throw new Error('No order UTxOs to batch!');
     const noOfUtxosToBatch = 10;
     const batchingOrderUtxos = filteredOrderUtxos.slice(0, noOfUtxosToBatch);
 
     let orderInputs = txBuilder
 
-    const rMem = 150000;
-    const rSteps = 100000000;
     for (let i = 0; i < batchingOrderUtxos.length; i++) {
         const orderUtxo = batchingOrderUtxos[i];
 
@@ -83,7 +103,7 @@ export const batchingTx = async (
             )
             .txInScript(OrderValidatorScript)
             .spendingReferenceTxInInlineDatumPresent()
-            .spendingReferenceTxInRedeemerValue("", "Mesh", { mem: rMem, steps: rSteps })
+            .spendingReferenceTxInRedeemerValue("")
     }
 
     const BatchingRedeemer = mConStr0([
@@ -91,14 +111,14 @@ export const batchingTx = async (
         mConStr0([ // batching asset
             mConStr0([]),
             alwaysSuccessMintValidatorHash,
-            testAssetName,
+            orderAssetName,
             1_000_000,
     ]),
     ]);
 
     const gsUtxo = (await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr))[0];
 
-    const poolAssetAmount = poolUtxo.output.amount.find(amt => amt.unit === testUnit)?.quantity;
+    const poolAssetAmount = poolUtxo.output.amount.find(amt => amt.unit === orderOptInUnit)?.quantity;
     const updatedPoolAssetAmount = Number(poolAssetAmount ?? "0") + totalMintAmount;
 
     const poolPlutusData = poolUtxo.output.plutusData;
@@ -119,7 +139,7 @@ export const batchingTx = async (
     mConStr0([
         mConStr0([]),
         alwaysSuccessMintValidatorHash,
-        testAssetName,
+        orderAssetName,
         1_000_000,
     ]);
     const upatedPoolDatum = mConStr0([
@@ -129,7 +149,7 @@ export const batchingTx = async (
     poolDatum.fields[3].int, // exchange_rate
     poolDatum.fields[4].int, // total_rewards_accrued
     poolAsset,
-    poolStakeAssetName,
+    poolSAN,
     mConStr1([]),
     ]);
 
@@ -140,7 +160,7 @@ export const batchingTx = async (
         .withdrawalPlutusScriptV3()
         .withdrawal(OrderValidatorRewardAddress, "0")
         .withdrawalScript(OrderValidatorScript)
-        .withdrawalRedeemerValue(mConStr1([]), "Mesh", { mem: rMem, steps: rSteps })
+        .withdrawalRedeemerValue(mConStr1([]))
         // spend pool utxo
         .spendingPlutusScriptV3()
         .txIn(
@@ -151,12 +171,12 @@ export const batchingTx = async (
         )
         .spendingTxInReference(poolScriptTxHash, poolScriptTxIdx, undefined, PoolValidatorHash)
         .spendingReferenceTxInInlineDatumPresent()
-        .spendingReferenceTxInRedeemerValue(mConStr0([]), "Mesh", { mem: rMem, steps: rSteps })
+        .spendingReferenceTxInRedeemerValue(mConStr0([]))
         // withdraw zero (pool batching)
         .withdrawalPlutusScriptV3()
         .withdrawal(BatchingRewardAddress, "0")
         .withdrawalTxInReference(batchingScriptTxHash, batchingScriptTxIdx, undefined, BatchingHash)
-        .withdrawalRedeemerValue(BatchingRedeemer, "Mesh", { mem: rMem, steps: rSteps })
+        .withdrawalRedeemerValue(BatchingRedeemer)
 
     const mintTx = unsignedTx1
 
@@ -164,9 +184,9 @@ export const batchingTx = async (
         mintTx
             // mint stake tokens
             .mintPlutusScriptV3()
-            .mint(String(totalMintAmount), MintingHash, poolStakeAssetName)
+            .mint(String(totalMintAmount), MintingHash, poolSAN)
             .mintingScript(MintingValidatorScript)
-            .mintRedeemerValue("", "Mesh", { mem: rMem, steps: rSteps })
+            .mintRedeemerValue("")
     }
 
     let orderOutputs = mintTx
@@ -194,10 +214,10 @@ export const batchingTx = async (
             // tx out (user order output)
             .txOut(orderReceiverAddr, mintAmount > 0 ? [
                 { unit: "lovelace", quantity: orderLovelaceAmount },
-                { unit: MintingHash + poolStakeAssetName, quantity: String(mintAmount) },
+                { unit: orderOptOutUnit, quantity: String(mintAmount) },
             ] : [
                 { unit: "lovelace", quantity: orderLovelaceAmount },
-                { unit: testUnit, quantity: String(-1 * mintAmount) },
+                { unit: orderOptInUnit, quantity: String(-1 * mintAmount) },
             ])
     }
 
@@ -206,7 +226,7 @@ export const batchingTx = async (
         .txOut(PoolValidatorAddr, updatedPoolAssetAmount > 0 ? [
             { unit: "lovelace", quantity: String(MinPoolLovelace) },
             { unit: PoolValidatorHash + LavaPoolNftName, quantity: "1" },
-            { unit: testUnit, quantity: String(updatedPoolAssetAmount) }
+            { unit: orderOptInUnit, quantity: String(updatedPoolAssetAmount) }
         ] : [
             { unit: "lovelace", quantity: String(MinPoolLovelace) },
             { unit: PoolValidatorHash + LavaPoolNftName, quantity: "1" },
@@ -218,14 +238,16 @@ export const batchingTx = async (
             walletCollateral.input.txHash,
             walletCollateral.input.outputIndex,
         )
-        .setTotalCollateral("6500000")
+        .setTotalCollateral("10000000")
         .requiredSignerHash(walletVK)
         .changeAddress(walletAddress)
         .selectUtxosFrom(walletUtxos)
         .setFee(String(3766409 + (500000 * batchingOrderUtxos.length)))
         .complete()
 
-    const signedTx = await wallet.signTx(unsignedTx, true);
+    console.log("batchingOrderUtxos.length:", batchingOrderUtxos.length);
+
+    const signedTx = await wallet.signTx(unsignedTx);
 
     const txHash = await wallet.submitTx(signedTx);
 
