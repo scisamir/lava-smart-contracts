@@ -37,9 +37,8 @@ const Portfolio = () => {
       };
     });
 
-  /* =======================
-     Portfolio Calculations
-     ======================= */
+  
+     //Portfolio Calculations
 
   const netWorth = assets.reduce(
     (sum, asset) => sum + asset.valueNumber,
