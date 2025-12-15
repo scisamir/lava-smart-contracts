@@ -9,88 +9,101 @@ import tpHalfBg from "@/assets/tp-halfbg.png";
 import appBg from "@/assets/app-bg.png";
 import { OrderList } from "@/components/home/OrderList";
 import { useEffect, useState } from "react";
-import { fetchUserOrders, getTotalOrderNumbers } from "@/e2e/utils";
+import {
+  fetchPoolInfo,
+  fetchUserOrders,
+  getTotalOrderNumbers,
+} from "@/e2e/utils";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { UserOrderType } from "@/lib/types";
 import { BatchOrders } from "@/components/stake/BatchOrders";
 
 const Index = () => {
-	const { blockchainProvider, walletAddress, walletUtxos, wallet } = useCardanoWallet();
-	const [orders, setOrders] = useState<UserOrderType[]>([]);
-	const [totalOrder, setTotalOrder] = useState({});
+  const { blockchainProvider, walletAddress, walletUtxos, wallet } =
+    useCardanoWallet();
+  const [orders, setOrders] = useState<UserOrderType[]>([]);
+  const [totalOrder, setTotalOrder] = useState({});
 
-	useEffect(() => {
-		if (blockchainProvider) {
-			const awaitFetchUserOrders = async () => {
-				const userOrders = await fetchUserOrders(blockchainProvider, walletAddress);
-				setOrders(userOrders);
-				console.log("userOrders:", userOrders);
+  useEffect(() => {
+    if (blockchainProvider) {
+      const awaitFetchUserOrders = async () => {
+        const userOrders = await fetchUserOrders(
+          blockchainProvider,
+          walletAddress
+        );
+        setOrders(userOrders);
+        console.log("userOrders:", userOrders);
 
-				const orderTotals = await getTotalOrderNumbers(blockchainProvider);
-				setTotalOrder(orderTotals);
-			}
+        const orderTotals = await getTotalOrderNumbers(blockchainProvider);
+        setTotalOrder(orderTotals);
 
-			awaitFetchUserOrders();
+        const poolInfo = await fetchPoolInfo(blockchainProvider);
+        console.log("poolInfo:", poolInfo);
+      };
 
-			const interval = setInterval(awaitFetchUserOrders, 10000);
+      awaitFetchUserOrders();
 
-			return () => clearInterval(interval);
-		}
-	}, [blockchainProvider, walletAddress]);
+      const interval = setInterval(awaitFetchUserOrders, 10000);
 
-	return (
-		<div className="index-container bg-background flex flex-col min-h-screen">
-				<Navigation />
+      return () => clearInterval(interval);
+    }
+  }, [blockchainProvider, walletAddress]);
 
-				<div className="flex-1">
-				  {/* Hero Section */}
-				  <section className="relative pt-32 pb-20 overflow-hidden">
-								<div className="absolute inset-0 pointer-events-none">
-									<div
-										className="absolute top-0 left-0 right-0 h-1/2 opacity-30"
-										style={{
-											backgroundImage: `url(${tpHalfBg.src})`,
-											backgroundSize: 'cover',
-											backgroundPosition: 'center',
-										}}
-									/>
-									<div
-										className="absolute left-0 right-0 top-1/2 bottom-0 opacity-30"
-										style={{
-											backgroundImage: `url(${appBg.src})`,
-											backgroundSize: 'cover',
-											backgroundPosition: 'center',
-										}}
-									/>
-								</div>
+  return (
+    <div className="index-container bg-background flex flex-col min-h-screen">
+      <Navigation />
 
-				<div className="container mx-auto px-4 relative z-10">
-					<div className="text-center max-w-4xl mx-auto mb-16">
-						  <h1 className="text-5xl md:text-7xl font-bold mb-6">
-										Powering <span className="text-gradient-lava">Liquid Staking</span>
-										<br />on Cardano
-									</h1>
-					</div>
+      <div className="flex-1">
+        {/* Hero Section */}
+        <section className="relative pt-32 pb-20 overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none">
+            <div
+              className="absolute top-0 left-0 right-0 h-1/2 opacity-30"
+              style={{
+                backgroundImage: `url(${tpHalfBg.src})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
+            <div
+              className="absolute left-0 right-0 top-1/2 bottom-0 opacity-30"
+              style={{
+                backgroundImage: `url(${appBg.src})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
+          </div>
 
-					<StatsSection />
-					<StakingCard />
-					<OrderList orders={orders} />
-					<BatchOrders totalOrder={totalOrder} />
-				</div>
-			</section>
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="text-center max-w-4xl mx-auto mb-16">
+              <h1 className="text-5xl md:text-7xl font-bold mb-6">
+                Powering{" "}
+                <span className="text-gradient-lava">Liquid Staking</span>
+                <br />
+                on Cardano
+              </h1>
+            </div>
 
-				<ProtocolsSection />
-				<SecuritySection />
-				<CTASection />
-			</div>
+            <StatsSection />
+            <StakingCard />
+            <OrderList orders={orders} />
+            <BatchOrders totalOrder={totalOrder} />
+          </div>
+        </section>
 
-			<Footer />
+        <ProtocolsSection />
+        <SecuritySection />
+        <CTASection />
+      </div>
 
-			{/* Use flex layout + `min-h-screen` on the root so desktop pages resize dynamically
+      <Footer />
+
+      {/* Use flex layout + `min-h-screen` on the root so desktop pages resize dynamically
 				Footer will naturally sit at the bottom because the main content uses `flex-1`.
 				Removed hard-coded pixel min-heights to allow the page to fit large screens. */}
-		</div>
-	);
+    </div>
+  );
 };
 
 export default Index;

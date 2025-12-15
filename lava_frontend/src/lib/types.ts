@@ -1,9 +1,9 @@
 export type UserOrderType = {
-  amount: number,
-  txHash: string,
-  isOptIn: boolean,
-  tokenName: string,
-}
+  amount: number;
+  txHash: string;
+  isOptIn: boolean;
+  tokenName: string;
+};
 
 export interface OrderListProps {
   orders: UserOrderType[];
@@ -19,3 +19,9 @@ export const TOKEN_PAIRS: TokenPair[] = [
   { base: "tStrike", derivative: "LStrike" },
   { base: "tPulse", derivative: "LPulse" },
 ];
+
+export type PoolInfo = {
+  name: string;
+  isPoolOpen: boolean;
+  quantity: number;
+};
