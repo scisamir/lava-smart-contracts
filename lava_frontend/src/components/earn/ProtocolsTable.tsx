@@ -18,6 +18,8 @@ import {
   IAGON_LOGO,
   CIRCLE_LOGO,
 } from "@/lib/images";
+import { useCardanoWallet } from "@/hooks/useCardanoWallet";
+import Link from "next/link";
 
 const protocols = [
   {
@@ -73,6 +75,20 @@ const protocols = [
 ];
 
 export const ProtocolsTable = () => {
+  const { poolInfo } = useCardanoWallet();
+  const poolInfoExtended = poolInfo.map((info) => {
+    return {
+      ...info,
+      logo: FLUIDTOKENS_LOGO.src,
+      color: "bg-cyan-600",
+      rewards: [IAGON_LOGO.src, CIRCLE_LOGO.src, FLUIDTOKENS_LOGO.src],
+      tvl: "$1.89M",
+      borrowRate: "0.04% APY",
+      supplyRate: "0.02% APY",
+      category: "Yield",
+    };
+  });
+
   return (
     <div className="space-y-6">
       {/* HEADER */}
@@ -124,7 +140,7 @@ export const ProtocolsTable = () => {
           </TableHeader>
 
           <TableBody>
-            {protocols.map((p, index) => (
+            {poolInfoExtended.map((p, index) => (
               <TableRow
                 key={index}
                 className="border-border hover:bg-muted/50 transition-colors"
@@ -134,9 +150,15 @@ export const ProtocolsTable = () => {
                     <div
                       className={`w-10 h-10 rounded-full ${p.color} flex items-center justify-center overflow-hidden`}
                     >
-                      <img src={p.logo} alt={p.name} className="w-8 h-8 object-cover rounded-full" />
+                      <img
+                        src={p.logo}
+                        alt={p.name}
+                        className="w-8 h-8 object-cover rounded-full"
+                      />
                     </div>
-                    <span className="font-semibold ml-2">{p.name}</span>
+                    <Link href="/stake">
+                      <span className="font-semibold ml-2">{p.name}</span>
+                    </Link>
                   </div>
                 </TableCell>
 
@@ -145,9 +167,21 @@ export const ProtocolsTable = () => {
 
                 <TableCell className="align-middle">
                   <div className="flex items-center justify-center">
-                    <img src={p.rewards[0]} alt="reward-1" className="w-6 h-6 rounded-full border-2 border-white" />
-                    <img src={p.rewards[1]} alt="reward-2" className="-ml-2 w-6 h-6 rounded-full border-2 border-white" />
-                    <img src={p.rewards[2]} alt="reward-3" className="-ml-2 w-6 h-6 rounded-full border-2 border-white" />
+                    <img
+                      src={p.rewards[0]}
+                      alt="reward-1"
+                      className="w-6 h-6 rounded-full border-2 border-white"
+                    />
+                    <img
+                      src={p.rewards[1]}
+                      alt="reward-2"
+                      className="-ml-2 w-6 h-6 rounded-full border-2 border-white"
+                    />
+                    <img
+                      src={p.rewards[2]}
+                      alt="reward-3"
+                      className="-ml-2 w-6 h-6 rounded-full border-2 border-white"
+                    />
                   </div>
                 </TableCell>
 
@@ -165,24 +199,45 @@ export const ProtocolsTable = () => {
       {/* MOBILE CARDS */}
       <div className="space-y-4 md:hidden mt-6">
         {protocols.map((p, index) => (
-          <Card key={index} className="p-4 rounded-xl border border-border bg-card">
+          <Card
+            key={index}
+            className="p-4 rounded-xl border border-border bg-card"
+          >
             <div className="flex justify-between gap-6">
               {/* LEFT SIDE */}
               <div className="flex flex-col space-y-3">
                 <div className="flex items-center gap-2">
-                    <div className={`w-10 h-10 rounded-full ${p.color} flex items-center justify-center overflow-hidden`}>
-                      <img src={p.logo} alt={p.name} className="w-8 h-8 object-cover rounded-full" />
-                    </div>
-                    <span className="font-semibold ml-1">{p.name}</span>
+                  <div
+                    className={`w-10 h-10 rounded-full ${p.color} flex items-center justify-center overflow-hidden`}
+                  >
+                    <img
+                      src={p.logo}
+                      alt={p.name}
+                      className="w-8 h-8 object-cover rounded-full"
+                    />
+                  </div>
+                  <span className="font-semibold ml-1">{p.name}</span>
                 </div>
 
                 <div>
                   <p className="text-xs text-muted-foreground">Reward</p>
                   <div className="font-medium">
                     <div className="flex items-center">
-                      <img src={p.rewards[0]} alt="reward-1" className="w-6 h-6 rounded-full border-2 border-white" />
-                      <img src={p.rewards[1]} alt="reward-2" className="-ml-2 w-6 h-6 rounded-full border-2 border-white" />
-                      <img src={p.rewards[2]} alt="reward-3" className="-ml-2 w-6 h-6 rounded-full border-2 border-white" />
+                      <img
+                        src={p.rewards[0]}
+                        alt="reward-1"
+                        className="w-6 h-6 rounded-full border-2 border-white"
+                      />
+                      <img
+                        src={p.rewards[1]}
+                        alt="reward-2"
+                        className="-ml-2 w-6 h-6 rounded-full border-2 border-white"
+                      />
+                      <img
+                        src={p.rewards[2]}
+                        alt="reward-3"
+                        className="-ml-2 w-6 h-6 rounded-full border-2 border-white"
+                      />
                     </div>
                   </div>
                 </div>

@@ -23,5 +23,6 @@ export const TOKEN_PAIRS: TokenPair[] = [
 export type PoolInfo = {
   name: string;
   isPoolOpen: boolean;
-  quantity: number;
+  totalUnderlying: number;
+  totalStAssetsMinted: number;
 };

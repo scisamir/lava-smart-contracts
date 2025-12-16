@@ -9,11 +9,7 @@ import tpHalfBg from "@/assets/tp-halfbg.png";
 import appBg from "@/assets/app-bg.png";
 import { OrderList } from "@/components/home/OrderList";
 import { useEffect, useState } from "react";
-import {
-  fetchPoolInfo,
-  fetchUserOrders,
-  getTotalOrderNumbers,
-} from "@/e2e/utils";
+import { fetchUserOrders, getTotalOrderNumbers } from "@/e2e/utils";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { UserOrderType } from "@/lib/types";
 import { BatchOrders } from "@/components/stake/BatchOrders";
@@ -36,9 +32,6 @@ const Index = () => {
 
         const orderTotals = await getTotalOrderNumbers(blockchainProvider);
         setTotalOrder(orderTotals);
-
-        const poolInfo = await fetchPoolInfo(blockchainProvider);
-        console.log("poolInfo:", poolInfo);
       };
 
       awaitFetchUserOrders();

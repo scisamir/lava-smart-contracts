@@ -11,6 +11,8 @@ import {
   stringToHex,
   UTxO,
 } from "@meshsdk/core";
+import { fetchPoolInfo } from "@/e2e/utils";
+import { PoolInfo } from "@/lib/types";
 
 const LOCAL_STORAGE_KEY = "connectedWallet";
 
@@ -30,6 +32,7 @@ export function useCardanoWallet() {
   const [tokenBalances, setTokenBalances] = useState<{ [key: string]: number }>(
     {}
   );
+  const [poolInfo, setPoolInfo] = useState<PoolInfo[]>([]);
 
   // Helper to get token balance
   const getTokenBalance = (
@@ -133,6 +136,14 @@ export function useCardanoWallet() {
             "LPulse"
           );
 
+          const poolInfoData = await fetchPoolInfo(bp);
+
+          setTxBuilder(tb);
+          setBlockchainProvider(bp);
+          setWalletVK(walletVK);
+          setWalletSK(walletSK);
+          setWalletCollateral(walletCollateral);
+          setWalletUtxos(walletUtxos);
           setTokenBalances({
             ...tokenBalances,
             test,
@@ -142,15 +153,7 @@ export function useCardanoWallet() {
             tPulse,
             LPulse,
           });
-
-          console.log(tokenBalances);
-
-          setTxBuilder(tb);
-          setBlockchainProvider(bp);
-          setWalletVK(walletVK);
-          setWalletSK(walletSK);
-          setWalletCollateral(walletCollateral);
-          setWalletUtxos(walletUtxos);
+          setPoolInfo(poolInfoData);
         } catch (err) {
           console.error("Error fetching wallet data:", err);
         }
@@ -159,6 +162,7 @@ export function useCardanoWallet() {
         setBalance(0);
         setWalletUtxos([]);
         setTokenBalances({});
+        setPoolInfo([]);
         localStorage.removeItem(LOCAL_STORAGE_KEY);
         return;
       }
@@ -193,5 +197,6 @@ export function useCardanoWallet() {
     walletCollateral,
     walletUtxos,
     getTokenBalance,
+    poolInfo,
   };
 }

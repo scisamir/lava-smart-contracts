@@ -159,7 +159,8 @@ const fetchPoolInfo = async (blockchainProvider: BlockchainProviderType) => {
     const newPoolInfo: PoolInfo = {
       name: hexToString(poolDatum.fields[6].bytes),
       isPoolOpen: Number(poolDatum.fields[7].constructor) === 1 ? true : false,
-      quantity: Number(poolDatum.fields[2].int),
+      totalUnderlying: Number(poolDatum.fields[2].int),
+      totalStAssetsMinted: Number(poolDatum.fields[1].int),
     };
 
     poolInfo.push(newPoolInfo);
