@@ -14,9 +14,22 @@ const Earn = () => {
 						{/* Left Side - Title */}
 						<div className="lg:col-span-2">
 							<h1 className="text-5xl md:text-7xl font-bold mb-6">
-								Yield <span className="text-gradient-lava">Farming</span>
+								YIELD <span className="text-gradient-lava">FARMING</span>
 							</h1>
-							<div className="space-y-2 text-muted-foreground">
+							<div
+								className="space-y-2 text-muted-foreground"
+								style={{
+									fontFamily:
+										'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+									fontWeight: 400,
+									fontStyle: 'normal',
+									fontSize: '18px',
+									lineHeight: '150%',
+									letterSpacing: '-0.02em',
+									textAlign: 'left',
+									//leadingTrim: 'none',
+								}}
+							>
 								<p>Use Lava assets in DeFi.</p>
 								<p>Consider the added third party risks.</p>
 							</div>

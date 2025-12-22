@@ -2,10 +2,13 @@ import { SHIELD_ICON, AUDITO_LOGO } from "@/lib/images";
 
 export const SecuritySection = () => {
   // Single auditor (UTxO Company)
-  const auditor = { name: "UTxO Company", logo: AUDITO_LOGO.src };
+  const auditor = { name: "UTxO COMPANY", logo: AUDITO_LOGO.src };
 
   return (
-    <section className="py-20 bg-background">
+    <section
+      className="py-20 bg-background"
+      style={{ background: 'var(--Color, #000000)' }}
+    >
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="flex justify-center lg:justify-start order-2 lg:order-1">
@@ -18,8 +21,8 @@ export const SecuritySection = () => {
 
           <div className="order-1 lg:order-2">
             <h2 className="text-4xl md:text-5xl font-bold mb-8">
-              Secured by industry
-              <br />leading <span className="text-gradient-lava">auditors</span>
+              SECURED BY INDUSTRY
+              <br />LEADING <span className="text-gradient-lava">AUDITORS</span>
             </h2>
 
             <div className="space-y-6">
@@ -43,7 +46,7 @@ export const SecuritySection = () => {
                   </div>
                 </a>
 
-                <p className="text-sm text-muted-foreground">Security auditor</p>
+                <p className="text-sm text-muted-foreground">SECURITY AUDITOR</p>
               </div>
             </div>
           </div>

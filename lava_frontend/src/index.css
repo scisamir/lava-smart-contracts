@@ -5,6 +5,19 @@
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+
+/* Load Pixelify Sans from Google Fonts (valid weight syntax). */
+/* Load the Pixelify Sans variable font placed in `public/` */
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url('/PixelifySans-VariableFont_wght.ttf') format('truetype');
+  /* Variable font weight range */
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 @layer base {
   :root {
@@ -17,7 +30,7 @@ All colors MUST be HSL.
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 14 100% 57%;
+    --primary: 3 64% 54%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 33 100% 50%;
@@ -39,7 +52,8 @@ All colors MUST be HSL.
     --radius: 0.75rem;
 
     --lava-orange: 14 100% 57%;
-    --lava-red: 9 100% 50%;
+    --lava-red: 3 64% 54%;
+    --Color-6: #D5463E;
     --lava-yellow: 33 100% 50%;
     
     --glow-sm: 0 4px 20px hsl(var(--lava-orange) / 0.3);
@@ -55,6 +69,17 @@ All colors MUST be HSL.
 
   body {
     @apply text-foreground;
+    background: var(--Color, #000000);
+  }
+
+  /* Default typography for general texts (Pixelify Sans) */
+  :root, body {
+    font-family: "Pixelify Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    font-style: normal; /* 'Regular' */
+    /* leading-trim is experimental but included per design spec */
+    leading-trim: none;
+    line-height: 100%;
+    letter-spacing: -2%;
   }
 }
 
@@ -70,11 +95,16 @@ All colors MUST be HSL.
 
 @layer utilities {
   .text-gradient-lava {
-    background: linear-gradient(181.52deg, #FFD13F -26.73%, #F41B00 98.71%);
+    /* Use the requested vertical lava gradient as a text fill (not a button/pill).
+       This keeps the span inline and prevents button-like padding/rounding. */
+    background: linear-gradient(180deg, #D5463E 58.17%, #D5463E 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
+    display: inline;
+    padding: 0;
+    border-radius: 0;
   }
 }
 
@@ -83,7 +113,8 @@ All colors MUST be HSL.
 @layer components {
   .app-bg-wrapper {
     position: relative;
-    min-height: 100vh;
+    /* allow the wrapper to size to its content so it can be used for
+       rectangular backgrounds around specific sections (not full viewport) */
   }
 
   .app-bg-wrapper::before {
@@ -94,7 +125,7 @@ All colors MUST be HSL.
     background-repeat: no-repeat;
     background-size: cover;
     background-position: center;
-    filter: brightness(0.50);
+    opacity: 0.15;
     z-index: 0;
   }
 
@@ -103,4 +134,121 @@ All colors MUST be HSL.
     position: relative;
     z-index: 1;
   }
+
+  /* Colored text utility (use for highlighted/colored labels) */
+  .colored-text {
+    background: var(--Color-6, #D5463E) !important;
+    color: white !important;
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.25rem;
+  }
+
+  /* Exclude tables and card content from the global Pixelify styles so their
+     typography remains unchanged per request */
+  /* Exclude tables and card-like containers from the global Pixelify styles
+     Use attribute selectors to catch Tailwind generated class names like
+     `bg-card/80` and similar. `!important` ensures these rules win over
+     inherited body font declarations. */
+  table,
+  table th,
+  table td,
+  [class*="bg-card"],
+  [class*="bg-card"] *,
+  [class*=" card"],
+  [class*="card"],
+  [class*="card"] * {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial !important;
+    line-height: normal !important;
+    letter-spacing: normal !important;
+  }
+
+  /* Small lorem helper class for inter-based small text */
+  .lorem {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 16px;
+    leading-trim: none;
+    line-height: 150%;
+    letter-spacing: -2%;
+  }
+
+  /* Utility to opt-out of Pixelify Sans (use system font) */
+  .no-pixelify {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial !important;
+    line-height: normal !important;
+    letter-spacing: normal !important;
+  }
+
+  /* Default native button tag styles: apply lava red unless overridden by a
+     more specific utility class (e.g. `bg-gradient-lava`, or explicit bg-* classes). */
+  button {
+    background: var(--Color-6, #D5463E);
+    color: white;
+    border: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+  }
+
+  /* Force all buttons and elements acting as buttons to use the lava-red
+     background. This intentionally overrides gradient/background utilities,
+     inline styles, and other classes so every interactive button appears
+     with `--Color-6`. */
+  button,
+  input[type="button"],
+  input[type="submit"],
+  [role="button"],
+  a[role="button"],
+  .btn,
+  .button,
+  .btn-lava,
+  .inline-flex[role="button"] {
+    background-image: none !important;
+    background-color: var(--Color-6, #D5463E) !important;
+    background: var(--Color-6, #D5463E) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Also neutralize the project's special gradient utility when it appears
+     on buttons so the lava red takes precedence. */
+  button.bg-gradient-lava,
+  .bg-gradient-lava[role="button"],
+  .bg-gradient-lava.btn {
+    background-image: none !important;
+    background: var(--Color-6, #D5463E) !important;
+    color: white !important;
+  }
+
+  /* FAQ-specific reset: accordion triggers and question elements should NOT
+     inherit the global button styling. Scope the reset to `.faq-section`. */
+  .faq-section button,
+  .faq-section [role="button"],
+  .faq-section .accordion-trigger,
+  .faq-section .accordion-content {
+    background-image: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    color: inherit !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  /* Also ensure buttons inside card-like containers (e.g. accordion items)
+     don't receive the global lava-red background. This removes only the
+     background/color and does not touch font-family or other typography. */
+  [class*="bg-card"] button,
+  [class*="bg-card"] [role="button"] {
+    background-image: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    color: inherit !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
 }
+

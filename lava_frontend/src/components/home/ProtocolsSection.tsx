@@ -24,13 +24,16 @@ export const ProtocolsSection = () => {
   ];
 
   return (
-    <section className="py-20 relative bg-background">
+    <section
+      className="py-20 relative bg-background"
+      style={{ background: 'var(--Color, #000000)' }}
+    >
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Working with top protocols
-              <br />across <span className="text-gradient-lava">Cardano</span>
+              WORKING WITH TOP PROTOCOLS
+              <br />ACROSS <span className="text-gradient-lava">CARDANO</span>
             </h2>
             
             <div className="space-y-6 mt-8">

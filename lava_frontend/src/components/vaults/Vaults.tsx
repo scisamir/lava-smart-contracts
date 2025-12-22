@@ -2,9 +2,21 @@ export const ValidatorHeader = () => {
   return (
     <div>
       <h1 className="text-5xl md:text-6xl font-bold mb-6">
-        Lava <span className="text-gradient-lava">Vaults</span>
+        LAVA <span className="text-gradient-lava">VAULTS</span>
       </h1>
-      <p className="text-muted-foreground mb-8 max-w-lg">
+      <p
+        className="text-muted-foreground mb-8 max-w-lg"
+        style={{
+          fontFamily:
+            'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+          fontWeight: 400,
+          fontStyle: 'normal',
+          fontSize: '18px',
+          lineHeight: '150%',
+          letterSpacing: '-0.02em',
+          //leadingTrim: 'none',
+        }}
+      >
         Lorem ipsum dolor sit amet consectetur. Placerat pharetra aliquam fusce quis semper. 
         Neque enim amet blandit nunc leo non at vitae rhoncus. Sapien amet aliquet sit lectus euismod 
         non orci aliquet aliquam. Velit ut molestie a commodo.
@@ -12,14 +24,72 @@ export const ValidatorHeader = () => {
 
       <div className="grid grid-cols-2 gap-8">
         <div>
-          <p className="text-primary text-sm mb-2">Total Lava Stake</p>
-          <p className="text-4xl font-bold">
-            12,432 <span className="text-muted-foreground">ADA</span>
+          <p
+            className="text-primary text-sm mb-2"
+            style={{
+              fontFamily:
+                'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+              fontWeight: 400,
+              fontStyle: 'normal',
+              lineHeight: '150%',
+              letterSpacing: '-0.02em',
+              //leadingTrim: 'none',
+            }}
+          >
+            Total Lava Stake
+          </p>
+          <p
+            className="text-4xl font-bold"
+            style={{
+              fontFamily:
+                'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+              fontWeight: 400,
+              fontStyle: 'normal',
+              lineHeight: '150%',
+              letterSpacing: '-0.02em',
+              //leadingTrim: 'none',
+            }}
+          >
+            12,432 <span className="text-muted-foreground" style={{
+              fontFamily:
+                'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+              fontWeight: 400,
+              fontStyle: 'normal',
+              lineHeight: '150%',
+              letterSpacing: '-0.02em',
+              //leadingTrim: 'none',
+            }}>ADA</span>
           </p>
         </div>
         <div>
-          <p className="text-primary text-sm mb-2">Block Height</p>
-          <p className="text-4xl font-bold">132,543,321</p>
+          <p
+            className="text-primary text-sm mb-2"
+            style={{
+              fontFamily:
+                'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+              fontWeight: 400,
+              fontStyle: 'normal',
+              lineHeight: '150%',
+              letterSpacing: '-0.02em',
+             // leadingTrim: 'none',
+            }}
+          >
+            Block Height
+          </p>
+          <p
+            className="text-4xl font-bold"
+            style={{
+              fontFamily:
+                'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+              fontWeight: 400,
+              fontStyle: 'normal',
+              lineHeight: '150%',
+              letterSpacing: '-0.02em',
+              //leadingTrim: 'none',
+            }}
+          >
+            132,543,321
+          </p>
         </div>
       </div>
     </div>

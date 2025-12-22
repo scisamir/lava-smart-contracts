@@ -260,7 +260,7 @@ export const StakingCard = () => {
                   onChange={handleChange}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
-                  className="bg-transparent text-right text-2xl font-bold w-24 outline-none"
+                  className="bg-transparent text-right text-2xl font-bold w-24 outline-none no-pixelify"
                 />
                 <p className="text-xs text-muted-foreground">
                   ≈ ${(numAmount * usdRate).toFixed(2)}
@@ -276,7 +276,7 @@ export const StakingCard = () => {
           style={{ top: "127px", height: "4px" }}
         >
           <div style={{ flex: 1, height: "2px", backgroundColor: "#333" }} />
-          <div style={{ width: "60px" }} />
+          <div style={{ width: "30px" }} />
           <div style={{ flex: 1, height: "2px", backgroundColor: "#333" }} />
         </div>
 
@@ -306,8 +306,8 @@ export const StakingCard = () => {
               </div>
 
               <div className="flex flex-col items-end">
-                <p className="text-2xl font-bold">{amount}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-2xl font-bold no-pixelify">{amount}</p>
+                <p className="text-xs text-muted-foreground no-pixelify">
                   ≈ ${((numAmount / conversionRate) * usdRate).toFixed(2)}
                 </p>
               </div>
@@ -318,23 +318,23 @@ export const StakingCard = () => {
         {/* Arrow */}
         <div
           className="absolute left-1/2 transform -translate-x-1/2 z-20"
-          style={{ top: "99px" }}
+          style={{ top: "107px" }}
         >
-          <div
-            style={{
-              width: "60px",
-              height: "60px",
-              borderRadius: "9999px",
-              backgroundColor: "#0B0B0B",
-              border: "3px solid #333",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "0px",
+                backgroundColor: "#0B0B0B",
+                border: "3px solid #333",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
             <button
               onClick={handleSwap}
-              className="w-12 h-12 rounded-full flex items-center justify-center bg-transparent"
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-transparent"
             >
               <ArrowDown
                 className={`w-6 h-6 text-primary transition-transform duration-300 ${
@@ -354,7 +354,7 @@ export const StakingCard = () => {
         </div>
         <div className="flex justify-between">
           <span>Balance</span>
-          <span>
+          <span className="no-pixelify">
             {(tokenBalance ?? 0).toFixed(2)} {tokenLabel}
           </span>
         </div>

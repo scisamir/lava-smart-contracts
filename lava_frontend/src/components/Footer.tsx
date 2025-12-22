@@ -1,6 +1,5 @@
 import { LAVA_LOGO } from "@/lib/images";
 import footerBg from "@/assets/footer-bg.png";
-import mobileFt from "@/assets/mobile-ft.png";
 
 const Footer = () => {
   return (
@@ -9,21 +8,32 @@ const Footer = () => {
       style={{
         backgroundImage: `url(${footerBg.src})`,
         backgroundRepeat: 'no-repeat',
-        /* make footer background scale horizontally on large desktops */
         backgroundSize: 'cover',
         backgroundPosition: 'center bottom',
+        /* keep height for layout consistency */
         height: '120.7198486328125px',
       }}
     >
-      {/* Mobile overrides: use exact mobile image size, position and height */}
       <style jsx>{`
+        footer::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: var(--Color-2, #0D0D0D);
+          opacity: 0.9;
+          z-index: 0;
+        }
+
+        /* Mobile: use the same desktop image but adapt positioning/height so it responds
+           to different screen sizes. Desktop appearance remains unchanged. */
         @media (max-width: 768px) {
           footer {
-            background-image: url(${mobileFt.src}) !important;
-            background-repeat: no-repeat !important;
-            background-size: 1500.2469482421875px 200.98828125px !important;
-            background-position: -476.75px 0.15px !important;
-            height: 200.98828125px !important;
+            background-position: center center !important;
+            background-size: cover !important;
+            /* let content dictate height on small screens while keeping some padding */
+            height: auto !important;
+            padding-top: 1.5rem !important;
+            padding-bottom: 1.5rem !important;
           }
         }
       `}</style>
@@ -32,10 +42,10 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-2">
             <img src={LAVA_LOGO.src} alt="Lava" className="w-6 h-6" />
-            <span className="text-xl font-bold text-white">lava</span>
+            <span className="text-xl font-bold" style={{ color: '#D5463E' }}>lava</span>
           </div>
           
-          <p className="text-white/80 text-sm">
+          <p className="text-white/80 text-sm lorem no-pixelify">
             © 2025 Lava. All rights reserved
           </p>
 

@@ -4,7 +4,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card } from "@/components/ui/card";
 import { LAVA_LOGO } from "@/lib/images";
-import portfolioGraphic from "@/assets/portfolio-graphic.png";
+import appBg from "@/assets/app-bg.png";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 
 const NET_APY = 4.32; // %
@@ -63,71 +63,62 @@ const Portfolio = () => {
 
       <section className="pt-32 pb-20">
         <div className="container mx-auto px-4 max-w-6xl">
-          {/* Net Worth */}
-          <div className="mb-12 flex items-start gap-8">
-            <div className="flex-1">
-              <p className="text-muted-foreground mb-2">Net Worth</p>
-              <div className="flex items-baseline gap-4 mb-6">
-                <h1 className="text-5xl md:text-6xl font-bold">
-                  ${netWorth.toFixed(2)}
-                </h1>
-                <span className="text-xl text-muted-foreground">
-  					{netWorthAda.toFixed(2)} ADA
-				</span>
-
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    Total PnL
-                  </p>
-                  <p
-                    className={`text-2xl font-semibold ${
-                      pnlIsPositive ? "text-green-500" : "text-red-500"
-                    }`}
-                  >
-                    {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
-                  </p>
+          {/* Net Worth - surround this stats block with app-bg as a rectangle aligned to the table */}
+          <div className="app-bg-wrapper rounded-lg p-6 mb-8" style={{ ["--app-bg" as any]: `url(${appBg.src})` } as React.CSSProperties}>
+            <div className="mb-12 flex items-start gap-8">
+              <div
+                className="flex-1"
+                style={{
+                  fontFamily:
+                    'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+                  fontWeight: 500,
+                  fontStyle: 'normal',
+                  fontSize: '14px',
+                  lineHeight: '100%',
+                  letterSpacing: '0em',
+                  //leadingTrim: 'none',
+                }}
+              >
+                <p className="text-muted-foreground mb-2">Net Worth</p>
+                <div className="flex items-baseline gap-4 mb-6">
+                  <h1 className="text-5xl md:text-6xl font-bold no-pixelify">
+                    ${netWorth.toFixed(2)}
+                  </h1>
+                  <span className="text-xl text-muted-foreground no-pixelify">
+                    {netWorthAda.toFixed(2)} ADA
+                  </span>
                 </div>
 
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    24h Gain/Loss
-                  </p>
-                  <p
-                    className={`text-2xl font-semibold ${
-                      pnlIsPositive ? "text-green-500" : "text-red-500"
-                    }`}
-                  >
-                    {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
-                  </p>
-                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Total PnL</p>
+                    <p className={`text-2xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
+                      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
+                    </p>
+                  </div>
 
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    Total Yield Earned
-                  </p>
-                  <p className="text-2xl font-semibold text-green-500">
-                    ${totalYieldEarned.toFixed(2)}
-                  </p>
-                </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">24h Gain/Loss</p>
+                    <p className={`text-2xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
+                      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
+                    </p>
+                  </div>
 
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    Net APY
-                  </p>
-                  <p className="text-2xl font-semibold">{NET_APY}%</p>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Total Yield Earned</p>
+                    <p className="text-2xl font-semibold text-green-500 no-pixelify">
+                      ${totalYieldEarned.toFixed(2)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Net APY</p>
+                    <p className="text-2xl font-semibold no-pixelify">{NET_APY}%</p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="hidden lg:block flex-shrink-0 -mb-32">
-              <img
-                src={portfolioGraphic.src}
-                alt="Portfolio graphic"
-                className="w-[480px] h-auto"
-              />
+              {/* Decorative graphic removed; section uses app-bg.png instead */}
             </div>
           </div>
 

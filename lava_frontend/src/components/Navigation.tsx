@@ -50,14 +50,17 @@ const Navigation = () => {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-transparent border-b border-border">
+      <nav
+        className="fixed top-0 left-0 right-0 z-50 border-b border-border"
+        style={{ background: '#0F0F0FCC', backdropFilter: 'blur(20px)' }}
+      >
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
               <div className="flex items-center gap-2 text-2xl font-bold">
                 <img src={LAVA_LOGO.src} alt="Lava" className="w-8 h-8" />
-                <span className="text-foreground">lava</span>
+                <span style={{ color: '#D5463E' }}>lava</span>
               </div>
             </Link>
 

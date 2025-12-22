@@ -6,7 +6,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { MeshProvider } from "@meshsdk/react";
 import { useRouter } from "next/router";
-import appBg from "@/assets/app-bg.png";
 import { ToastContainer } from "react-toastify";
 
 const queryClient = new QueryClient();
@@ -23,17 +22,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
 				  <ToastContainer position='bottom-left' autoClose={5000} />
           <Toaster />
           <Sonner />
-          {isIndex ? (
-            <Component {...pageProps} />
-          ) : (
-            // Render the background via a pseudo-element so filters don't affect children.
-            <div
-              className="app-bg-wrapper"
-              style={{ ["--app-bg" as any]: `url(${appBg.src})` } as React.CSSProperties}
-            >
-              <Component {...pageProps} />
-            </div>
-          )}
+          <Component {...pageProps} />
         </TooltipProvider>
       </MeshProvider>
     </QueryClientProvider>
