@@ -265,10 +265,14 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
         updated_total_rewards_accrued == total_rewards_accrued_out,
       }
 
+    let is_pool_value_valid =
+      lovelace_of(pool_output.value) == lovelace_of(pool_input.output.value) + new_ada_rewards_amount
+
     and {
-      is_pool_out_datum_correct?,
       // admin must sign transaction
       is_multisig_signing(inputs, admin)?,
+      is_pool_out_datum_correct?,
+      is_pool_value_valid?,
     }
   }
 
