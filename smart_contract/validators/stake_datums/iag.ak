@@ -1,14 +1,12 @@
-use aiken/collection/dict
 use aiken/collection/list
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Credential, Script, VerificationKey}
-use cardano/assets
 use cardano/transaction.{InlineDatum, Transaction}
-use external/stake_types.{ExternalStakeRedeemer, StrikeStakeDatum}
+use external/stake_types.{DelegationDatum, ExternalStakeRedeemer}
 use lava/types.{GlobalSettingsDatum, StakeType}
 use lava/utils.{get_global_settings}
 
-validator strike(gs_validator_hash: ScriptHash) {
+validator iag(gs_validator_hash: ScriptHash) {
   withdraw(
     redeemer: ExternalStakeRedeemer,
     _account: Credential,
@@ -33,22 +31,15 @@ validator strike(gs_validator_hash: ScriptHash) {
     expect [stake_output] =
       list.filter(outputs, fn(output) { output.address == stake_address })
 
-    expect Script(strike_hash) = stake_address.payment_credential
-    expect [Pair(_, q1),
-      Pair(_, q2)] = mint |> assets.tokens(strike_hash) |> dict.to_pairs
-    let positive_mint_from_strike = q1 == 1 && q2 == 1
-
-    expect InlineDatum(strike_datum) = stake_output.datum
-    expect StrikeStakeDatum { owner_address_hash, mint_policy_id, .. } =
-      strike_datum
+    expect Script(iag_hash) = stake_address.payment_credential
+    expect InlineDatum(iag_datum) = stake_output.datum
+    expect DelegationDatum { keeper, .. } = iag_datum
     expect VerificationKey(frost_vk_hash) = frost_address.payment_credential
-    let is_owner_hash_correct = owner_address_hash == frost_vk_hash
+    let is_owner_hash_correct = keeper == frost_vk_hash
 
     and {
-      positive_mint_from_strike?,
       is_owner_hash_correct?,
-      // strike hash/mint policy must be correct
-      (strike_hash == mint_policy_id)?,
+      True,
     }
   }
 

@@ -1,7 +1,7 @@
 use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
-use cardano/address.{Credential, Script}
+use cardano/address.{Credential, Inline, Script}
 use cardano/assets.{AssetName, Lovelace, PolicyId, lovelace_of, quantity_of}
 use cardano/transaction.{InlineDatum, Input, Output}
 use lava/constants.{global_settings_nft, lava_pool_nft_name, min_pool_lovelace}
@@ -118,6 +118,9 @@ pub fn find_pool_input(inputs: List<Input>, pool_validator_hash: ScriptHash) {
     fn(input) {
       and {
         (input.output.address.payment_credential == Script(pool_validator_hash))?,
+        (input.output.address.stake_credential == Some(
+          Inline(Script(pool_validator_hash)),
+        ))?,
         (quantity_of(
           input.output.value,
           pool_validator_hash,
@@ -162,6 +165,7 @@ pub fn find_pool_output(
 
         and {
           (output.address.payment_credential == own_payment_cred)?,
+          (output.address.stake_credential == Some(Inline(own_payment_cred)))?,
           (output.value == expected_pool_value)?,
         }
       },

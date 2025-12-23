@@ -88,6 +88,7 @@ test test_process_opt_in_order() {
       order_type: OptIn { deposit_amount },
       receiver_address,
       canceller: mock_pub_key_hash(6),
+      pool_stake_asset_name: "stTest",
     }
 
   let order_input =
@@ -138,6 +139,7 @@ test test_process_redeem_order() {
       order_type: Redeem { st_amount },
       receiver_address,
       canceller: mock_pub_key_hash(6),
+      pool_stake_asset_name: "stTest",
     }
 
   let order_input =
@@ -192,6 +194,7 @@ test test_cancel_order() {
       order_type: OptIn { deposit_amount },
       receiver_address,
       canceller,
+      pool_stake_asset_name: "stTest",
     }
   let order_input =
     Input {

@@ -12,6 +12,7 @@ pub type AssetType {
 
 pub type StakeType {
   asset_type: AssetType,
+  pool_stake_asset_name: AssetName,
   address: Address,
   datum_verifier_hash: ScriptHash,
 }
@@ -58,6 +59,7 @@ pub type OrderDatum {
   order_type: OrderType,
   receiver_address: Address,
   canceller: VerificationKeyHash,
+  pool_stake_asset_name: AssetName,
 }
 
 pub type PoolRedeemer {
@@ -65,7 +67,6 @@ pub type PoolRedeemer {
   UpdatePoolProcessingState
   StakePool
   AddRewardsPool
-  AddAdaRewardsPool { batcher_index: Int }
 }
 
 pub type PoolDatum {

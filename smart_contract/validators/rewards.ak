@@ -1,7 +1,7 @@
 use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
-use cardano/address.{Address, Script}
+use cardano/address.{Address, Inline, Script}
 use cardano/assets.{from_asset, from_lovelace, lovelace_of, quantity_of}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
@@ -115,6 +115,9 @@ validator rewards_validator(
                 (output.address.payment_credential == Script(
                   pool_validator_hash,
                 ))?,
+                (output.address.stake_credential == Some(
+                  Inline(Script(pool_validator_hash)),
+                ))?,
                 (output.value == expected_pool_value)?,
               }
             },
@@ -186,6 +189,7 @@ validator rewards_validator(
 }
 
 test test_add_rewards() {
+  let pool_cred = Script(pool_validator_hash_t)
   let mint = from_asset(pool_validator_hash_t, lava_pool_nft_name, 1)
   let staking_asset_value =
     from_asset(allowed_ast_one_pid, allowed_ast_one_an, 11_000_000)
@@ -208,8 +212,8 @@ test test_add_rewards() {
       output_reference: pool_utxo_ref,
       output: Output {
         address: Address {
-          payment_credential: Script(pool_validator_hash_t),
-          stake_credential: None,
+          payment_credential: pool_cred,
+          stake_credential: Some(Inline(pool_cred)),
         },
         value: assets.merge(from_lovelace(min_pool_lovelace), mint),
         datum: InlineDatum(pool_datum_in),
@@ -231,8 +235,8 @@ test test_add_rewards() {
   let pool_output =
     Output {
       address: Address {
-        payment_credential: Script(pool_validator_hash_t),
-        stake_credential: None,
+        payment_credential: pool_cred,
+        stake_credential: Some(Inline(pool_cred)),
       },
       value: assets.merge(
         from_lovelace(min_pool_lovelace),

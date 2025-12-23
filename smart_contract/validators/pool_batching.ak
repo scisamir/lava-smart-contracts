@@ -157,7 +157,14 @@ fn process_orders(
 
     [current_order, ..rest_orders] -> {
       expect InlineDatum(order_datum) = current_order.output.datum
-      expect OrderDatum { receiver_address, order_type, .. } = order_datum
+      expect OrderDatum {
+        receiver_address,
+        order_type,
+        pool_stake_asset_name: pso_asset_name,
+        ..
+      } = order_datum
+
+      expect pool_stake_asset_name == pso_asset_name
 
       let is_ada_asset = policy_id == "" && asset_name == "lovelace"
 
@@ -297,6 +304,9 @@ fn verify_pool_output(
       fn(output) {
         and {
           (output.address.payment_credential == Script(pool_validator_hash))?,
+          (output.address.stake_credential == Some(
+            Inline(Script(pool_validator_hash)),
+          ))?,
           (quantity_of(output.value, pool_validator_hash, lava_pool_nft_name) == 1)?,
         }
       },
@@ -344,6 +354,7 @@ test test_batching_opt_in() {
   let policy_id = mock_policy_id(11)
   let asset_name = "test"
   let pool_stake_asset_name = "stTest"
+  let pool_cred = Script(pool_validator_hash_t)
   let exchange_rate = 1 * precision_factor
 
   let batching_asset =
@@ -362,6 +373,7 @@ test test_batching_opt_in() {
       order_type: OptIn { deposit_amount },
       receiver_address,
       canceller: mock_pub_key_hash(6),
+      pool_stake_asset_name: "stTest",
     }
   let order_input =
     Input {
@@ -419,8 +431,8 @@ test test_batching_opt_in() {
       output_reference: pool_utxo_ref,
       output: Output {
         address: Address {
-          payment_credential: Script(pool_validator_hash_t),
-          stake_credential: None,
+          payment_credential: pool_cred,
+          stake_credential: Some(Inline(pool_cred)),
         },
         value: pool_value_basic,
         datum: InlineDatum(pool_datum),
@@ -447,8 +459,8 @@ test test_batching_opt_in() {
   let pool_output =
     Output {
       address: Address {
-        payment_credential: Script(pool_validator_hash_t),
-        stake_credential: None,
+        payment_credential: pool_cred,
+        stake_credential: Some(Inline(pool_cred)),
       },
       value: pool_value_basic
         |> assets.add(policy_id, asset_name, deposit_amount),
@@ -483,6 +495,7 @@ test test_batching_redeem() {
   let policy_id = mock_policy_id(11)
   let asset_name = "test"
   let pool_stake_asset_name = "stTest"
+  let pool_cred = Script(pool_validator_hash_t)
   let exchange_rate = 1 * precision_factor
 
   let batching_asset =
@@ -500,6 +513,7 @@ test test_batching_redeem() {
       order_type: Redeem { st_amount },
       receiver_address,
       canceller: mock_pub_key_hash(6),
+      pool_stake_asset_name: "stTest",
     }
   let order_input =
     Input {
@@ -554,8 +568,8 @@ test test_batching_redeem() {
       output_reference: pool_utxo_ref,
       output: Output {
         address: Address {
-          payment_credential: Script(pool_validator_hash_t),
-          stake_credential: None,
+          payment_credential: pool_cred,
+          stake_credential: Some(Inline(pool_cred)),
         },
         value: pool_value_basic
           |> assets.add(policy_id, asset_name, total_underlying),
@@ -583,8 +597,8 @@ test test_batching_redeem() {
   let pool_output =
     Output {
       address: Address {
-        payment_credential: Script(pool_validator_hash_t),
-        stake_credential: None,
+        payment_credential: pool_cred,
+        stake_credential: Some(Inline(pool_cred)),
       },
       value: pool_value_basic
         |> assets.add(policy_id, asset_name, total_underlying - order_amount),

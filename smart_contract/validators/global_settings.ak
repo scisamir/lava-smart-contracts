@@ -204,6 +204,7 @@ test test_create_global_settings() {
           stake_details: [
             StakeType {
               asset_type: allowed_ast_one,
+              pool_stake_asset_name: "stTest",
               address: mock_script_address(14, None),
               datum_verifier_hash: mock_script_hash(14),
             },
@@ -262,6 +263,7 @@ test test_update_global_settings() {
       stake_details: [
         StakeType {
           asset_type: allowed_ast_one,
+          pool_stake_asset_name: "stTest",
           address: mock_script_address(14, None),
           datum_verifier_hash: mock_script_hash(14),
         },
@@ -305,6 +307,7 @@ test test_update_global_settings() {
           stake_details: [
             StakeType {
               asset_type: allowed_ast_one,
+              pool_stake_asset_name: "stTest",
               address: mock_script_address(14, None),
               datum_verifier_hash: mock_script_hash(14),
             },

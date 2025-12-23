@@ -1,7 +1,7 @@
 use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
-use cardano/address.{Address, Credential, Script}
+use cardano/address.{Address, Credential, Inline, Script}
 use cardano/assets.{from_asset, from_lovelace, quantity_of}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, Transaction, placeholder,
@@ -43,11 +43,16 @@ validator stake_validator(
     expect [pool_input] = find_pool_input(inputs, pool_validator_hash)
 
     expect InlineDatum(pool_in_datum) = pool_input.output.datum
-    expect PoolDatum { pool_asset, .. } = pool_in_datum
+    expect PoolDatum { pool_asset, pool_stake_asset_name, .. } = pool_in_datum
     let AssetType { policy_id: pool_asset_pid, asset_name: pool_asset_an, .. } =
       pool_asset
 
-    expect Some(StakeType { address: stake_address, datum_verifier_hash, .. }) =
+    expect Some(StakeType {
+      pool_stake_asset_name: ps_an,
+      address: stake_address,
+      datum_verifier_hash,
+      ..
+    }) =
       list.find(
         stake_details,
         fn(sd) {
@@ -78,6 +83,9 @@ validator stake_validator(
         fn(output) {
           and {
             (output.address.payment_credential == Script(pool_validator_hash))?,
+            (output.address.stake_credential == Some(
+              Inline(Script(pool_validator_hash)),
+            ))?,
             (output.value == assets.merge(
               from_lovelace(min_pool_lovelace),
               from_asset(pool_validator_hash, lava_pool_nft_name, 1),
@@ -95,6 +103,8 @@ validator stake_validator(
       pairs.has_key(withdrawals, Script(datum_verifier_hash))?,
       // batcher must sign transaction
       is_signed_by(extra_signatories, inputs, withdrawals, batcher)?,
+      // pool stake asset name in pool datum should be same in stake details
+      (pool_stake_asset_name == ps_an)?,
     }
   }
 
@@ -104,6 +114,7 @@ validator stake_validator(
 }
 
 test test_staking() {
+  let pool_cred = Script(pool_validator_hash_t)
   let mint = from_asset(pool_validator_hash_t, lava_pool_nft_name, 1)
   let staking_asset_value =
     from_asset(allowed_ast_one_pid, allowed_ast_one_an, 10_000_000)
@@ -127,8 +138,8 @@ test test_staking() {
       output_reference: pool_utxo_ref,
       output: Output {
         address: Address {
-          payment_credential: Script(pool_validator_hash_t),
-          stake_credential: None,
+          payment_credential: pool_cred,
+          stake_credential: Some(Inline(pool_cred)),
         },
         value: assets.merge(
           from_lovelace(min_pool_lovelace),
@@ -153,8 +164,8 @@ test test_staking() {
   let pool_output =
     Output {
       address: Address {
-        payment_credential: Script(pool_validator_hash_t),
-        stake_credential: None,
+        payment_credential: pool_cred,
+        stake_credential: Some(Inline(pool_cred)),
       },
       value: assets.merge(from_lovelace(min_pool_lovelace), mint),
       datum: InlineDatum(pool_datum_out),
