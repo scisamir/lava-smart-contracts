@@ -99,16 +99,12 @@ fn validate_update_gs(
   admin: ScriptHash,
 ) {
   and {
-    validate_settings_output(outputs, own_hash, admin)?,
+    validate_settings_output(outputs, own_hash)?,
     is_multisig_signing(inputs, admin)?,
   }
 }
 
-fn validate_settings_output(
-  outputs: List<Output>,
-  own_hash: PolicyId,
-  admin: ScriptHash,
-) {
+fn validate_settings_output(outputs: List<Output>, own_hash: PolicyId) {
   expect [control_output] =
     list.filter(
       outputs,
@@ -120,18 +116,14 @@ fn validate_settings_output(
 
   expect InlineDatum(output_datum) = control_output.datum
   // Datum must be of type GlobalSettingsDatum
-  expect GlobalSettingsDatum { admin: admin_out, .. } = output_datum
+  expect GlobalSettingsDatum { .. } = output_datum
 
-  and {
-    // Must only contain "GSN" NFT apart from ADA
-    (assets.without_lovelace(control_output.value) == from_asset(
-      own_hash,
-      global_settings_nft,
-      1,
-    ))?,
-    // admin must be correct in datum
-    (admin == admin_out)?,
-  }
+  // Must only contain "GSN" NFT apart from ADA
+  (assets.without_lovelace(control_output.value) == from_asset(
+    own_hash,
+    global_settings_nft,
+    1,
+  ))?
 }
 
 // Tests
