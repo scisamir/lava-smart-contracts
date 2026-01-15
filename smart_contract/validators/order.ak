@@ -120,7 +120,14 @@ validator order_validator(
         }
       }
 
-      BurnOrder -> True
+      BurnOrder -> {
+        let Transaction { mint, .. } = tx
+
+        let burn_tokens = mint |> assets.tokens(policy_id) |> dict.to_pairs
+        let burn_keys = pairs.find_all(burn_tokens, -1)
+
+        (list.length(burn_tokens) == list.length(burn_keys))?
+      }
     }
   }
 
