@@ -26,3 +26,6 @@ pub const allowed_ast_one =
     asset_name: allowed_ast_one_an,
     multiplier: 1_000_000,
   }
+
+pub const pool_nft_name_t =
+  #"cd82a190d3b4ef95a50bd791882959f541e308adb69b12d022d94a6d9f02bcf03130"

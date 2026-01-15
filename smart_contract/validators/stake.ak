@@ -1,3 +1,4 @@
+use aiken/collection/dict
 use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
@@ -6,7 +7,7 @@ use cardano/assets.{from_asset, from_lovelace, quantity_of}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, Transaction, placeholder,
 }
-use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
+use lava/constants.{precision_factor}
 use lava/types.{
   AssetType, GlobalSettingsDatum, PoolDatum, StakeRedeemer, StakeType,
 }
@@ -36,8 +37,12 @@ validator stake_validator(
 
     let StakeRedeemer { stake_asset, batcher_index } = redeemer
 
-    let GlobalSettingsDatum { authorized_batchers, stake_details, .. } =
-      get_global_settings(reference_inputs, gs_validator_hash)
+    let GlobalSettingsDatum {
+      authorized_batchers,
+      stake_details,
+      min_pool_lovelace,
+      ..
+    } = get_global_settings(reference_inputs, gs_validator_hash)
     expect Some(batcher) = list.at(authorized_batchers, batcher_index)
 
     expect [pool_input] = find_pool_input(inputs, pool_validator_hash)
@@ -49,8 +54,8 @@ validator stake_validator(
 
     expect Some(StakeType {
       pool_stake_asset_name: ps_an,
-      address: stake_address,
-      datum_verifier_hash,
+      address: stake_address_opt,
+      datum_verifier_hash: datum_verifier_hash_opt,
       ..
     }) =
       list.find(
@@ -60,6 +65,8 @@ validator stake_validator(
           sd_asset_type == stake_asset
         },
       )
+    expect Some(stake_address) = stake_address_opt
+    expect Some(datum_verifier_hash) = datum_verifier_hash_opt
 
     let pool_asset_quantity =
       quantity_of(pool_input.output.value, pool_asset_pid, pool_asset_an)
@@ -76,6 +83,10 @@ validator stake_validator(
         },
       )
 
+    expect [Pair(pool_nft_name, _)] =
+      pool_input.output.value
+        |> assets.tokens(pool_validator_hash)
+        |> dict.to_pairs
     // pool output must be returned
     expect [pool_output] =
       list.filter(
@@ -88,7 +99,7 @@ validator stake_validator(
             ))?,
             (output.value == assets.merge(
               from_lovelace(min_pool_lovelace),
-              from_asset(pool_validator_hash, lava_pool_nft_name, 1),
+              from_asset(pool_validator_hash, pool_nft_name, 1),
             ))?,
           }
         },
@@ -115,10 +126,12 @@ validator stake_validator(
 
 test test_staking() {
   let pool_cred = Script(pool_validator_hash_t)
-  let mint = from_asset(pool_validator_hash_t, lava_pool_nft_name, 1)
+  let mint = from_asset(pool_validator_hash_t, "poolnftone", 1)
   let staking_asset_value =
     from_asset(allowed_ast_one_pid, allowed_ast_one_an, 10_000_000)
   let gs_input = get_global_settings_input()
+  expect InlineDatum(gs_datum) = gs_input.output.datum
+  expect GlobalSettingsDatum { min_pool_lovelace, .. } = gs_datum
   let datum_verifier_hash = mock_script_hash(14)
 
   let pool_utxo_ref = mock_utxo_ref(0, 18)

@@ -21,7 +21,7 @@ validator strike(gs_validator_hash: ScriptHash) {
     let GlobalSettingsDatum { stake_details, frost_address, .. } =
       get_global_settings(reference_inputs, gs_validator_hash)
 
-    expect Some(StakeType { address: stake_address, .. }) =
+    expect Some(StakeType { address: stake_address_opt, .. }) =
       list.find(
         stake_details,
         fn(sd) {
@@ -29,6 +29,7 @@ validator strike(gs_validator_hash: ScriptHash) {
           pool_stake_asset_name == ps_asset_name
         },
       )
+    expect Some(stake_address) = stake_address_opt
 
     expect [stake_output] =
       list.filter(outputs, fn(output) { output.address == stake_address })

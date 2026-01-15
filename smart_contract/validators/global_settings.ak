@@ -9,8 +9,7 @@ use cardano/transaction.{
 }
 use lava/constants.{global_settings_nft}
 use lava/types.{
-  CreateGlobalSettings, GlobalSettingsDatum, GlobalSettingsRedeemer,
-  SpendScriptSigner, StakeType, UpdateGlobalSettings, WithdrawScriptSigner,
+  GlobalSettingsDatum, SpendScriptSigner, StakeType, WithdrawScriptSigner,
 }
 use lava/utils.{is_multisig_signing}
 use mocktail/virgin_address.{mock_pub_key_address, mock_script_address}
@@ -20,14 +19,13 @@ use test_utils/constants_t.{allowed_ast_one, utxo_ref_t}
 use test_utils/fns_t.{get_admin_input}
 
 validator global_settings(
-  admin_sc: ScriptHash,
   // utxo ref: change of this changes the hash of the global settings validator
   // in turn changing the hash of all validators
   utxo_ref: OutputReference,
 ) {
   spend(
-    _datum: Option<GlobalSettingsDatum>,
-    redeemer: GlobalSettingsRedeemer,
+    datum: Option<GlobalSettingsDatum>,
+    _redeemer: Data,
     utxo: OutputReference,
     self: Transaction,
   ) {
@@ -35,32 +33,18 @@ validator global_settings(
     expect Some(own_input) = transaction.find_input(inputs, utxo)
     expect Script(own_hash) = own_input.output.address.payment_credential
 
-    when redeemer is {
-      UpdateGlobalSettings ->
-        validate_update_gs(inputs, outputs, own_input, own_hash, admin_sc)
-      _ -> fail
-    }
+    expect Some(GlobalSettingsDatum { admin, .. }) = datum
+
+    validate_update_gs(inputs, outputs, own_hash, admin)
   }
 
-  mint(redeemer: GlobalSettingsRedeemer, policy_id: PolicyId, self: Transaction) {
+  mint(_redeemer: Data, policy_id: PolicyId, self: Transaction) {
     let Transaction { inputs, outputs, mint, .. } = self
 
     expect [Pair(name, quantity)] =
       mint |> assets.tokens(policy_id) |> dict.to_pairs
 
-    when redeemer is {
-      CreateGlobalSettings ->
-        validate_create_gs(
-          inputs,
-          outputs,
-          policy_id,
-          name,
-          quantity,
-          admin_sc,
-          utxo_ref,
-        )
-      _ -> fail
-    }
+    validate_create_gs(inputs, outputs, policy_id, name, quantity, utxo_ref)
   }
 
   else(_) {
@@ -74,7 +58,6 @@ fn validate_create_gs(
   policy_id: PolicyId,
   name: AssetName,
   quantity: Int,
-  admin_sc: ScriptHash,
   utxo_ref: OutputReference,
 ) {
   expect Some(the_output) =
@@ -105,55 +88,28 @@ fn validate_create_gs(
     (name == global_settings_nft)?,
     (quantity == 1)?,
     // admin must sign the transaction
-    is_multisig_signing(inputs, admin_sc)?,
-    // admin must be correct in datum
-    (admin_sc == admin)?,
+    is_multisig_signing(inputs, admin)?,
   }
 }
 
 fn validate_update_gs(
   inputs: List<Input>,
   outputs: List<Output>,
-  own_input: Input,
   own_hash: PolicyId,
-  admin_sc: ScriptHash,
+  admin: ScriptHash,
 ) {
   and {
-    validate_settings_input(own_input, own_hash, admin_sc)?,
-    validate_settings_output(outputs, own_hash, admin_sc)?,
-    is_multisig_signing(inputs, admin_sc)?,
-  }
-}
-
-fn validate_settings_input(
-  input: Input,
-  own_hash: PolicyId,
-  admin_sc: ScriptHash,
-) {
-  expect InlineDatum(input_datum) = input.output.datum
-  // Datum must of type GlobalSettingsDatum
-  expect GlobalSettingsDatum { admin, .. } = input_datum
-
-  and {
-    // Must be a UTxO from own hash
-    (input.output.address.payment_credential == Script(own_hash))?,
-    // Must only contain "GSN" NFT apart from ADA
-    (assets.without_lovelace(input.output.value) == from_asset(
-      own_hash,
-      global_settings_nft,
-      1,
-    ))?,
-    // admin must be correct in datum
-    (admin_sc == admin)?,
+    validate_settings_output(outputs, own_hash, admin)?,
+    is_multisig_signing(inputs, admin)?,
   }
 }
 
 fn validate_settings_output(
   outputs: List<Output>,
   own_hash: PolicyId,
-  admin_sc: ScriptHash,
+  admin: ScriptHash,
 ) {
-  let control_outputs =
+  expect [control_output] =
     list.filter(
       outputs,
       fn(output) {
@@ -161,14 +117,10 @@ fn validate_settings_output(
         (output.address.payment_credential == Script(own_hash))?
       },
     )
-  // Only one output
-  expect list.length(control_outputs) == 1
-
-  expect Some(control_output) = list.at(control_outputs, 0)
 
   expect InlineDatum(output_datum) = control_output.datum
   // Datum must be of type GlobalSettingsDatum
-  expect GlobalSettingsDatum { admin, .. } = output_datum
+  expect GlobalSettingsDatum { admin: admin_out, .. } = output_datum
 
   and {
     // Must only contain "GSN" NFT apart from ADA
@@ -178,7 +130,7 @@ fn validate_settings_output(
       1,
     ))?,
     // admin must be correct in datum
-    (admin_sc == admin)?,
+    (admin == admin_out)?,
   }
 }
 
@@ -205,14 +157,15 @@ test test_create_global_settings() {
             StakeType {
               asset_type: allowed_ast_one,
               pool_stake_asset_name: "stTest",
-              address: mock_script_address(14, None),
-              datum_verifier_hash: mock_script_hash(14),
+              address: Some(mock_script_address(14, None)),
+              datum_verifier_hash: Some(mock_script_hash(14)),
             },
           ],
           frost_address: mock_pub_key_address(16, None),
           authorized_swap_scripts: [mock_script_hash(17)],
           stake_validator_hash: mock_script_hash(31),
           rewards_validator_hash: mock_script_hash(19),
+          min_pool_lovelace: 5_000_000,
         },
       ),
       reference_script: None,
@@ -239,13 +192,7 @@ test test_create_global_settings() {
       mint,
     }
 
-  global_settings.mint(
-    admin_sc,
-    utxo_ref_t,
-    CreateGlobalSettings,
-    global_settings_validator_hash,
-    tx,
-  )
+  global_settings.mint(utxo_ref_t, "", global_settings_validator_hash, tx)
 }
 
 test test_update_global_settings() {
@@ -264,14 +211,15 @@ test test_update_global_settings() {
         StakeType {
           asset_type: allowed_ast_one,
           pool_stake_asset_name: "stTest",
-          address: mock_script_address(14, None),
-          datum_verifier_hash: mock_script_hash(14),
+          address: Some(mock_script_address(14, None)),
+          datum_verifier_hash: Some(mock_script_hash(14)),
         },
       ],
       frost_address: mock_pub_key_address(16, None),
       authorized_swap_scripts: [mock_script_hash(17)],
       stake_validator_hash: mock_script_hash(31),
       rewards_validator_hash: mock_script_hash(19),
+      min_pool_lovelace: 5_000_000,
     }
   let gs_input_utxo_ref = mock_utxo_ref(0, 11)
   let gs_input =
@@ -308,14 +256,15 @@ test test_update_global_settings() {
             StakeType {
               asset_type: allowed_ast_one,
               pool_stake_asset_name: "stTest",
-              address: mock_script_address(14, None),
-              datum_verifier_hash: mock_script_hash(14),
+              address: Some(mock_script_address(14, None)),
+              datum_verifier_hash: Some(mock_script_hash(14)),
             },
           ],
           frost_address: mock_pub_key_address(16, None),
           authorized_swap_scripts: [mock_script_hash(17)],
           stake_validator_hash: mock_script_hash(31),
           rewards_validator_hash: mock_script_hash(19),
+          min_pool_lovelace: 5_000_000,
         },
       ),
       reference_script: None,
@@ -329,10 +278,9 @@ test test_update_global_settings() {
     }
 
   global_settings.spend(
-    admin_sc,
     utxo_ref_t,
     Some(gs_input_datum),
-    UpdateGlobalSettings,
+    "",
     gs_input_utxo_ref,
     tx,
   )

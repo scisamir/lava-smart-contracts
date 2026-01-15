@@ -1,6 +1,7 @@
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Address, Credential}
 use cardano/assets.{AssetName, PolicyId}
+use cardano/transaction.{OutputReference}
 use external/minswap_types.{Asset}
 
 pub type AssetType {
@@ -13,8 +14,8 @@ pub type AssetType {
 pub type StakeType {
   asset_type: AssetType,
   pool_stake_asset_name: AssetName,
-  address: Address,
-  datum_verifier_hash: ScriptHash,
+  address: Option<Address>,
+  datum_verifier_hash: Option<ScriptHash>,
 }
 
 pub type SignerType {
@@ -33,16 +34,17 @@ pub type GlobalSettingsDatum {
   authorized_swap_scripts: List<ScriptHash>,
   stake_validator_hash: ScriptHash,
   rewards_validator_hash: ScriptHash,
-}
-
-pub type GlobalSettingsRedeemer {
-  CreateGlobalSettings
-  UpdateGlobalSettings
+  min_pool_lovelace: Int,
 }
 
 pub type MintRedeemer {
   Mint
   Burn
+}
+
+pub type CreatOrderRedeemer {
+  MintOrder { utxo_ref: OutputReference }
+  BurnOrder
 }
 
 pub type OrderRedeemer {
@@ -62,11 +64,16 @@ pub type OrderDatum {
   pool_stake_asset_name: AssetName,
 }
 
+pub type CreatPoolRedeemer {
+  utxo_ref: OutputReference,
+}
+
 pub type PoolRedeemer {
   ProcessPool
   UpdatePoolProcessingState
   StakePool
   AddRewardsPool
+  ClaimAdaRewards
 }
 
 pub type PoolDatum {
@@ -84,6 +91,7 @@ pub type PoolDatum {
 pub type BatchingRedeemer {
   batcher_index: Int,
   batching_asset: AssetType,
+  pool_stake_asset_name: AssetName,
 }
 
 pub type StakeRedeemer {

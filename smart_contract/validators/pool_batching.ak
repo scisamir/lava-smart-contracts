@@ -1,5 +1,6 @@
 use aiken/collection/dict
 use aiken/collection/list
+use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Credential, Inline, Script, VerificationKey}
 use cardano/assets.{
@@ -9,7 +10,7 @@ use cardano/assets.{
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, Transaction, placeholder,
 }
-use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
+use lava/constants.{precision_factor}
 use lava/types.{
   AssetType, BatchingRedeemer, GlobalSettingsDatum, OptIn, OrderDatum, PoolDatum,
   Redeem,
@@ -22,7 +23,7 @@ use mocktail/virgin_key_hash.{mock_policy_id, mock_pub_key_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
 use test_utils/constants_t.{
   admin_t, gs_validator_hash_t, mint_validator_hash_t, pool_batching_cred_t,
-  pool_validator_hash_t,
+  pool_nft_name_t, pool_validator_hash_t,
 }
 use test_utils/fns_t.{get_global_settings_input}
 
@@ -41,12 +42,17 @@ validator pool_batching(
       ..
     } = tx
 
-    let BatchingRedeemer { batcher_index, batching_asset } = redeemer
+    let BatchingRedeemer {
+      batcher_index,
+      batching_asset,
+      pool_stake_asset_name: ps_an_batcher,
+    } = redeemer
 
     let GlobalSettingsDatum {
       allowed_assets,
       authorized_batchers,
       mint_validator_hash,
+      min_pool_lovelace,
       ..
     } = get_global_settings(reference_inputs, gs_validator_hash)
 
@@ -107,6 +113,11 @@ validator pool_batching(
     expect [Pair(mint_name, mint_quantity)] =
       mint |> assets.tokens(mint_validator_hash) |> dict.to_pairs
 
+    expect Some(an_order_input) = list.at(order_inputs, 0)
+    expect Script(order_hash) = an_order_input.output.address.payment_credential
+    let order_nft_mint = mint |> assets.tokens(order_hash) |> dict.to_pairs
+    let order_nm_keys_burn = pairs.find_all(order_nft_mint, -1)
+
     and {
       // batcher signs transaction
       is_signed_by(extra_signatories, inputs, withdrawals, batcher)?,
@@ -118,8 +129,13 @@ validator pool_batching(
       (expected_total_mint == mint_quantity)?,
       // Must mint allowed allowed stake asset name
       (pool_stake_asset_name == mint_name)?,
+      // Pool stake asset name in pool datum must be same in batching redeemer
+      (pool_stake_asset_name == ps_an_batcher)?,
+      // Number of orders must be equivalent to the number of NFTs burnt
+      (list.length(order_inputs) == list.length(order_nm_keys_burn))?,
       // Verify pool output
       verify_pool_output(
+        pool_input,
         outputs,
         pool_validator_hash,
         pool_asset_pid,
@@ -132,6 +148,7 @@ validator pool_batching(
         is_processing_open,
         updated_total_st_assets_minted,
         updated_total_underlying,
+        min_pool_lovelace,
       )?,
     }
   }
@@ -185,6 +202,13 @@ fn process_orders(
             // Calculate amount of st asset to mint based on current exchange rate
             let asset_amt_to_mint = da_precised / exchange_rate
 
+            expect Script(order_hash) =
+              current_order.output.address.payment_credential
+            expect [Pair(nft_name, quantity)] =
+              current_order.output.value
+                |> assets.tokens(order_hash)
+                |> dict.to_pairs
+
             let partial_expected_oov =
               if is_ada_asset {
                 current_order.output.value
@@ -204,6 +228,7 @@ fn process_orders(
                     pool_stake_asset_name,
                     asset_amt_to_mint,
                   )
+                |> assets.add(order_hash, nft_name, -quantity)
 
             // asset_amt_to_mint of pool_stake_asset_name should go to the user's address
             expect Some(_) =
@@ -233,6 +258,13 @@ fn process_orders(
             let order_amount_precised = st_amount * exchange_rate
             let order_amount = order_amount_precised / precision_factor
 
+            expect Script(order_hash) =
+              current_order.output.address.payment_credential
+            expect [Pair(nft_name, quantity)] =
+              current_order.output.value
+                |> assets.tokens(order_hash)
+                |> dict.to_pairs
+
             let partial_expected_oov =
               if is_ada_asset {
                 current_order.output.value
@@ -252,6 +284,7 @@ fn process_orders(
                     pool_stake_asset_name,
                     -st_amount,
                   )
+                |> assets.add(order_hash, nft_name, -quantity)
 
             // order_amount should go to the user's address
             expect Some(_) =
@@ -285,6 +318,7 @@ fn process_orders(
 }
 
 fn verify_pool_output(
+  pool_input: Input,
   outputs: List<Output>,
   pool_validator_hash: ScriptHash,
   pool_asset_pid: PolicyId,
@@ -297,7 +331,13 @@ fn verify_pool_output(
   is_processing_open: Bool,
   updated_total_st_assets_minted: Int,
   updated_total_underlying: Int,
+  min_pool_lovelace: Int,
 ) {
+  expect [Pair(pool_nft_name, _)] =
+    pool_input.output.value
+      |> assets.tokens(pool_validator_hash)
+      |> dict.to_pairs
+
   expect [pool_output] =
     list.filter(
       outputs,
@@ -307,14 +347,14 @@ fn verify_pool_output(
           (output.address.stake_credential == Some(
             Inline(Script(pool_validator_hash)),
           ))?,
-          (quantity_of(output.value, pool_validator_hash, lava_pool_nft_name) == 1)?,
+          (quantity_of(output.value, pool_validator_hash, pool_nft_name) == 1)?,
         }
       },
     )
 
   let expected_pool_value =
     assets.from_lovelace(min_pool_lovelace)
-      |> assets.add(pool_validator_hash, lava_pool_nft_name, 1)
+      |> assets.add(pool_validator_hash, pool_nft_name, 1)
       |> assets.add(pool_asset_pid, pool_asset_an, updated_total_underlying)
 
   expect InlineDatum(pool_out_datum) = pool_output.datum
@@ -357,12 +397,16 @@ test test_batching_opt_in() {
   let pool_cred = Script(pool_validator_hash_t)
   let exchange_rate = 1 * precision_factor
 
+  expect InlineDatum(gs_datum) = gs_input.output.datum
+  expect GlobalSettingsDatum { min_pool_lovelace, .. } = gs_datum
+
   let batching_asset =
     AssetType { is_stable: False, policy_id, asset_name, multiplier: 1_000_000 }
   let receiver_address = mock_pub_key_address(6, None)
   let deposit_amount = 1000
   let extra = 100
   let order_cred = mock_script_credential(16)
+  expect Script(order_hash) = order_cred
 
   let da_precised = deposit_amount * precision_factor
   let asset_amt_to_mint = da_precised / exchange_rate
@@ -384,7 +428,8 @@ test test_batching_opt_in() {
           stake_credential: Some(Inline(order_cred)),
         },
         value: from_lovelace(2_000_000)
-          |> assets.add(policy_id, asset_name, deposit_amount + extra),
+          |> assets.add(policy_id, asset_name, deposit_amount + extra)
+          |> assets.add(order_hash, "orderoderone", 1),
         datum: InlineDatum(order_datum),
         reference_script: None,
       },
@@ -407,7 +452,7 @@ test test_batching_opt_in() {
   let pool_value_basic =
     assets.merge(
       from_lovelace(min_pool_lovelace),
-      from_asset(pool_validator_hash_t, lava_pool_nft_name, 1),
+      from_asset(pool_validator_hash_t, pool_nft_name_t, 1),
     )
   let pool_utxo_ref = mock_utxo_ref(0, 18)
   let pool_datum =
@@ -469,7 +514,14 @@ test test_batching_opt_in() {
     }
 
   let mint =
-    from_asset(mint_validator_hash_t, pool_stake_asset_name, asset_amt_to_mint)
+    assets.merge(
+      from_asset(
+        mint_validator_hash_t,
+        pool_stake_asset_name,
+        asset_amt_to_mint,
+      ),
+      from_asset(order_hash, "orderoderone", -1),
+    )
 
   let tx =
     Transaction {
@@ -484,7 +536,7 @@ test test_batching_opt_in() {
   pool_batching.withdraw(
     gs_validator_hash_t,
     pool_validator_hash_t,
-    BatchingRedeemer(0, batching_asset),
+    BatchingRedeemer(0, batching_asset, pool_stake_asset_name),
     pool_batching_cred_t,
     tx,
   )
@@ -492,6 +544,9 @@ test test_batching_opt_in() {
 
 test test_batching_redeem() {
   let gs_input = get_global_settings_input()
+  expect InlineDatum(gs_datum) = gs_input.output.datum
+  expect GlobalSettingsDatum { min_pool_lovelace, .. } = gs_datum
+
   let policy_id = mock_policy_id(11)
   let asset_name = "test"
   let pool_stake_asset_name = "stTest"
@@ -503,6 +558,7 @@ test test_batching_redeem() {
   let receiver_address = mock_pub_key_address(6, None)
   let st_amount = 1000
   let order_cred = mock_script_credential(16)
+  expect Script(order_hash) = order_cred
 
   let order_amount_precised = st_amount * exchange_rate
   let order_amount = order_amount_precised / precision_factor
@@ -524,7 +580,8 @@ test test_batching_redeem() {
           stake_credential: Some(Inline(order_cred)),
         },
         value: from_lovelace(2_000_000)
-          |> assets.add(mint_validator_hash_t, pool_stake_asset_name, st_amount),
+          |> assets.add(mint_validator_hash_t, pool_stake_asset_name, st_amount)
+          |> assets.add(order_hash, "orderoderone", 1),
         datum: InlineDatum(order_datum),
         reference_script: None,
       },
@@ -544,7 +601,7 @@ test test_batching_redeem() {
   let pool_value_basic =
     assets.merge(
       from_lovelace(min_pool_lovelace),
-      from_asset(pool_validator_hash_t, lava_pool_nft_name, 1),
+      from_asset(pool_validator_hash_t, pool_nft_name_t, 1),
     )
   let pool_utxo_ref = mock_utxo_ref(0, 18)
   let pool_datum =
@@ -607,7 +664,10 @@ test test_batching_redeem() {
     }
 
   let mint =
-    from_asset(mint_validator_hash_t, pool_stake_asset_name, -st_amount)
+    assets.merge(
+      from_asset(mint_validator_hash_t, pool_stake_asset_name, -st_amount),
+      from_asset(order_hash, "orderoderone", -1),
+    )
 
   let tx =
     Transaction {
@@ -622,7 +682,7 @@ test test_batching_redeem() {
   pool_batching.withdraw(
     gs_validator_hash_t,
     pool_validator_hash_t,
-    BatchingRedeemer(0, batching_asset),
+    BatchingRedeemer(0, batching_asset, pool_stake_asset_name),
     pool_batching_cred_t,
     tx,
   )

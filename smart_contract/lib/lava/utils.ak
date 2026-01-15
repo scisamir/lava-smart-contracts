@@ -1,10 +1,11 @@
+use aiken/collection/dict
 use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Credential, Inline, Script}
 use cardano/assets.{AssetName, Lovelace, PolicyId, lovelace_of, quantity_of}
 use cardano/transaction.{InlineDatum, Input, Output}
-use lava/constants.{global_settings_nft, lava_pool_nft_name, min_pool_lovelace}
+use lava/constants.{global_settings_nft}
 use lava/types.{
   GlobalSettingsDatum, SignerType, SpendScriptSigner, VerificationKeySigner,
   WithdrawScriptSigner,
@@ -52,29 +53,9 @@ pub fn get_global_settings(
   expect Some(global_settings_ref) =
     find_gs_ref_input(reference_inputs, gs_validator_hash, global_settings_nft)
   expect InlineDatum(global_settings) = global_settings_ref.output.datum
-  expect GlobalSettingsDatum {
-    admin,
-    authorized_batchers,
-    allowed_assets,
-    mint_validator_hash,
-    stake_details,
-    frost_address,
-    authorized_swap_scripts,
-    stake_validator_hash,
-    rewards_validator_hash,
-  } = global_settings
+  expect settings: GlobalSettingsDatum = global_settings
 
-  GlobalSettingsDatum {
-    admin,
-    authorized_batchers,
-    allowed_assets,
-    mint_validator_hash,
-    stake_details,
-    frost_address,
-    authorized_swap_scripts,
-    stake_validator_hash,
-    rewards_validator_hash,
-  }
+  settings
 }
 
 /// Gets the Signer Hash
@@ -116,16 +97,31 @@ pub fn find_pool_input(inputs: List<Input>, pool_validator_hash: ScriptHash) {
   list.filter(
     inputs,
     fn(input) {
-      and {
-        (input.output.address.payment_credential == Script(pool_validator_hash))?,
-        (input.output.address.stake_credential == Some(
-          Inline(Script(pool_validator_hash)),
-        ))?,
-        (quantity_of(
-          input.output.value,
-          pool_validator_hash,
-          lava_pool_nft_name,
-        ) == 1)?,
+      let payment_cred = input.output.address.payment_credential
+
+      when payment_cred is {
+        Script(script_hash) -> {
+          let token_pairs =
+            input.output.value
+              |> assets.tokens(script_hash)
+              |> dict.to_pairs
+
+          when token_pairs is {
+            [Pair(nft_name, _)] -> and {
+                (input.output.address.payment_credential == Script(
+                  pool_validator_hash,
+                ))?,
+                (input.output.address.stake_credential == Some(
+                  Inline(Script(pool_validator_hash)),
+                ))?,
+                (quantity_of(input.output.value, pool_validator_hash, nft_name) == 1)?,
+              }
+
+            _ -> False
+          }
+        }
+
+        _ -> False
       }
     },
   )
@@ -137,6 +133,7 @@ pub fn find_pool_output(
   st_pid: PolicyId,
   st_an: AssetName,
   own_payment_cred: Credential,
+  min_pool_lovelace: Int,
 ) -> Output {
   expect Script(own_hash) = own_payment_cred
   let is_ada_asset = st_pid == "" && st_an == "lovelace"
@@ -145,31 +142,54 @@ pub fn find_pool_output(
     list.filter(
       outputs,
       fn(output) {
-        let raw_pool_value =
-          assets.from_lovelace(min_pool_lovelace)
-            |> assets.add(own_hash, lava_pool_nft_name, 1)
+        let payment_cred = output.address.payment_credential
 
-        let expected_pool_value =
-          if is_ada_asset {
-            raw_pool_value
-              |> assets.add("", "", lovelace_of(output.value))
-              |> assets.add("", "", -min_pool_lovelace)
-          } else {
-            raw_pool_value
-              |> assets.add(
-                  st_pid,
-                  st_an,
-                  quantity_of(output.value, st_pid, st_an),
-                )
+        when payment_cred is {
+          Script(script_hash) -> {
+            let token_pairs =
+              output.value
+                |> assets.tokens(script_hash)
+                |> dict.to_pairs
+
+            when token_pairs is {
+              [Pair(nft_name, _)] -> {
+                let raw_pool_value =
+                  assets.from_lovelace(min_pool_lovelace)
+                    |> assets.add(own_hash, nft_name, 1)
+
+                let expected_pool_value =
+                  if is_ada_asset {
+                    raw_pool_value
+                      |> assets.add("", "", lovelace_of(output.value))
+                      |> assets.add("", "", -min_pool_lovelace)
+                  } else {
+                    raw_pool_value
+                      |> assets.add(
+                          st_pid,
+                          st_an,
+                          quantity_of(output.value, st_pid, st_an),
+                        )
+                  }
+
+                and {
+                  (output.address.payment_credential == own_payment_cred)?,
+                  (output.address.stake_credential == Some(
+                    Inline(own_payment_cred),
+                  ))?,
+                  (output.value == expected_pool_value)?,
+                }
+              }
+
+              _ -> False
+            }
           }
 
-        and {
-          (output.address.payment_credential == own_payment_cred)?,
-          (output.address.stake_credential == Some(Inline(own_payment_cred)))?,
-          (output.value == expected_pool_value)?,
+          _ -> False
         }
       },
     )
 
+  // fn(output) {
+  // },
   pool_output
 }

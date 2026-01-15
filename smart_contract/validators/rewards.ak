@@ -1,3 +1,4 @@
+use aiken/collection/dict
 use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
@@ -7,7 +8,7 @@ use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
   placeholder,
 }
-use lava/constants.{lava_pool_nft_name, min_pool_lovelace, precision_factor}
+use lava/constants.{precision_factor}
 use lava/types.{
   AddRewards, AssetType, GlobalSettingsDatum, PoolDatum, RewardsRedeemer,
   SwapRewards,
@@ -18,7 +19,8 @@ use mocktail/virgin_key_hash.{mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
 use test_utils/constants_t.{
   admin_t, allowed_ast_one, allowed_ast_one_an, allowed_ast_one_pid,
-  gs_validator_hash_t, pool_batching_cred_t, pool_validator_hash_t,
+  gs_validator_hash_t, pool_batching_cred_t, pool_nft_name_t,
+  pool_validator_hash_t,
 }
 use test_utils/fns_t.{get_global_settings_input}
 
@@ -43,7 +45,7 @@ validator rewards_validator(
 
     when redeemer is {
       AddRewards { asset: reward_asset, batcher_index } -> {
-        let GlobalSettingsDatum { authorized_batchers, .. } =
+        let GlobalSettingsDatum { authorized_batchers, min_pool_lovelace, .. } =
           get_global_settings(reference_inputs, gs_validator_hash)
         expect Some(batcher) = list.at(authorized_batchers, batcher_index)
 
@@ -84,13 +86,18 @@ validator rewards_validator(
           ..
         } = pool_in_datum
 
+        expect [Pair(pool_nft_name, _)] =
+          pool_input.output.value
+            |> assets.tokens(pool_validator_hash)
+            |> dict.to_pairs
+
         expect [pool_output] =
           list.filter(
             outputs,
             fn(output) {
               let raw_pool_value =
                 assets.from_lovelace(min_pool_lovelace)
-                  |> assets.add(pool_validator_hash, lava_pool_nft_name, 1)
+                  |> assets.add(pool_validator_hash, pool_nft_name, 1)
               let expected_pool_value =
                 if is_ra_ada {
                   raw_pool_value
@@ -190,10 +197,13 @@ validator rewards_validator(
 
 test test_add_rewards() {
   let pool_cred = Script(pool_validator_hash_t)
-  let mint = from_asset(pool_validator_hash_t, lava_pool_nft_name, 1)
+  let mint = from_asset(pool_validator_hash_t, pool_nft_name_t, 1)
   let staking_asset_value =
     from_asset(allowed_ast_one_pid, allowed_ast_one_an, 11_000_000)
   let gs_input = get_global_settings_input()
+
+  expect InlineDatum(gs_datum) = gs_input.output.datum
+  expect GlobalSettingsDatum { min_pool_lovelace, .. } = gs_datum
 
   let pool_utxo_ref = mock_utxo_ref(0, 18)
   let pool_datum_in =
