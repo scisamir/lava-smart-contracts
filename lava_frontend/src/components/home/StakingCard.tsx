@@ -3,13 +3,38 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowDown } from "lucide-react";
-import { LAVA_LOGO } from "@/lib/images";
+import { ArrowDown, ChevronDown, Zap, Wallet } from "lucide-react";
+import { LAVA_LOGO, STRIKEFINANCE_LOGO, SPLASH_LOGO, FLUIDTOKENS_LOGO } from "@/lib/images";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
 import { createOptInOrder } from "@/e2e/order/create_opt_in_order";
 import { createRedeemOrder } from "@/e2e/order/create_redeem_order";
 import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
+
+// PixelCorner removed — unused decorative element
+
+const Cluster = ({ left, right, top, bottom, rotate = 0 }: { left?: number; right?: number; top?: number; bottom?: number; rotate?: number }) => {
+  const containerStyle: any = {
+    position: "absolute",
+    width: 36.05,
+    height: 36.05,
+    transform: `rotate(${rotate}deg)`,
+    zIndex: 5,
+  };
+  if (left !== undefined) containerStyle.left = left;
+  if (right !== undefined) containerStyle.right = right;
+  if (top !== undefined) containerStyle.top = top;
+  if (bottom !== undefined) containerStyle.bottom = bottom;
+
+  return (
+    <div style={containerStyle}>
+      <div style={{ position: "absolute", width: 12.02, height: 12.02, left: 12.33, top: 11.77, background: "#1B1B1B" }} />
+      <div style={{ position: "absolute", width: 12.02, height: 12.02, left: 0.31, top: -0.25, background: "#1B1B1B" }} />
+      <div style={{ position: "absolute", width: 12.02, height: 12.02, left: 24.34, top: 11.77, background: "#1B1B1B" }} />
+      <div style={{ position: "absolute", width: 12.02, height: 12.02, left: 12.33, top: 23.79, background: "#1B1B1B" }} />
+    </div>
+  );
+};
 
 export const StakingCard = () => {
   const [amount, setAmount] = useState<string>("0.00");
@@ -164,218 +189,189 @@ export const StakingCard = () => {
   const tokenLabel = isSwapped ? selectedToken.derivative : selectedToken.base;
 
   return (
-    <Card className="max-w-lg mx-auto p-6 bg-card/80 backdrop-blur-lg border-border shadow-glow-md">
-      {/* Combined token input / output container */}
-      <div
-        className="relative rounded-lg overflow-hidden"
-        style={{ backgroundColor: "#0B0B0B", height: "258px" }}
-      >
-        {/* Top half */}
-        <div className="absolute top-0 left-0 right-0 h-[127px]">
-          <div className="flex flex-col h-full p-4">
-            {/* Row 1: label + buttons */}
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-muted-foreground text-xs">
-                Your staking
-              </label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() =>
-                    setAmount(((tokenBalance ?? 0) / 2).toFixed(2))
-                  }
-                  className="text-xs px-2 py-1 border border-primary/50 rounded text-primary"
-                >
-                  Half
-                </button>
-                <button
-                  onClick={() => setAmount((tokenBalance ?? 0).toFixed(2))}
-                  className="text-xs px-2 py-1 border border-primary/50 rounded text-primary"
-                >
-                  Max
-                </button>
-              </div>
-            </div>
+  <Card className="w-[520px] h-[436px] bg-[#0D0D0D] p-6 flex flex-col gap-6 relative rounded-none">
+    {/* MAIN INPUT / OUTPUT */}
+    <div className="w-[472px] h-[236px] relative flex flex-col">
 
-            {/* Row 2: token + amount */}
-            <div className="flex items-center justify-between flex-1">
-              {/* Token */}
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-lava flex items-center justify-center">
-                  {isSwapped ? (
-                    <img
-                      src={LAVA_LOGO.src}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <span className="text-2xl">t</span>
-                  )}
-                </div>
+      {/* pixel corners removed (no visual effect) */}
 
-                {/* Fake dropdown */}
-                <div className="relative">
-                  <span className="font-semibold text-lg cursor-pointer flex items-center gap-1">
-                    {isSwapped ? selectedToken.derivative : selectedToken.base}
-                    <svg
-                      className="w-4 h-4 opacity-70"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </span>
+      {/* EDGE DECORATIONS */}
+      <div className="absolute inset-0 pointer-events-none z-10">
+        <div className="absolute top-0 left-0 w-4 h-4 border-t border-l border-[#2A2A2A]" />
+        <div className="absolute top-0 right-0 w-4 h-4 border-t border-r border-[#2A2A2A]" />
+        <div className="absolute bottom-0 left-0 w-4 h-4 border-b border-l border-[#2A2A2A]" />
+        <div className="absolute bottom-0 right-0 w-4 h-4 border-b border-r border-[#2A2A2A]" />
+      </div>
 
-                  <select
-                    value={selectedToken.base}
-                    onChange={(e) => {
-                      const token = TOKEN_PAIRS.find(
-                        (t) => t.base === e.target.value
-                      );
-                      if (token) setSelectedToken(token);
-                    }}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                  >
-                    {TOKEN_PAIRS.map((t) => (
-                      <option
-                        key={t.base}
-                        value={t.base}
-                        className="text-black"
-                      >
-                        {t.base}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+      {/* TOP: YOUR STAKING */}
+      <div className="w-full h-[115px] bg-black p-4 flex flex-col gap-3 relative z-20">
+        <div className="flex justify-between items-center">
+          <span className="text-[14px] text-white/70">Your staking</span>
 
-              {/* Amount */}
-              <div className="flex flex-col items-end">
-                <input
-                  value={amount}
-                  onChange={handleChange}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
-                  className="bg-transparent text-right text-2xl font-bold w-24 outline-none no-pixelify"
-                />
-                <p className="text-xs text-muted-foreground">
-                  ≈ ${(numAmount * usdRate).toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div
-          className="absolute left-0 right-0 flex items-center justify-center"
-          style={{ top: "127px", height: "4px" }}
-        >
-          <div style={{ flex: 1, height: "2px", backgroundColor: "#333" }} />
-          <div style={{ width: "30px" }} />
-          <div style={{ flex: 1, height: "2px", backgroundColor: "#333" }} />
-        </div>
-
-        {/* Bottom half */}
-        <div className="absolute bottom-0 left-0 right-0 h-[127px]">
-          <div className="flex flex-col h-full p-4">
-            <label className="text-muted-foreground text-xs mb-2">
-              To receive
-            </label>
-
-            <div className="flex items-center justify-between flex-1">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-lava flex items-center justify-center">
-                  {isSwapped ? (
-                    <span className="text-2xl">t</span>
-                  ) : (
-                    <img
-                      src={LAVA_LOGO.src}
-                      className="w-full h-full object-contain"
-                    />
-                  )}
-                </div>
-
-                <span className="font-semibold text-lg">
-                  {isSwapped ? selectedToken.base : selectedToken.derivative}
-                </span>
-              </div>
-
-              <div className="flex flex-col items-end">
-                <p className="text-2xl font-bold no-pixelify">{amount}</p>
-                <p className="text-xs text-muted-foreground no-pixelify">
-                  ≈ ${((numAmount / conversionRate) * usdRate).toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Arrow */}
-        <div
-          className="absolute left-1/2 transform -translate-x-1/2 z-20"
-          style={{ top: "107px" }}
-        >
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "0px",
-                backgroundColor: "#0B0B0B",
-                border: "3px solid #333",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+          <div className="flex gap-1 staking-half-box">
             <button
-              onClick={handleSwap}
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-transparent"
+              onClick={() => setAmount(((tokenBalance ?? 0) / 2).toFixed(2))}
+              className="w-[40px] h-[24px] border border-[#D5463E80] text-[#D5463E] text-[12px] font-medium bg-white/[0.02] staking-half-btn"
             >
-              <ArrowDown
-                className={`w-6 h-6 text-primary transition-transform duration-300 ${
-                  isSwapped ? "rotate-180" : ""
-                }`}
-              />
+              Half
+            </button>
+
+            <button
+              onClick={() => setAmount((tokenBalance ?? 0).toFixed(2))}
+              className="w-[41px] h-[24px] border border-[#D5463E80] text-[#D5463E] text-[12px] font-medium bg-white/[0.02] staking-max-btn"
+            >
+              Max
             </button>
           </div>
         </div>
+
+        <div className="flex justify-between items-center h-[48px]">
+          <div className="flex items-center gap-2">
+            {/* Render token icon directly (no boxed wrapper). Use placeholder when not available. */}
+            {(() => {
+              const name = isSwapped ? selectedToken.derivative : selectedToken.base;
+              const map: Record<string, string | undefined> = {
+                tStrike: STRIKEFINANCE_LOGO?.src,
+                tPulse: SPLASH_LOGO?.src,
+                test: FLUIDTOKENS_LOGO?.src,
+              };
+              const imgSrc = map[name] ?? LAVA_LOGO?.src;
+              return imgSrc ? (
+                <img src={imgSrc} alt={name} className="w-[40px] h-[40px] object-contain" />
+              ) : (
+                <span className="text-xl">{name?.charAt(0) ?? "T"}</span>
+              );
+            })()}
+
+            <span className="text-[24px] font-medium text-white flex items-center gap-2">
+              {isSwapped ? selectedToken.derivative : selectedToken.base}
+              <ChevronDown className="w-5 h-5 text-[#D5463E]" />
+            </span>
+          </div>
+
+          <div className="text-right">
+            <input
+              value={amount}
+              onChange={handleChange}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              className="bg-transparent text-[32px] font-medium text-white w-[130px] text-right outline-none no-pixelify"
+            />
+            <div className="text-[14px] text-white/80">
+              ≈ ${(numAmount * usdRate).toFixed(2)}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Info */}
-      <div className="text-sm text-muted-foreground space-y-1">
-        <div className="flex justify-between">
-          <span>1 {selectedToken.derivative}</span>
-          <span>1 {selectedToken.base} ($1.00)</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Balance</span>
-          <span className="no-pixelify">
-            {(tokenBalance ?? 0).toFixed(2)} {tokenLabel}
-          </span>
-        </div>
-      </div>
-
-      {/* Wallet button */}
-      <Button
-        className="w-full hover:opacity-90 transition-opacity shadow-glow text-lg py-6 text-white"
-        style={{
-          background:
-            "linear-gradient(181.52deg, #FFD13F -26.73%, #F41B00 98.71%)",
-        }}
-        disabled={!connected || isProcessing || numAmount === 0}
-        onClick={async () =>
-          isSwapped
-            ? await handleCreateRedeemOrder(numAmount, selectedToken.derivative)
-            : await handleCreateOptInOrder(numAmount, selectedToken.base)
-        }
+      {/* ───────────── DIVIDER (6px) ───────────── */}
+      <div
+        className="absolute left-0 right-0 flex items-center justify-center z-40"
+        style={{ top: "112px", height: "6px" }}
       >
-        {isProcessing ? "Processing..." : isSwapped ? "Unstake" : "Stake Now"}
-      </Button>
-    </Card>
-  );
+        <div className="flex-1 h-[2px] bg-[#2A2A2A]" />
+        <div className="w-[30px]" />
+        <div className="flex-1 h-[2px] bg-[#2A2A2A] z-40" />
+      </div>
+
+      {/* CENTER ARROW (CUTS THROUGH DIVIDER) */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2 z-30"
+        style={{ top: "100px" }}
+      >
+        <div className="w-[30px] h-[30px] bg-[#000000] border-[2px] border-[#2A2A2A] flex items-center justify-center staking-arrow">
+          <button onClick={handleSwap} className="staking-arrow-btn">
+            <ArrowDown
+              className={`w-5 h-5 text-[#303030] transition-transform ${
+                isSwapped ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* BOTTOM: TO RECEIVE (NO GAP) */}
+      <div className="w-full h-[115px] bg-black p-4 flex flex-col gap-3 relative z-20">
+        <span className="text-[14px] text-white/70">To receive</span>
+
+        <div className="flex justify-between items-center h-[55px]">
+          <div className="flex items-center gap-2">
+            {(() => {
+              const name = isSwapped ? selectedToken.base : selectedToken.derivative;
+              const map: Record<string, string | undefined> = {
+                tStrike: STRIKEFINANCE_LOGO?.src,
+                tPulse: SPLASH_LOGO?.src,
+                test: FLUIDTOKENS_LOGO?.src,
+              };
+              const imgSrc = map[name] ?? LAVA_LOGO?.src;
+              return imgSrc ? (
+                <img src={imgSrc} alt={name} className="w-[40px] h-[40px] object-contain" />
+              ) : (
+                <span className="text-[24px] font-medium text-white">{name}</span>
+              );
+            })()}
+            <span className="text-[24px] font-medium text-white">
+              {isSwapped ? selectedToken.base : selectedToken.derivative}
+            </span>
+          </div>
+
+          <div className="text-right">
+            <div className="text-[28px] font-medium text-white no-pixelify">
+              {amount}
+            </div>
+            <div className="text-[14px] text-white/80 no-pixelify">
+              ≈ ${((numAmount / conversionRate) * usdRate).toFixed(2)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* INFO */}
+    <div className="w-full flex flex-col gap-2 text-[14px] text-white">
+      <div className="flex justify-between items-center">
+        <span className="flex items-center gap-2">
+          1 {selectedToken.derivative}
+        </span>
+          <span className="flex items-center gap-2">
+          <span>0.996 {selectedToken.base} ($0.32)</span>
+          <Zap className="w-4 h-4 text-[#666666]" style={{ color: '#666666' }} />
+        </span>
+      </div>
+
+      <div className="flex justify-between items-center">
+        <span className="flex items-center gap-2">
+          Balance
+        </span>
+        <span className="no-pixelify flex items-center gap-2">
+          <span>{(tokenBalance ?? 0).toFixed(2)} {tokenLabel}</span>
+          <Wallet className="w-4 h-4 text-[#666666]" style={{ color: '#666666' }} />
+        </span>
+      </div>
+    </div>
+
+    {/* corner clusters */}
+    <Cluster left={0.31} top={-0.25} rotate={0} />
+    <Cluster right={0.31} top={-0.25} rotate={-270} />
+    <Cluster left={0.31} bottom={-0.25} rotate={-90} />
+    <Cluster right={0.31} bottom={-0.25} rotate={180} />
+
+    {/* ACTION BUTTON */}
+    <Button
+      disabled={!connected || isProcessing || numAmount === 0}
+      onClick={async () =>
+        isSwapped
+          ? await handleCreateRedeemOrder(numAmount, selectedToken.derivative)
+          : await handleCreateOptInOrder(numAmount, selectedToken.base)
+      }
+      className="w-full h-[40px] bg-[#D5463E] text-black font-pixel text-[16px] uppercase tracking-tight relative rounded-none z-20"
+      style={{ marginTop: "22px" }}
+    >
+      {isProcessing ? "Processing..." : isSwapped ? "Unstake" : "Stake Now"}
+    </Button>
+  </Card>
+);
+
+
+
 };

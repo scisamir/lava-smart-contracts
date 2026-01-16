@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { Search, ChevronDown } from "lucide-react";
+import { Search } from "lucide-react";
 import {
   LAVA_LOGO,
   PASHOV_LOGO,
@@ -93,52 +93,73 @@ export const VaultsTable = () => {
 
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search"
-            className="pl-10 bg-muted/50 border-border"
-          />
+          <Input placeholder="Search" className="pl-10 bg-muted/50 border-border rounded-none" />
         </div>
       </div>
 
       {/* TABLE WRAPPER */}
-      <div className="rounded-lg border border-border bg-card/50 backdrop-blur-lg overflow-hidden">
+      <div className="border border-border bg-card/50 backdrop-blur-lg overflow-hidden rounded-none">
         <Table>
           {/* DESKTOP HEADER */}
           <TableHeader className="hidden md:table-header-group">
-            <TableRow className="border-border hover:bg-transparent">
+            <TableRow className="border-border bg-muted/50">
               <TableHead className="text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  Vault <ChevronDown className="w-4 h-4" />
+                  Vault
+                  <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 14l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </TableHead>
 
               <TableHead className="text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  Score <ChevronDown className="w-4 h-4" />
+                  Score
+                  <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 14l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </TableHead>
 
               <TableHead className="text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  Status <ChevronDown className="w-4 h-4" />
+                  Status
+                  <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 14l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </TableHead>
 
               <TableHead className="text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  Recent Blocks <ChevronDown className="w-4 h-4" />
+                  Recent Blocks
+                  <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 14l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </TableHead>
 
               <TableHead className="text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  stStake <ChevronDown className="w-4 h-4" />
+                  stStake
+                  <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 14l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </TableHead>
 
               <TableHead className="text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  Staked <ChevronDown className="w-4 h-4" />
+                  Staked
+                  <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 14l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </TableHead>
             </TableRow>
@@ -146,10 +167,7 @@ export const VaultsTable = () => {
 
           <TableBody>
             {poolInfoExtended.map((vault, index) => (
-              <TableRow
-                key={index}
-                className="border-border hover:bg-muted/50 transition-colors"
-              >
+              <TableRow key={index} className="border-0 hover:bg-muted/50 transition-colors">
                 {/* DESKTOP CELLS */}
                 <TableCell className="hidden md:table-cell font-semibold">
                   <div className="flex items-center gap-3">

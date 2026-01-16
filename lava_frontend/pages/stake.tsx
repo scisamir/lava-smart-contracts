@@ -37,10 +37,12 @@ const Stake = () => {
 					</div>
 
 					
-					<StatsSection />
-					<div className="my-8">
-						<StakingCard />
-					</div>
+						<div className="mx-auto w-[644px]">
+							<StatsSection />
+							<div className="my-8 flex justify-center">
+								<StakingCard />
+							</div>
+						</div>
 					</div>
 				</div>
 				{/* FAQ should NOT have the background */}

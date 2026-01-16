@@ -25,7 +25,7 @@ export const ValidatorHeader = () => {
       <div className="grid grid-cols-2 gap-8">
         <div>
           <p
-            className="text-primary text-sm mb-2"
+            className="text-sm mb-2"
             style={{
               fontFamily:
                 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
@@ -33,6 +33,7 @@ export const ValidatorHeader = () => {
               fontStyle: 'normal',
               lineHeight: '150%',
               letterSpacing: '-0.02em',
+              color: 'var(--Color-4, #666666)',
               //leadingTrim: 'none',
             }}
           >
@@ -63,7 +64,7 @@ export const ValidatorHeader = () => {
         </div>
         <div>
           <p
-            className="text-primary text-sm mb-2"
+            className="text-sm mb-2"
             style={{
               fontFamily:
                 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
@@ -71,6 +72,7 @@ export const ValidatorHeader = () => {
               fontStyle: 'normal',
               lineHeight: '150%',
               letterSpacing: '-0.02em',
+              color: 'var(--Color-4, #666666)',
              // leadingTrim: 'none',
             }}
           >
