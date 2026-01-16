@@ -304,3 +304,22 @@ All colors MUST be HSL.
 [data-state="open"] .accordion-toggle .accordion-close { display: inline; color: var(--Color-6); }
 
 
+
+.faq-section button,
+.faq-section [role="button"],
+.faq-section [data-state],
+.faq-section [data-radix-collection-item] {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  color: inherit !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* Re-apply accordion item background inside FAQ section with higher priority */
+.faq-section .faq-accordion-item {
+  background: var(--Color-2, #0D0D0D) !important;
+}
+

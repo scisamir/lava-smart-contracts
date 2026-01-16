@@ -9,9 +9,10 @@ const Accordion = AccordionPrimitive.Root;
 const AccordionItem = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
->(({ className, ...props }, ref) => (
+>(({ className, style, ...props }, ref) => (
   <AccordionPrimitive.Item
     ref={ref}
+    style={{ background: "var(--Color-2, #0D0D0D)", ...(style as any) }}
     className={cn(
       "border-t", // add 1px top border per spec
       className

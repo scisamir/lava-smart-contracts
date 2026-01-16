@@ -57,7 +57,6 @@ const Index = () => {
         >
 
 
-                {/* BG highlight image covering entire Hero section */}
                 <div className="absolute inset-0 pointer-events-none" style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, zIndex: 0 }}>
                   <div
                     style={{
@@ -74,7 +73,6 @@ const Index = () => {
                 <div className="container mx-auto px-4 relative z-10 flex flex-col items-center">
                   {/* Center column matching design (644px) */}
                   <div style={{ width: 644, display: "flex", flexDirection: "column", alignItems: "center", gap: 32, position: "relative", isolation: "isolate", zIndex: 1 }}>
-                    {/* large decorative hero image (positioned behind) */}
                     <div
                       style={{
                         position: "absolute",
@@ -131,9 +129,7 @@ const Index = () => {
 
       <Footer />
 
-      {/* Use flex layout + `min-h-screen` on the root so desktop pages resize dynamically
-				Footer will naturally sit at the bottom because the main content uses `flex-1`.
-				Removed hard-coded pixel min-heights to allow the page to fit large screens. */}
+      
     </div>
   );
 };

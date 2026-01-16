@@ -77,7 +77,7 @@ const Portfolio = () => {
               }}
             />
 
-            <div className="mb-12 flex items-start gap-8">
+            <div className="mb-6 flex items-start gap-6">
               <div
                 className="flex-1"
                 style={{
@@ -101,36 +101,35 @@ const Portfolio = () => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total PnL</p>
-                    <p className={`text-2xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
-                      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
-                    </p>
-                  </div>
+                <div className="flex flex-wrap gap-x-10 gap-y-3">
+  <div className="min-w-[140px]">
+    <p className="text-sm text-muted-foreground mb-1">Total PnL</p>
+    <p className={`text-xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
+      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
+    </p>
+  </div>
 
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">24h Gain/Loss</p>
-                    <p className={`text-2xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
-                      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
-                    </p>
-                  </div>
+  <div className="min-w-[140px]">
+    <p className="text-sm text-muted-foreground mb-1">24h Gain/Loss</p>
+    <p className={`text-xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
+      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
+    </p>
+  </div>
 
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total Yield Earned</p>
-                    <p className="text-2xl font-semibold text-green-500 no-pixelify">
-                      ${totalYieldEarned.toFixed(2)}
-                    </p>
-                  </div>
+  <div className="min-w-[160px]">
+    <p className="text-sm text-muted-foreground mb-1">Total Yield Earned</p>
+    <p className="text-xl font-semibold text-green-500 no-pixelify">
+      ${totalYieldEarned.toFixed(2)}
+    </p>
+  </div>
 
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Net APY</p>
-                    <p className="text-2xl font-semibold no-pixelify">{NET_APY}%</p>
-                  </div>
-                </div>
+  <div className="min-w-[120px]">
+    <p className="text-sm text-muted-foreground mb-1">Net APY</p>
+    <p className="text-xl font-semibold no-pixelify">{NET_APY}%</p>
+  </div>
+</div>
               </div>
 
-              {/* Decorative graphic removed; section uses app-bg.png instead */}
             </div>
           </Card>
 

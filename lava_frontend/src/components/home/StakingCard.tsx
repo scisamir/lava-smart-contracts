@@ -264,7 +264,6 @@ export const StakingCard = () => {
         </div>
       </div>
 
-      {/* ───────────── DIVIDER (6px) ───────────── */}
       <div
         className="absolute left-0 right-0 flex items-center justify-center z-40"
         style={{ top: "112px", height: "6px" }}
@@ -367,7 +366,13 @@ export const StakingCard = () => {
       className="w-full h-[40px] bg-[#D5463E] text-black font-pixel text-[16px] uppercase tracking-tight relative rounded-none z-20"
       style={{ marginTop: "22px" }}
     >
-      {isProcessing ? "Processing..." : isSwapped ? "Unstake" : "Stake Now"}
+      <span className="relative z-10">{isProcessing ? "Processing..." : isSwapped ? "Unstake" : "Stake Now"}</span>
+
+      {/* Corner pixels — 4 corners */}
+      <span style={{ position: "absolute", width: 4, height: 4, right: 0, top: 0, background: "#FFFFFF", zIndex: 2 }} />
+      <span style={{ position: "absolute", width: 4, height: 4, left: 0, top: 0, background: "#FFFFFF", zIndex: 2 }} />
+      <span style={{ position: "absolute", width: 4, height: 4, right: 0, bottom: 0, background: "#FFFFFF", zIndex: 2 }} />
+      <span style={{ position: "absolute", width: 4, height: 4, left: 0, bottom: 0, background: "#FFFFFF", zIndex: 2 }} />
     </Button>
   </Card>
 );
