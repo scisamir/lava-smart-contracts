@@ -250,5 +250,76 @@ All colors MUST be HSL.
     border: none !important;
     padding: 0 !important;
   }
+
+  /* Staking card specific overrides: opt-out from global button forcing
+     and apply the boxed black background + var(--Color-6) text color. */
+  .staking-half-box {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+
+  .staking-half-box .staking-half-btn,
+  .staking-half-box .staking-max-btn {
+    background-image: none !important;
+    background: #000000 !important;
+    background-color: #000000 !important;
+    color: var(--Color-6) !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: 1px solid rgba(213,70,62,0.5) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Arrow box: do not force background/border here so component classes can control appearance */
+  .staking-arrow {
+    box-shadow: none !important;
+  }
+
+  .staking-arrow-btn {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: var(--Color-6) !important;
+  }
+}
+
+/* Removed reserved bottom padding; footer is not sticky */
+
+/* Accordion custom toggle: show + when closed, × when open */
+.accordion-toggle { position: relative; }
+.accordion-toggle .accordion-close { display: none; }
+.accordion-toggle .accordion-plus { display: inline; }
+
+/* When the trigger is in open state, swap icons. Radix sets data-state=open on the trigger */
+[data-state="open"] .accordion-toggle .accordion-plus { display: none; }
+[data-state="open"] .accordion-toggle .accordion-close { display: inline; color: var(--Color-6); }
+
+
+
+.faq-section button,
+.faq-section [role="button"],
+.faq-section [data-state],
+.faq-section [data-radix-collection-item] {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  color: inherit !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* Re-apply accordion item background inside FAQ section with higher priority */
+.faq-section .faq-accordion-item {
+  background: var(--Color-2, #0D0D0D) !important;
 }
 

@@ -1,69 +1,66 @@
 import { LAVA_LOGO } from "@/lib/images";
-import footerBg from "@/assets/footer-bg.png";
 
 const Footer = () => {
   return (
     <footer
-      className="relative overflow-hidden bg-no-repeat"
-      style={{
-        backgroundImage: `url(${footerBg.src})`,
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center bottom',
-        /* keep height for layout consistency */
-        height: '120.7198486328125px',
-      }}
+      className="relative bg-[#0D0D0D] overflow-hidden flex items-center h-[160px] md:h-[96px]"
     >
-      <style jsx>{`
-        footer::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: var(--Color-2, #0D0D0D);
-          opacity: 0.9;
-          z-index: 0;
-        }
+      {/* BACKGROUND TYPOGRAPHY */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        {/* Large dark layers */}
+          <span className="absolute left-[-10%] text-[150px] leading-none font-pixel text-[#303030] opacity-40 whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-30px)' }}>
+            Liquid staking Standard
+          </span>
 
-        /* Mobile: use the same desktop image but adapt positioning/height so it responds
-           to different screen sizes. Desktop appearance remains unchanged. */
-        @media (max-width: 768px) {
-          footer {
-            background-position: center center !important;
-            background-size: cover !important;
-            /* let content dictate height on small screens while keeping some padding */
-            height: auto !important;
-            padding-top: 1.5rem !important;
-            padding-bottom: 1.5rem !important;
-          }
-        }
-      `}</style>
-      
-  <div className="container mx-auto px-4 h-full flex items-end pb-6 relative z-10">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
-          <div className="flex items-center gap-2">
+          <span className="absolute left-[10%] text-[150px] leading-none font-pixel text-[#303030] opacity-80 whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-34px)' }}>
+            Liquid staking Standard
+          </span>
+
+        {/* Light subtle layers */}
+          <span className="absolute left-[30%] text-[150px] leading-none font-pixel text-white opacity-[0.04] whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-30px)' }}>
+            Liquid staking Standard
+          </span>
+
+          <span className="absolute left-[55%] text-[120px] leading-none font-pixel text-white opacity-[0.04] whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-28px)' }}>
+            Liquid staking Standard
+          </span>
+      </div>
+
+      {/* FOREGROUND CONTENT */}
+      <div className="container mx-auto px-6 relative z-10 h-full">
+        <div className="flex flex-col md:flex-row h-full">
+
+          {/* Logo - top on mobile, left on desktop */}
+          <div className="flex items-center gap-[14px] md:items-center md:justify-start">
             <img src={LAVA_LOGO.src} alt="Lava" className="w-6 h-6" />
-            <span className="text-xl font-bold" style={{ color: '#D5463E' }}>lava</span>
+            <span className="text-xl font-bold text-[#D5463E]">
+              lava
+            </span>
           </div>
-          
-          <p className="text-white/80 text-sm lorem no-pixelify">
-            © 2025 Lava. All rights reserved
-          </p>
 
-          <div className="flex items-center gap-6">
-            <a href="/stake" className="text-white/80 hover:text-white transition-colors text-sm">
+          {/* Copyright - centered vertically on mobile, center on desktop */}
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-[14px] text-white opacity-60 no-pixelify text-center">
+              © 2025 Lava. All rights reserved
+            </p>
+          </div>
+
+          {/* Navigation - bottom on mobile, right on desktop */}
+          <div className="flex items-center gap-6 justify-center md:justify-end">
+            <a href="/stake" className="text-white hover:opacity-80">
               Stake
             </a>
-            <a href="/earn" className="text-white/80 hover:text-white transition-colors text-sm">
+            <a href="/earn" className="text-white hover:opacity-80">
               Earn
             </a>
-            <a href="/validators" className="text-white/80 hover:text-white transition-colors text-sm">
+            <a href="/validators" className="text-white hover:opacity-80">
               Validators
             </a>
-            <a href="/portfolio" className="text-white/80 hover:text-white transition-colors text-sm">
+            <a href="/portfolio" className="text-white hover:opacity-80">
               Portfolio
             </a>
-            
           </div>
+
         </div>
       </div>
     </footer>

@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -96,31 +96,40 @@ export const ProtocolsTable = () => {
         <h2 className="text-3xl font-bold">Farm</h2>
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search"
-            className="pl-10 bg-muted/50 border-border"
-          />
+          <Input placeholder="Search" className="pl-10 bg-muted/50 border-border rounded-none" />
         </div>
       </div>
 
       {/* DESKTOP TABLE */}
-      <Card className="bg-card/50 backdrop-blur-lg border-border overflow-hidden hidden md:block">
+      <Card className="bg-card/50 backdrop-blur-lg border-border hidden md:block rounded-none">
         <Table>
           <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
+            <TableRow className="border-border bg-muted/50">
               <TableHead>
                 <div className="flex items-center gap-1">
-                  Protocol <ChevronDown className="w-4 h-4" />
+                  Protocol
+                  <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 14l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </TableHead>
               <TableHead>
                 <div className="flex items-center gap-1">
-                  Borrow Rate <ChevronDown className="w-4 h-4" />
+                  Borrow Rate
+                  <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 14l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </TableHead>
               <TableHead>
                 <div className="flex items-center gap-1">
-                  Supply Rate <ChevronDown className="w-4 h-4" />
+                  Supply Rate
+                  <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 14l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </TableHead>
               <TableHead>
@@ -128,12 +137,20 @@ export const ProtocolsTable = () => {
               </TableHead>
               <TableHead>
                 <div className="flex items-center gap-1">
-                  TVL <ChevronDown className="w-4 h-4" />
+                  TVL
+                  <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 14l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </TableHead>
               <TableHead>
                 <div className="flex items-center gap-1">
-                  Category <ChevronDown className="w-4 h-4" />
+                  Category
+                  <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 10l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 14l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               </TableHead>
             </TableRow>
@@ -143,7 +160,7 @@ export const ProtocolsTable = () => {
             {poolInfoExtended.map((p, index) => (
               <TableRow
                 key={index}
-                className="border-border hover:bg-muted/50 transition-colors"
+                className="border-0 hover:bg-muted/50 transition-colors"
               >
                 <TableCell>
                   <div className="flex items-center gap-3">

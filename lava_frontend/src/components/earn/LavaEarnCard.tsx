@@ -3,17 +3,30 @@ import { LAVA_LOGO, FLUIDTOKENS_LOGO, MINSWAP_LOGO, SPLASH_LOGO } from "@/lib/im
 
 export const LavaEarnCard = () => {
   return (
-    <Card className="bg-card/80 backdrop-blur-lg border-border shadow-glow-md p-6">
+    <Card
+      className="bg-card/80 backdrop-blur-lg border-border shadow-glow-md p-6 rounded-none mx-auto w-full max-w-[644px]"
+      style={{ height: 220 }}
+    >
       <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-full bg-gradient-lava flex items-center justify-center shadow-glow p-2">
-          <img src={LAVA_LOGO.src} alt="Lava" className="w-full h-full object-contain" />
-        </div>
-        <h3 className="text-2xl font-bold">
-          Lava <span className="text-gradient-lava">Earn</span>
+        <img src={LAVA_LOGO.src} alt="Lava" className="w-12 h-12 object-contain" />
+        <h3
+          style={{
+            fontFamily: "Pixelify Sans, sans-serif",
+            fontWeight: 400,
+            fontStyle: "normal",
+            fontSize: 28,
+            lineHeight: "120%",
+            letterSpacing: "0%",
+            background: "linear-gradient(180deg, #D5463E 0%, #D5463E 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          Lava Earn
         </h3>
       </div>
-      
-      <p className="text-muted-foreground text-sm mb-6">
+
+      <p className="text-muted-foreground text-sm mb-6" style={{ maxWidth: 520 }}>
         Lorem ipsum dolor sit amet consectetur. Lacinia et euismod consequat sit non vel. Enim ac nullam elementum massa sagittis.
       </p>
 

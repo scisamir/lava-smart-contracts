@@ -62,10 +62,22 @@ const Portfolio = () => {
       <Navigation />
 
       <section className="pt-32 pb-20">
-        <div className="container mx-auto px-4 max-w-6xl">
+        <div className="container mx-auto px-4">
           {/* Net Worth - surround this stats block with app-bg as a rectangle aligned to the table */}
-          <div className="app-bg-wrapper rounded-lg p-6 mb-8" style={{ ["--app-bg" as any]: `url(${appBg.src})` } as React.CSSProperties}>
-            <div className="mb-12 flex items-start gap-8">
+          <Card className="bg-card/50 border-border overflow-hidden rounded-none w-full mx-auto p-6 mb-8 relative">
+            {/* decorative background only on md+ */}
+            <div
+              className="hidden md:block absolute inset-0 -z-10 pointer-events-none"
+              style={{
+                backgroundImage: `url(${appBg.src})`,
+                backgroundRepeat: "no-repeat",
+                backgroundSize: "cover",
+                backgroundPosition: "right center",
+                opacity: 0.4,
+              }}
+            />
+
+            <div className="mb-6 flex items-start gap-6">
               <div
                 className="flex-1"
                 style={{
@@ -89,38 +101,37 @@ const Portfolio = () => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total PnL</p>
-                    <p className={`text-2xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
-                      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
-                    </p>
-                  </div>
+                <div className="flex flex-wrap gap-x-10 gap-y-3">
+  <div className="min-w-[140px]">
+    <p className="text-sm text-muted-foreground mb-1">Total PnL</p>
+    <p className={`text-xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
+      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
+    </p>
+  </div>
 
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">24h Gain/Loss</p>
-                    <p className={`text-2xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
-                      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
-                    </p>
-                  </div>
+  <div className="min-w-[140px]">
+    <p className="text-sm text-muted-foreground mb-1">24h Gain/Loss</p>
+    <p className={`text-xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
+      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
+    </p>
+  </div>
 
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total Yield Earned</p>
-                    <p className="text-2xl font-semibold text-green-500 no-pixelify">
-                      ${totalYieldEarned.toFixed(2)}
-                    </p>
-                  </div>
+  <div className="min-w-[160px]">
+    <p className="text-sm text-muted-foreground mb-1">Total Yield Earned</p>
+    <p className="text-xl font-semibold text-green-500 no-pixelify">
+      ${totalYieldEarned.toFixed(2)}
+    </p>
+  </div>
 
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Net APY</p>
-                    <p className="text-2xl font-semibold no-pixelify">{NET_APY}%</p>
-                  </div>
-                </div>
+  <div className="min-w-[120px]">
+    <p className="text-sm text-muted-foreground mb-1">Net APY</p>
+    <p className="text-xl font-semibold no-pixelify">{NET_APY}%</p>
+  </div>
+</div>
               </div>
 
-              {/* Decorative graphic removed; section uses app-bg.png instead */}
             </div>
-          </div>
+          </Card>
 
           {/* Holdings */}
           <div>
@@ -128,65 +139,34 @@ const Portfolio = () => {
 
             {/* Desktop Table */}
             <div className="hidden md:block">
-              <Card className="bg-card border-border overflow-hidden">
+              <Card className="bg-card/50 border-border overflow-hidden rounded-none w-full mx-auto">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="border-b border-border">
+                    <thead className="border-b border-border bg-muted/50">
                       <tr>
-                        <th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">
-                          Asset
-                        </th>
-                        <th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">
-                          Value
-                        </th>
-                        <th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">
-                          24h Gain/Loss
-                        </th>
-                        <th className="text-center px-4 py-3 text-sm text-muted-foreground font-medium">
-                          24h Gain/Loss %
-                        </th>
+                        <th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">Asset</th>
+                        <th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">Value</th>
+                        <th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">24h Gain/Loss</th>
+                        <th className="text-center px-4 py-3 text-sm text-muted-foreground font-medium">24h Gain/Loss %</th>
                       </tr>
                     </thead>
                     <tbody>
                       {assets.map((asset, index) => (
-                        <tr
-                          key={index}
-                          className="border-b border-border last:border-0"
-                        >
+                        <tr key={index} className="border-0 hover:bg-muted/50 transition-colors">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <img
-                                src={LAVA_LOGO.src}
-                                alt={asset.symbol}
-                                className="w-6 h-6"
-                              />
+                              <img src={LAVA_LOGO.src} alt={asset.symbol} className="w-6 h-6" />
                               <span className="font-medium">
                                 {asset.amount}{" "}
-                                <span className="text-muted-foreground">
-                                  {asset.symbol}
-                                </span>
+                                <span className="text-muted-foreground">{asset.symbol}</span>
                               </span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 font-medium">
-                            {asset.value}
-                          </td>
-                          <td
-                            className={`px-4 py-3 font-medium ${
-                              asset.isPositive
-                                ? "text-green-500"
-                                : "text-red-500"
-                            }`}
-                          >
+                          <td className="px-4 py-3 font-medium">{asset.value}</td>
+                          <td className={`px-4 py-3 font-medium ${asset.isPositive ? "text-green-500" : "text-red-500"}`}>
                             {asset.change}
                           </td>
-                          <td
-                            className={`px-4 py-3 font-medium text-center ${
-                              asset.isPositive
-                                ? "text-green-500"
-                                : "text-red-500"
-                            }`}
-                          >
+                          <td className={`px-4 py-3 font-medium text-center ${asset.isPositive ? "text-green-500" : "text-red-500"}`}>
                             {asset.changePercent}
                           </td>
                         </tr>

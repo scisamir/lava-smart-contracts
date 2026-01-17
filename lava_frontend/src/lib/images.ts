@@ -18,8 +18,10 @@ import strikefinanceLogo from "@/assets/strikefinance-logo.png";
 import worldMap from "@/assets/world-map.png";
 import zenithLogo from "@/assets/zenith-logo.png";
 import auditorLogo from "@/assets/auditor.png";
+import bgBehindd from "@/assets/bgBehind.png";
 
 export const LAVA_LOGO = lavaColorful;
+export const BG_BEHIND = bgBehindd;
 export const LAVA_WAVE = lavaWave;
 export const CIRCLE_LOGO = circleLogo;
 export const CODE_ARENA_LOGO = codeArenaLogo;
