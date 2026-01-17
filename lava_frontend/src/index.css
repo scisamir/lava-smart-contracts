@@ -196,15 +196,15 @@ All colors MUST be HSL.
      receive their own styling). This intentionally overrides gradient/
      background utilities and inline styles so every interactive button
      appears with `--Color-6` unless excluded. */
-  button:not(.nav-mobile-trigger):not(.mobile-nav-item),
-  input[type="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item),
-  input[type="submit"]:not(.nav-mobile-trigger):not(.mobile-nav-item),
-  [role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item),
-  a[role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item),
-  .btn:not(.nav-mobile-trigger):not(.mobile-nav-item),
-  .button:not(.nav-mobile-trigger):not(.mobile-nav-item),
-  .btn-lava:not(.nav-mobile-trigger):not(.mobile-nav-item),
-  .inline-flex[role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item) {
+  button:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn),
+  input[type="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn),
+  input[type="submit"]:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn),
+  [role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn),
+  a[role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn),
+  .btn:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn),
+  .button:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn),
+  .btn-lava:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn),
+  .inline-flex[role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn) {
     background-image: none !important;
     background-color: var(--Color-6, #D5463E) !important;
     background: var(--Color-6, #D5463E) !important;
@@ -215,9 +215,9 @@ All colors MUST be HSL.
 
   /* Also neutralize the project's special gradient utility when it appears
      on buttons so the lava red takes precedence. */
-  button.bg-gradient-lava,
-  .bg-gradient-lava[role="button"],
-  .bg-gradient-lava.btn {
+  button.bg-gradient-lava:not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn),
+  .bg-gradient-lava[role="button"]:not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn),
+  .bg-gradient-lava.btn:not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn) {
     background-image: none !important;
     background: var(--Color-6, #D5463E) !important;
     color: white !important;
