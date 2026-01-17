@@ -389,6 +389,13 @@ All colors MUST be HSL.
   padding: 0 !important;
 }
 
+/* Mobile footer spans should be hidden by default (desktop) */
+footer .footer-bg-top,
+footer .footer-bg-mid,
+footer .footer-bg-bottom {
+  display: none !important;
+}
+
 /* Footer mobile-specific styles (do not affect desktop) */
 @media (max-width: 767px) {
     footer {
@@ -453,6 +460,7 @@ All colors MUST be HSL.
   footer .footer-bg-top,
   footer .footer-bg-mid,
   footer .footer-bg-bottom {
+    display: block !important;
     position: absolute;
     left: 50%;
     transform: translateX(-50%);

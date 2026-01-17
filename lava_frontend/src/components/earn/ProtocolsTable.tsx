@@ -94,10 +94,10 @@ export const ProtocolsTable = () => {
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold">Farms</h2>
-        <div className="relative w-auto">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search" className="pl-10 bg-muted/50 border-border rounded-none w-50 sm:w-64" />
-        </div>
+          <div className="relative w-28 sm:w-48 md:w-64 lg:w-96">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search" className="pl-10 bg-muted/50 border-border rounded-none w-full" />
+          </div>
       </div>
 
       {/* DESKTOP TABLE */}
