@@ -38,7 +38,7 @@ const Stake = () => {
             </p>
           </div>
 
-          <div className="mx-auto w-[644px]">
+          <div className="mx-auto w-full max-w-[644px]">
             <StatsSection />
             <div className="my-8 flex justify-center">
               <StakingCard />

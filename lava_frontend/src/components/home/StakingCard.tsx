@@ -189,9 +189,9 @@ export const StakingCard = () => {
   const tokenLabel = isSwapped ? selectedToken.derivative : selectedToken.base;
 
   return (
-  <Card className="w-[520px] h-[436px] bg-[#0D0D0D] p-6 flex flex-col gap-6 relative rounded-none">
+  <Card className="w-full max-w-[520px] h-[436px] bg-[#0D0D0D] p-6 flex flex-col gap-6 relative rounded-none">
     {/* MAIN INPUT / OUTPUT */}
-    <div className="w-[472px] h-[236px] relative flex flex-col">
+    <div className="w-full h-[236px] relative flex flex-col">
 
       {/* pixel corners removed (no visual effect) */}
 
@@ -255,7 +255,7 @@ export const StakingCard = () => {
               onChange={handleChange}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              className="bg-transparent text-[32px] font-medium text-white w-[130px] text-right outline-none no-pixelify"
+              className="bg-transparent text-[32px] font-medium text-white w-24 sm:w-[130px] max-w-full text-right outline-none no-pixelify"
             />
             <div className="text-[14px] text-white/80">
               ≈ ${(numAmount * usdRate).toFixed(2)}

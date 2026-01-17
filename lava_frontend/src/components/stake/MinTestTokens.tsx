@@ -4,7 +4,8 @@ import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { mintTestTokens } from "@/e2e/utils/mintTestTokens";
 
-export const MintTestTokens = () => {
+export const MintTestTokens = ({ variant = "default", className = "" }: { variant?: "default" | "mobile"; className?: string }) => {
+
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
   const {
@@ -76,15 +77,14 @@ export const MintTestTokens = () => {
     });
   };
 
+  const defaultMobileClass = `bg-transparent text-white px-3 py-2 text-[16px] leading-[100%] tracking-[-0.02em] hover:opacity-80 shadow-none`;
+  const defaultDesktopClass = `bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow px-2 py-4`;
+
+  const btnClass = className ? className : variant === "mobile" ? defaultMobileClass : defaultDesktopClass;
+
   return (
-    // <div className="w-full flex justify-center mt-5">
-    <Button
-      disabled={isProcessing}
-      onClick={() => handleMintTestTokens()}
-      className="bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow px-2 py-4"
-    >
+    <Button disabled={isProcessing} onClick={handleMintTestTokens} className={btnClass}>
       {isProcessing ? "Processing..." : "Mint Test Tokens"}
     </Button>
-    // </div>
   );
 };

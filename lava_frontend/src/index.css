@@ -192,18 +192,19 @@ All colors MUST be HSL.
   }
 
   /* Force all buttons and elements acting as buttons to use the lava-red
-     background. This intentionally overrides gradient/background utilities,
-     inline styles, and other classes so every interactive button appears
-     with `--Color-6`. */
-  button,
-  input[type="button"],
-  input[type="submit"],
-  [role="button"],
-  a[role="button"],
-  .btn,
-  .button,
-  .btn-lava,
-  .inline-flex[role="button"] {
+     background, except elements opting out for mobile navigation (they
+     receive their own styling). This intentionally overrides gradient/
+     background utilities and inline styles so every interactive button
+     appears with `--Color-6` unless excluded. */
+  button:not(.nav-mobile-trigger):not(.mobile-nav-item),
+  input[type="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item),
+  input[type="submit"]:not(.nav-mobile-trigger):not(.mobile-nav-item),
+  [role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item),
+  a[role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item),
+  .btn:not(.nav-mobile-trigger):not(.mobile-nav-item),
+  .button:not(.nav-mobile-trigger):not(.mobile-nav-item),
+  .btn-lava:not(.nav-mobile-trigger):not(.mobile-nav-item),
+  .inline-flex[role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item) {
     background-image: none !important;
     background-color: var(--Color-6, #D5463E) !important;
     background: var(--Color-6, #D5463E) !important;
@@ -290,6 +291,61 @@ All colors MUST be HSL.
     justify-content: center !important;
     color: var(--Color-6) !important;
   }
+
+  /* Mobile navigation specific styles (Component 16)
+     Apply only on small screens so desktop keeps the original layout. */
+  .nav-connect-button {
+    display: inline-flex !important;
+  }
+
+  @media (max-width: 767px) {
+    .nav-mobile-trigger {
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      padding: 16px 12px;
+      gap: 8px;
+      isolation: isolate;
+      width: 40px;
+      height: 40px;
+      background: #000000;
+      border: 1px solid rgba(255,255,255,0.13);
+      position: relative;
+      flex: none;
+      order: 1;
+      flex-grow: 0;
+    }
+
+    /* Small absolute 4x4 white corner pixels */
+    .nav-mobile-trigger .nav-corner {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: #FFFFFF;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .nav-mobile-trigger .nav-corner.tl { left: 1px; top: 1px; }
+    .nav-mobile-trigger .nav-corner.tr { right: 1px; top: 1px; }
+    .nav-mobile-trigger .nav-corner.bl { left: 1px; bottom: 1px; }
+    .nav-mobile-trigger .nav-corner.br { right: 1px; bottom: 1px; }
+
+    /* Hide the full Connect Wallet button on small screens so the compact
+       mobile controls are used. */
+    /* Show a compact connect button on mobile (restore visibility) */
+    .nav-connect-button {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 8px !important;
+      padding: 6px 10px !important;
+      height: 32px !important;
+      font-size: 16px !important;
+    }
+  }
 }
 
 /* Removed reserved bottom padding; footer is not sticky */
@@ -323,3 +379,110 @@ All colors MUST be HSL.
   background: var(--Color-2, #0D0D0D) !important;
 }
 
+/* Mobile navigation menu buttons should NOT have lava backgrounds */
+.mobile-nav-item {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+/* Footer mobile-specific styles (do not affect desktop) */
+@media (max-width: 767px) {
+    footer {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    padding: 24px 16px !important;
+    gap: 24px !important;
+    isolation: isolate !important;
+    background: #0D0D0D !important;
+    height: auto !important;
+    min-height: 120px !important;
+  }
+
+  footer .container {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  footer .container > .flex {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 24px !important;
+    height: auto !important;
+  }
+
+  footer .container > .flex > div {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  footer img {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  footer p {
+    font-size: 14px !important;
+    line-height: 150% !important;
+    opacity: 0.6 !important;
+    text-align: center !important;
+  }
+
+  footer a {
+    display: inline-block !important;
+    padding: 8px 0 !important;
+    color: #FFFFFF !important;
+    text-decoration: none !important;
+  }
+}
+
+/* Make background typography in footer cover mobile width and center it */
+@media (max-width: 767px) {
+  /* Hide the big multi-layer background text (desktop layers) but allow
+     controlled mobile-only background spans added to the footer. */
+  footer .pointer-events-none {
+    display: none !important;
+  }
+
+  /* Mobile-only top/bottom background spans */
+  footer .footer-bg-top,
+  footer .footer-bg-mid,
+  footer .footer-bg-bottom {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #FFFFFF;
+    opacity: 0.04;
+    white-space: nowrap;
+    font-family: 'Pixelify Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  footer .footer-bg-top {
+    top: -8%;
+    font-size: 18vw;
+    line-height: 0.9;
+  }
+
+  footer .footer-bg-bottom {
+    bottom: -6%;
+    font-size: 18vw;
+    line-height: 0.9;
+    transform: translateX(-50%) scaleX(-1);
+    opacity: 0.04;
+  }
+
+  footer .footer-bg-mid {
+    top: 50%;
+    transform: translateX(-50%) translateY(-50%);
+    font-size: 16vw;
+    line-height: 0.9;
+    opacity: 0.045;
+  }
+}

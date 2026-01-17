@@ -72,37 +72,19 @@ const Index = () => {
 
                 <div className="container mx-auto px-4 relative z-10 flex flex-col items-center">
                   {/* Center column matching design (644px) */}
-                  <div style={{ width: 644, display: "flex", flexDirection: "column", alignItems: "center", gap: 32, position: "relative", isolation: "isolate", zIndex: 1 }}>
-                    <div
-                      style={{
-                        position: "absolute",
-                        width: 1822,
-                        height: 557,
-                        left: "calc(50% - 1822px/2 + 0.36px)",
-                        top: -129.25,
-                        backgroundImage: `url(${BG_BEHIND.src})`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                        mixBlendMode: "screen",
-                        opacity: 0.50,
-                        zIndex: 1,
-                        pointerEvents: "none",
-                      }}
-                    />
+                  <div className="w-full max-w-[644px] flex flex-col items-center gap-8 relative isolation-isolate z-10">
+                    <div className="hidden md:block absolute left-1/2 -translate-x-1/2" style={{ width: 1822, height: 557, top: -129.25, backgroundImage: `url(${BG_BEHIND.src})`, backgroundSize: 'cover', backgroundPosition: 'center', mixBlendMode: 'screen', opacity: 0.5, zIndex: 1, pointerEvents: 'none' }} />
 
-                    <div style={{ width: 644, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                    <div className="w-full max-w-[644px] flex flex-col items-center gap-2">
                       <h1
+                        className="w-full max-w-[569px] text-center text-white"
                         style={{
-                          width: 569,
-                          height: 116,
                           fontFamily: "Pixelify Sans, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial",
                           fontWeight: 400,
                           fontSize: 48,
                           lineHeight: "58px",
-                          textAlign: "center",
                           letterSpacing: "-0.02em",
                           textTransform: "uppercase",
-                          color: "#FFFFFF",
                           zIndex: 2,
                         }}
                       >

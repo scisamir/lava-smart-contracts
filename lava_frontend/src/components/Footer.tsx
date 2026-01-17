@@ -12,7 +12,7 @@ const Footer = () => {
             Liquid staking Standard
           </span>
 
-          <span className="absolute left-[10%] text-[150px] leading-none font-pixel text-[#303030] opacity-80 whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-34px)' }}>
+          <span className="absolute left-[10%] text-[150px] leading-none font-pixel text-[#303030] opacity-80 whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-30px)' }}>
             Liquid staking Standard
           </span>
 
@@ -21,7 +21,7 @@ const Footer = () => {
             Liquid staking Standard
           </span>
 
-          <span className="absolute left-[55%] text-[120px] leading-none font-pixel text-white opacity-[0.04] whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-28px)' }}>
+          <span className="absolute left-[20%] text-[120px] leading-none font-pixel text-white opacity-[0.04] whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-20px)' }}>
             Liquid staking Standard
           </span>
       </div>
@@ -63,6 +63,10 @@ const Footer = () => {
 
         </div>
       </div>
+      {/* Mobile-only background spans (top/mid/bottom) */}
+      <span className="footer-bg-top">Liquid staking Standard</span>
+      <span className="footer-bg-mid">Liquid staking Standard</span>
+      <span className="footer-bg-bottom">Liquid staking Standard</span>
     </footer>
   );
 };
