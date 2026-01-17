@@ -3,7 +3,7 @@ use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Credential, Inline, Script}
-use cardano/assets.{from_asset, from_lovelace, quantity_of}
+use cardano/assets.{from_asset, from_lovelace, lovelace_of, quantity_of}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, Transaction, placeholder,
 }
@@ -68,8 +68,14 @@ validator stake_validator(
     expect Some(stake_address) = stake_address_opt
     expect Some(datum_verifier_hash) = datum_verifier_hash_opt
 
+    let is_ada_asset = pool_asset_pid == "" && pool_asset_an == "lovelace"
+
     let pool_asset_quantity =
-      quantity_of(pool_input.output.value, pool_asset_pid, pool_asset_an)
+      if is_ada_asset {
+        lovelace_of(pool_input.output.value) - min_pool_lovelace
+      } else {
+        quantity_of(pool_input.output.value, pool_asset_pid, pool_asset_an)
+      }
 
     // Must be an output going to the right stake address with value equivalent to the pool asset quantity
     expect [_stake_output] =
@@ -78,7 +84,11 @@ validator stake_validator(
         fn(output) {
           and {
             (output.address == stake_address)?,
-            (quantity_of(output.value, pool_asset_pid, pool_asset_an) == pool_asset_quantity)?,
+            if is_ada_asset {
+              (lovelace_of(output.value) == pool_asset_quantity)?
+            } else {
+              (quantity_of(output.value, pool_asset_pid, pool_asset_an) == pool_asset_quantity)?
+            },
           }
         },
       )
