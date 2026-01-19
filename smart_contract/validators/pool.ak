@@ -6,6 +6,7 @@ use aiken/primitive/bytearray
 use aiken/primitive/string.{from_int, to_bytearray}
 use cardano/address.{Address, Credential, Inline, Script}
 use cardano/assets.{PolicyId, from_asset, from_lovelace, lovelace_of}
+use cardano/certificate.{Certificate}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Spend, Transaction,
   find_input, placeholder,
@@ -311,6 +312,16 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
       is_pool_out_datum_correct?,
       is_pool_value_valid?,
     }
+  }
+
+  publish(_redeemer: Data, _certificate: Certificate, tx: Transaction) {
+    let Transaction { inputs, reference_inputs, .. } = tx
+
+    let GlobalSettingsDatum { admin, .. } =
+      get_global_settings(reference_inputs, gs_validator_hash)
+
+    // admin must sign transaction
+    is_multisig_signing(inputs, admin)?
   }
 
   else(_) {

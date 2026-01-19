@@ -2,14 +2,15 @@ use aiken/collection/dict
 use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
-use aiken/primitive/bytearray
-use aiken/primitive/string.{from_int, to_bytearray}
 use cardano/address.{Address, Credential, Inline, Script, VerificationKey}
-use cardano/assets.{PolicyId, from_asset, from_lovelace, without_lovelace}
+use cardano/assets.{
+  PolicyId, from_asset, from_lovelace, quantity_of, without_lovelace,
+}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
   placeholder,
 }
+use lava/constants.{order_nft_name}
 use lava/types.{
   AssetType, BurnOrder, CancelOrder, CreatOrderRedeemer, GlobalSettingsDatum,
   MintOrder, OptIn, OrderDatum, OrderRedeemer, ProcessOrder, Redeem, StakeType,
@@ -28,33 +29,23 @@ validator order_validator(
 ) {
   mint(redeemer: CreatOrderRedeemer, policy_id: PolicyId, tx: Transaction) {
     when redeemer is {
-      MintOrder { utxo_ref } -> {
+      MintOrder -> {
         let Transaction {
           mint,
-          inputs,
           outputs,
           extra_signatories,
           reference_inputs,
           ..
         } = tx
 
-        // Verify the UTxO is actually being consumed
-        expect Some(_) = find_input(inputs, utxo_ref)
-
         let GlobalSettingsDatum { mint_validator_hash, stake_details, .. } =
           get_global_settings(reference_inputs, gs_validator_hash)
-
-        let expected_order_an =
-          bytearray.concat(
-            utxo_ref.transaction_id,
-            to_bytearray(from_int(utxo_ref.output_index)),
-          )
 
         expect [Pair(nft_name, quantity)] =
           mint |> assets.tokens(policy_id) |> dict.to_pairs
 
         let is_order_nft_minting = and {
-            (nft_name == expected_order_an)?,
+            (nft_name == order_nft_name)?,
             (quantity == 1)?,
           }
 
@@ -97,12 +88,12 @@ validator order_validator(
               if is_ada_asset {
                 order_output.value == assets.merge(
                   from_lovelace(deposit_amount),
-                  from_asset(policy_id, expected_order_an, 1),
+                  from_asset(policy_id, order_nft_name, 1),
                 )
               } else {
                 without_lovelace(order_output.value) == assets.merge(
                   from_asset(at_pid, at_an, deposit_amount),
-                  from_asset(policy_id, expected_order_an, 1),
+                  from_asset(policy_id, order_nft_name, 1),
                 )
               }
             Redeem { st_amount } ->
@@ -112,7 +103,7 @@ validator order_validator(
                   pool_stake_asset_name,
                   st_amount,
                 ),
-                from_asset(policy_id, expected_order_an, 1),
+                from_asset(policy_id, order_nft_name, 1),
               )
           }
 
@@ -128,9 +119,9 @@ validator order_validator(
         let Transaction { mint, .. } = tx
 
         let burn_tokens = mint |> assets.tokens(policy_id) |> dict.to_pairs
-        let burn_keys = pairs.find_all(burn_tokens, -1)
+        let burned_order_count = -quantity_of(mint, policy_id, order_nft_name)
 
-        (list.length(burn_tokens) == list.length(burn_keys))?
+        (list.length(burn_tokens) == burned_order_count)?
       }
     }
   }
@@ -156,16 +147,14 @@ validator order_validator(
         expect Some(order_input) = find_input(inputs, utxo)
         expect Script(own_hash) = order_input.output.address.payment_credential
 
-        expect [Pair(nft_name, quantity)] =
-          order_input.output.value |> assets.tokens(own_hash) |> dict.to_pairs
-
         // Verify the order NFT is burned
         let burn_tokens = mint |> assets.tokens(own_hash) |> dict.to_pairs
         expect [Pair(burned_name, -1)] = burn_tokens
-        expect burned_name == nft_name
+        expect burned_name == order_nft_name
 
         let expected_order_out =
-          order_input.output.value |> assets.add(own_hash, nft_name, -quantity)
+          order_input.output.value
+            |> assets.add(own_hash, order_nft_name, -1)
 
         expect Some(_order_output) =
           list.find(
@@ -312,7 +301,10 @@ test test_cancel_order() {
           payment_credential: order_cred,
           stake_credential: Some(Inline(order_cred)),
         },
-        value: assets.merge(order_value, from_asset(order_hash, "orderoder", 1)),
+        value: assets.merge(
+          order_value,
+          from_asset(order_hash, order_nft_name, 1),
+        ),
         datum: InlineDatum(order_datum),
         reference_script: None,
       },
@@ -326,7 +318,7 @@ test test_cancel_order() {
       reference_script: None,
     }
 
-  let order_nft_burn = from_asset(order_hash, "orderoder", -1)
+  let order_nft_burn = from_asset(order_hash, order_nft_name, -1)
 
   let tx =
     Transaction {

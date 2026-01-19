@@ -43,7 +43,7 @@ pub type MintRedeemer {
 }
 
 pub type CreatOrderRedeemer {
-  MintOrder { utxo_ref: OutputReference }
+  MintOrder
   BurnOrder
 }
 

@@ -1,6 +1,5 @@
 use aiken/collection/dict
 use aiken/collection/list
-use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Credential, Inline, Script, VerificationKey}
 use cardano/assets.{
@@ -10,7 +9,7 @@ use cardano/assets.{
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, Transaction, placeholder,
 }
-use lava/constants.{precision_factor}
+use lava/constants.{order_nft_name, precision_factor}
 use lava/types.{
   AssetType, BatchingRedeemer, GlobalSettingsDatum, OptIn, OrderDatum, PoolDatum,
   Redeem,
@@ -115,8 +114,7 @@ validator pool_batching(
 
     expect Some(an_order_input) = list.at(order_inputs, 0)
     expect Script(order_hash) = an_order_input.output.address.payment_credential
-    let order_nft_mint = mint |> assets.tokens(order_hash) |> dict.to_pairs
-    let order_nm_keys_burn = pairs.find_all(order_nft_mint, -1)
+    let burned_order_count = -quantity_of(mint, order_hash, "")
 
     and {
       // batcher signs transaction
@@ -132,7 +130,7 @@ validator pool_batching(
       // Pool stake asset name in pool datum must be same in batching redeemer
       (pool_stake_asset_name == ps_an_batcher)?,
       // Number of orders must be equivalent to the number of NFTs burnt
-      (list.length(order_inputs) == list.length(order_nm_keys_burn))?,
+      (list.length(order_inputs) == burned_order_count)?,
       // Verify pool output
       verify_pool_output(
         pool_input,
@@ -520,7 +518,7 @@ test test_batching_opt_in() {
         pool_stake_asset_name,
         asset_amt_to_mint,
       ),
-      from_asset(order_hash, "orderoderone", -1),
+      from_asset(order_hash, order_nft_name, -1),
     )
 
   let tx =
@@ -666,7 +664,7 @@ test test_batching_redeem() {
   let mint =
     assets.merge(
       from_asset(mint_validator_hash_t, pool_stake_asset_name, -st_amount),
-      from_asset(order_hash, "orderoderone", -1),
+      from_asset(order_hash, order_nft_name, -1),
     )
 
   let tx =
