@@ -55,7 +55,7 @@ export const FAQSection = () => {
             <AccordionTrigger
               className={`px-6 py-5 flex items-center justify-between hover:no-underline text-white font-[Pixelify Sans] font-normal text-[18px] leading-[150%] tracking-[0%] bg-transparent`}
             >
-              <span className="pixelify">{faq.question}</span>
+              <span className="pixelify ml-3">{faq.question}</span>
             </AccordionTrigger>
 
             <AccordionContent

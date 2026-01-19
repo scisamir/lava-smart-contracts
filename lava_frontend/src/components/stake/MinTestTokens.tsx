@@ -83,7 +83,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
   const btnClass = className ? className : variant === "mobile" ? defaultMobileClass : defaultDesktopClass;
 
   return (
-    <Button disabled={isProcessing} onClick={handleMintTestTokens} className={btnClass}>
+    <Button disabled={isProcessing} onClick={handleMintTestTokens} className={`${btnClass} ${variant === "mobile" ? "" : "btn-lava"}`}>
       {isProcessing ? "Processing..." : "Mint Test Tokens"}
     </Button>
   );

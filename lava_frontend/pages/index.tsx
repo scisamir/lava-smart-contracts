@@ -65,7 +65,7 @@ const Index = () => {
                       backgroundImage: `url(${appBg.src})`,
                       backgroundSize: "cover",
                       backgroundPosition: "center",
-                      opacity: 0.1,
+                      opacity: 0.3,
                     }}
                   />
                 </div>
@@ -73,7 +73,7 @@ const Index = () => {
                 <div className="container mx-auto px-4 relative z-10 flex flex-col items-center">
                   {/* Center column matching design (644px) */}
                   <div className="w-full max-w-[644px] flex flex-col items-center gap-8 relative isolation-isolate z-10">
-                    <div className="hidden md:block absolute left-1/2 -translate-x-1/2" style={{ width: 1822, height: 557, top: -129.25, backgroundImage: `url(${BG_BEHIND.src})`, backgroundSize: 'cover', backgroundPosition: 'center', mixBlendMode: 'screen', opacity: 0.5, zIndex: 1, pointerEvents: 'none' }} />
+                    <div className="hidden md:block absolute left-1/2 -translate-x-1/2" style={{ width: 1822, height: 557, top: -129.25, backgroundImage: `url(${BG_BEHIND.src})`, backgroundSize: 'cover', backgroundPosition: 'center', mixBlendMode: 'screen', opacity: 0.6, zIndex: 1, pointerEvents: 'none' }} />
 
                     <div className="w-full max-w-[644px] flex flex-col items-center gap-2">
                       <h1
