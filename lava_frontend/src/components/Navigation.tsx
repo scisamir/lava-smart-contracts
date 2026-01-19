@@ -3,14 +3,59 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu } from "lucide-react";
+import { Menu, Wallet as WalletIcon } from "lucide-react";
+import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { WalletConnectModal } from "./wallet/WalletConnectModal";
+// WalletConnectModal replaced by an anchored popover in-navigation
 import { ConnectedWalletModal } from "./wallet/ConnectedWalletModal";
 import { LAVA_LOGO } from "@/lib/images";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { MintTestTokens } from "./stake/MinTestTokens";
+
+type DetectedWallet = {
+  key: string;
+  name: string;
+  icon?: string;
+};
+
+const WalletOptions = ({ onConnect }: { onConnect: (name: string) => void }) => {
+  const [availableWallets, setAvailableWallets] = useState<DetectedWallet[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window as any).cardano) {
+      const cardano = (window as any).cardano;
+      const detected: DetectedWallet[] = Object.keys(cardano)
+        .filter((key) => cardano[key].enable)
+        .map((key) => ({
+          key,
+          name: cardano[key].name,
+          icon: cardano[key].icon,
+        }));
+      setAvailableWallets(detected);
+    }
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-2">
+      {availableWallets.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No Cardano wallets detected.</p>
+      ) : (
+        availableWallets.map((wallet, idx) => (
+          <Button
+            key={idx}
+            variant="outline"
+            className="h-10 justify-start gap-3 hover:bg-muted/50 bg-transparent"
+            onClick={() => onConnect(wallet.key)}
+          >
+            {wallet.icon && <img src={wallet.icon} alt={wallet.name} className="w-5 h-5" />}
+            <span className="text-sm font-medium">{wallet.name}</span>
+          </Button>
+        ))
+      )}
+    </div>
+  );
+};
 
 const Navigation = () => {
   const router = useRouter();
@@ -40,6 +85,27 @@ const Navigation = () => {
 
   const truncateAddress = (address: string) =>
     `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        showConnectModal &&
+        popoverRef.current &&
+        buttonRef.current &&
+        !popoverRef.current.contains(target) &&
+        !buttonRef.current.contains(target)
+      ) {
+        setShowConnectModal(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showConnectModal]);
 
   const navItems = [
     { label: "Stake", path: "/stake" },
@@ -80,19 +146,43 @@ const Navigation = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                onClick={() =>
-                  connected
-                    ? setShowWalletModal(true)
-                    : setShowConnectModal(true)
-                }
-                className="bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow nav-connect-button btn-lava"
-              >
-                <span className="mr-2">🔗</span>
-                {connected && walletAddress
-                  ? truncateAddress(walletAddress)
-                  : "Connect Wallet"}
-              </Button>
+              <div className="relative">
+                <Button
+                  ref={buttonRef}
+                  onClick={() => setShowConnectModal((s) => !s)}
+                  className="bg-gradient-lava hover:opacity-90 transition-opacity nav-connect-button btn-lava nav-wallet-trigger"
+                >
+                  <WalletIcon className="w-6 h-6" style={{ color: 'var(--Color-4, #666666)' }} />
+                </Button>
+
+                {showConnectModal && (
+                  <div
+                    ref={popoverRef}
+                    className="absolute right-0 mt-2 w-64 bg-card/90 backdrop-blur-lg p-3 rounded-none z-50"
+                    style={{ minWidth: 220, boxShadow: 'none' }}
+                  >
+                    {!connected ? (
+                      <WalletOptions onConnect={(name: string) => handleConnect(name)} />
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <div className="text-sm text-white">{truncateAddress(walletAddress ?? "")}</div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              handleDisconnect();
+                              setShowConnectModal(false);
+                            }}
+                            className="w-full justify-start"
+                          >
+                            Disconnect
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Mobile Menu */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -165,11 +255,7 @@ const Navigation = () => {
         </div>
       </nav>
 
-      <WalletConnectModal
-        open={showConnectModal}
-        onOpenChange={setShowConnectModal}
-        onConnect={handleConnect}
-      />
+      {/* WalletConnectModal replaced by anchored popover in the nav */}
 
       {walletAddress && (
         <ConnectedWalletModal
