@@ -31,11 +31,15 @@ validator order_validator(
       MintOrder { utxo_ref } -> {
         let Transaction {
           mint,
+          inputs,
           outputs,
           extra_signatories,
           reference_inputs,
           ..
         } = tx
+
+        // Verify the UTxO is actually being consumed
+        expect Some(_) = find_input(inputs, utxo_ref)
 
         let GlobalSettingsDatum { mint_validator_hash, stake_details, .. } =
           get_global_settings(reference_inputs, gs_validator_hash)
@@ -132,43 +136,33 @@ validator order_validator(
   }
 
   spend(
-    _datum: Option<OrderDatum>,
-    _redeemer: Data,
+    datum: Option<OrderDatum>,
+    redeemer: OrderRedeemer,
     utxo: OutputReference,
     tx: Transaction,
   ) {
-    let Transaction { inputs, .. } = tx
-
-    expect Some(order_input) = find_input(inputs, utxo)
-    let Input {
-      output: Output { address: Address { payment_credential, .. }, .. },
+    let Transaction {
+      inputs,
+      outputs,
+      extra_signatories,
+      withdrawals,
+      mint,
       ..
-    } = order_input
-
-    pairs.has_key(tx.withdrawals, payment_credential)?
-  }
-
-  withdraw(redeemer: OrderRedeemer, account: Credential, tx: Transaction) {
-    let Transaction { inputs, outputs, extra_signatories, withdrawals, .. } = tx
+    } = tx
 
     when redeemer is {
       CancelOrder -> {
-        expect Script(own_hash) = account
-
-        // only one order input when cancelling an order
-        expect [order_input] =
-          list.filter(
-            inputs,
-            fn(input) {
-              input.output.address.payment_credential == Script(own_hash)
-            },
-          )
-
-        expect InlineDatum(order_datum) = order_input.output.datum
-        expect OrderDatum { receiver_address, canceller, .. } = order_datum
+        expect Some(OrderDatum { receiver_address, canceller, .. }) = datum
+        expect Some(order_input) = find_input(inputs, utxo)
+        expect Script(own_hash) = order_input.output.address.payment_credential
 
         expect [Pair(nft_name, quantity)] =
           order_input.output.value |> assets.tokens(own_hash) |> dict.to_pairs
+
+        // Verify the order NFT is burned
+        let burn_tokens = mint |> assets.tokens(own_hash) |> dict.to_pairs
+        expect [Pair(burned_name, -1)] = burn_tokens
+        expect burned_name == nft_name
 
         let expected_order_out =
           order_input.output.value |> assets.add(own_hash, nft_name, -quantity)
@@ -231,21 +225,15 @@ test test_process_opt_in_order() {
     Transaction {
       ..placeholder,
       inputs: [order_input],
-      withdrawals: [Pair(pool_batching_cred_t, 0), Pair(order_cred, 0)],
+      withdrawals: [Pair(pool_batching_cred_t, 0)],
     }
 
   order_validator.spend(
     gs_validator_hash_t,
     pool_batching_cred_t,
     Some(order_datum),
-    "",
-    order_utxo_ref,
-    tx,
-  ) && order_validator.withdraw(
-    gs_validator_hash_t,
-    pool_batching_cred_t,
     ProcessOrder,
-    order_cred,
+    order_utxo_ref,
     tx,
   )
 }
@@ -284,21 +272,15 @@ test test_process_redeem_order() {
     Transaction {
       ..placeholder,
       inputs: [order_input],
-      withdrawals: [Pair(pool_batching_cred_t, 0), Pair(order_cred, 0)],
+      withdrawals: [Pair(pool_batching_cred_t, 0)],
     }
 
   order_validator.spend(
     gs_validator_hash_t,
     pool_batching_cred_t,
     Some(order_datum),
-    "",
-    order_utxo_ref,
-    tx,
-  ) && order_validator.withdraw(
-    gs_validator_hash_t,
-    pool_batching_cred_t,
     ProcessOrder,
-    order_cred,
+    order_utxo_ref,
     tx,
   )
 }
@@ -344,27 +326,29 @@ test test_cancel_order() {
       reference_script: None,
     }
 
+  let order_nft_burn = from_asset(order_hash, "orderoder", -1)
+
   let tx =
     Transaction {
       ..placeholder,
       inputs: [order_input],
       outputs: [user_order_output],
-      withdrawals: [Pair(order_cred, 0)],
       extra_signatories: [canceller],
+      mint: order_nft_burn,
     }
 
   order_validator.spend(
     gs_validator_hash_t,
     pool_batching_cred_t,
     Some(order_datum),
-    "",
+    CancelOrder,
     order_utxo_ref,
     tx,
-  ) && order_validator.withdraw(
+  ) && order_validator.mint(
     gs_validator_hash_t,
     pool_batching_cred_t,
-    CancelOrder,
-    order_cred,
+    BurnOrder,
+    order_hash,
     tx,
   )
 }

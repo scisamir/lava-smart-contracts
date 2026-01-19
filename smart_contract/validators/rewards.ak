@@ -91,31 +91,38 @@ validator rewards_validator(
             |> assets.tokens(pool_validator_hash)
             |> dict.to_pairs
 
+        let raw_pool_value =
+          assets.from_lovelace(min_pool_lovelace)
+            |> assets.add(pool_validator_hash, pool_nft_name, 1)
+        let base_expected_pool_value =
+          if is_ra_ada {
+            raw_pool_value
+              |> assets.add("", "", lovelace_of(own_input.output.value))
+              |> assets.add("", "", -min_pool_lovelace)
+          } else {
+            raw_pool_value
+              |> assets.add(
+                  ra_pid,
+                  ra_an,
+                  quantity_of(pool_input.output.value, ra_pid, ra_an),
+                )
+              |> assets.add(
+                  ra_pid,
+                  ra_an,
+                  quantity_of(own_input.output.value, ra_pid, ra_an),
+                )
+          }
+
         expect [pool_output] =
           list.filter(
             outputs,
             fn(output) {
-              let raw_pool_value =
-                assets.from_lovelace(min_pool_lovelace)
-                  |> assets.add(pool_validator_hash, pool_nft_name, 1)
               let expected_pool_value =
                 if is_ra_ada {
-                  raw_pool_value
+                  base_expected_pool_value
                     |> assets.add("", "", lovelace_of(output.value))
-                    |> assets.add("", "", lovelace_of(own_input.output.value))
-                    |> assets.add("", "", -min_pool_lovelace)
                 } else {
-                  raw_pool_value
-                    |> assets.add(
-                        ra_pid,
-                        ra_an,
-                        quantity_of(pool_input.output.value, ra_pid, ra_an),
-                      )
-                    |> assets.add(
-                        ra_pid,
-                        ra_an,
-                        quantity_of(own_input.output.value, ra_pid, ra_an),
-                      )
+                  base_expected_pool_value
                 }
 
               and {

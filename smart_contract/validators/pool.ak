@@ -183,9 +183,16 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
             (is_processing_open != is_processing_open_out)?,
           }
 
+        let is_value_valid = and {
+            lovelace_of(pool_output.value) >= min_pool_lovelace,
+            assets.without_lovelace(own_input.output.value) == assets.without_lovelace(
+              pool_output.value,
+            ),
+          }
+
         and {
           // pool in and out value must be unchaged
-          own_input.output.value == pool_output.value,
+          is_value_valid?,
           is_pool_out_datum_correct?,
           // admin must sign transaction
           is_multisig_signing(inputs, admin)?,
