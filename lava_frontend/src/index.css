@@ -158,7 +158,7 @@ All colors MUST be HSL.
   [class*=" card"],
   [class*="card"],
   [class*="card"] * {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial !important;
+    font-family:  system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial !important;
     line-height: normal !important;
     letter-spacing: normal !important;
   }
@@ -181,46 +181,25 @@ All colors MUST be HSL.
     letter-spacing: normal !important;
   }
 
-  /* Default native button tag styles: apply lava red unless overridden by a
-     more specific utility class (e.g. `bg-gradient-lava`, or explicit bg-* classes). */
-  button {
+  /* Button styling is opt-in via the `.btn-lava` class. This prevents
+     a global rule from forcing appearance on all native button elements. */
+  .btn-lava {
+    background-image: none;
+    background-color: var(--Color-6, #D5463E);
     background: var(--Color-6, #D5463E);
-    color: white;
+    color: black !important;
     border: none;
+    box-shadow: none;
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
+    
   }
 
-  /* Force all buttons and elements acting as buttons to use the lava-red
-     background, except elements opting out for mobile navigation (they
-     receive their own styling). This intentionally overrides gradient/
-     background utilities and inline styles so every interactive button
-     appears with `--Color-6` unless excluded. */
-  button:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]),
-  input[type="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]),
-  input[type="submit"]:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]),
-  [role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]),
-  a[role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]),
-  .btn:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]),
-  .button:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]),
-  .btn-lava:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]),
-  .inline-flex[role="button"]:not(.nav-mobile-trigger):not(.mobile-nav-item):not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]) {
-    background-image: none !important;
-    background-color: var(--Color-6, #D5463E) !important;
-    background: var(--Color-6, #D5463E) !important;
-    color: white !important;
-    border: none !important;
-    box-shadow: none !important;
-  }
-
-  /* Also neutralize the project's special gradient utility when it appears
-     on buttons so the lava red takes precedence. */
-  button.bg-gradient-lava:not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]),
-  .bg-gradient-lava[role="button"]:not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]),
-  .bg-gradient-lava.btn:not(.staking-arrow-btn):not(.staking-half-btn):not(.staking-max-btn):not(.accordion-trigger):not(.accordion-toggle):not([data-state]) {
-    background-image: none !important;
-    background: var(--Color-6, #D5463E) !important;
-    color: white !important;
+  /* When the gradient utility is used with the opt-in class */
+  .btn-lava.bg-gradient-lava {
+    background-image: none;
+    background: var(--Color-6, #D5463E);
+    color: black !important;
   }
 
   /* FAQ-specific reset: accordion triggers and question elements should NOT
@@ -493,4 +472,24 @@ footer .footer-bg-bottom {
     line-height: 0.9;
     opacity: 0.045;
   }
+}
+
+/* Scoped override: force Pixelify Sans on the staking card action text only.
+   This wins over the earlier `[class*="card"] *` exclusion which uses
+   `!important`. We scope the class narrowly so no other buttons/components
+   are affected. */
+.staking-action-text {
+  font-family: 'Pixelify Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial !important;
+  font-weight: 500 !important;
+  font-size: 16px !important;
+  line-height: 100% !important;
+  letter-spacing: -2% !important;
+  text-transform: uppercase !important;
+}
+
+/* Scoped override: ensure only the Lava Earn title uses Pixelify Sans
+   This is narrow and uses !important to win over the card exclusion rule. */
+.lava-earn-title {
+  font-family: 'Pixelify Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial !important;
+  font-weight: 400 !important;
 }

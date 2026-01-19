@@ -79,7 +79,7 @@ export const BatchOrders = ({ totalOrder }: any) => {
       <Button
         disabled={isProcessing}
         onClick={() => handleBatching("tStrike")}
-        className="relative bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7"
+        className="relative bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7 btn-lava"
       >
         <span className="absolute top-0 right-0 px-1 text-sm text-red-600 bg-white border border-r-2">GTO: {totalOrder.tStrike ?? 0}</span>
         {isProcessing ? "Processing..." : "Batch tStrike"}
@@ -87,7 +87,7 @@ export const BatchOrders = ({ totalOrder }: any) => {
       <Button
         disabled={isProcessing}
         onClick={() => handleBatching("test")}
-        className="relative bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7"
+        className="relative bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7 btn-lava"
       >
         <span className="absolute top-0 right-0 px-1 text-sm text-red-600 bg-white border border-r-2">GTO: {totalOrder.test ?? 0}</span>
         {isProcessing ? "Processing..." : "Batch Test"}
@@ -95,7 +95,7 @@ export const BatchOrders = ({ totalOrder }: any) => {
       <Button
         disabled={isProcessing}
         onClick={() => handleBatching("tPulse")}
-        className="relative bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7"
+        className="relative bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7 btn-lava"
       >
         <span className="absolute top-0 right-0 px-1 text-sm text-red-600 bg-white border border-r-2">GTO: {totalOrder.tPulse ?? 0}</span>
         {isProcessing ? "Processing..." : "Batch tPulse"}

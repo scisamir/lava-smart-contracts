@@ -86,7 +86,7 @@ const Navigation = () => {
                     ? setShowWalletModal(true)
                     : setShowConnectModal(true)
                 }
-                className="bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow nav-connect-button"
+                className="bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow nav-connect-button btn-lava"
               >
                 <span className="mr-2">🔗</span>
                 {connected && walletAddress

@@ -10,8 +10,8 @@ export const LavaEarnCard = () => {
       <div className="flex items-center gap-3 mb-4">
         <img src={LAVA_LOGO.src} alt="Lava" className="w-12 h-12 object-contain" />
         <h3
+          className="lava-earn-title"
           style={{
-            fontFamily: "Pixelify Sans, sans-serif",
             fontWeight: 400,
             fontStyle: "normal",
             fontSize: 28,

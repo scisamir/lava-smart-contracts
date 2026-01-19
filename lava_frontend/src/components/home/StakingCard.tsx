@@ -366,7 +366,19 @@ export const StakingCard = () => {
       className="w-full h-[40px] bg-[#D5463E] text-black font-pixel text-[16px] uppercase tracking-tight relative rounded-none z-20"
       style={{ marginTop: "22px" }}
     >
-      <span className="relative z-10">{isProcessing ? "Processing..." : isSwapped ? "Unstake" : "Stake Now"}</span>
+      <span
+        className="relative z-10 staking-action-text"
+        style={{
+          fontFamily: "Pixelify Sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
+          fontWeight: 500,
+          fontSize: "16px",
+          lineHeight: "100%",
+          letterSpacing: "-0.04em",
+          textTransform: "uppercase",
+        }}
+      >
+        {isProcessing ? "Processing..." : isSwapped ? "Unstake" : "Stake Now"}
+      </span>
 
       {/* Corner pixels — 4 corners */}
       <span style={{ position: "absolute", width: 4, height: 4, right: 0, top: 0, background: "#FFFFFF", zIndex: 2 }} />
