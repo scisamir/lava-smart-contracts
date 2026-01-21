@@ -53,8 +53,8 @@ const Footer = () => {
             <a href="/earn" className="text-white hover:opacity-80">
               Earn
             </a>
-            <a href="/validators" className="text-white hover:opacity-80">
-              Validators
+            <a href="/vaults" className="text-white hover:opacity-80">
+              Vaults
             </a>
             <a href="/portfolio" className="text-white hover:opacity-80">
               Portfolio

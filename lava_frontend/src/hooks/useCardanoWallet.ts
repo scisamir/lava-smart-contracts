@@ -50,15 +50,35 @@ export function useCardanoWallet() {
     return total;
   };
 
-  // Reconnect last used wallet
-  useEffect(() => {
+  /// Reconnect last used wallet (production-safe)
+useEffect(() => {
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  const tryReconnect = async () => {
     const lastWallet = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (lastWallet && !connected) {
-      connect(lastWallet).catch(() =>
-        localStorage.removeItem(LOCAL_STORAGE_KEY)
-      );
+    if (!lastWallet || connected) return;
+
+    const cardano = (window as any).cardano;
+    if (cardano?.[lastWallet]?.enable) {
+      try {
+        await connect(lastWallet);
+      } catch (err) {
+        console.warn("Failed to restore wallet session", err);
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+      }
+      return;
     }
-  }, [connect, connected]);
+
+    attempts++;
+    if (attempts < maxAttempts) {
+      setTimeout(tryReconnect, 300);
+    }
+  };
+
+  tryReconnect();
+}, [connect, connected]);
+
 
   // Fetch wallet data (UTxOs and token balances)
   const fetchWalletData = async () => {
