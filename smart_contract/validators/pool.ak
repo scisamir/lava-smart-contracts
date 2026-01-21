@@ -1,7 +1,7 @@
 use aiken/collection/dict
 use aiken/collection/list
 use aiken/collection/pairs
-use aiken/crypto.{ScriptHash}
+use aiken/crypto.{ScriptHash, blake2b_224}
 use aiken/primitive/bytearray
 use aiken/primitive/string.{from_int, to_bytearray}
 use cardano/address.{Address, Credential, Inline, Script}
@@ -18,7 +18,7 @@ use lava/types.{
   UpdatePoolProcessingState,
 }
 use lava/utils.{
-  find_pool_input, find_pool_output, get_global_settings, is_multisig_signing,
+  find_pool_input, find_pool_output, get_global_settings, is_signed_by,
 }
 use mocktail/virgin_key_hash.{mock_policy_id, mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
@@ -31,15 +31,25 @@ use test_utils/fns_t.{get_admin_input, get_global_settings_input}
 validator pool_validator(gs_validator_hash: ScriptHash) {
   // minting to create pool
   mint(redeemer: CreatPoolRedeemer, policy_id: PolicyId, tx: Transaction) {
-    let Transaction { mint, outputs, inputs, reference_inputs, .. } = tx
+    let Transaction {
+      mint,
+      outputs,
+      inputs,
+      reference_inputs,
+      withdrawals,
+      extra_signatories,
+      ..
+    } = tx
 
     let CreatPoolRedeemer { utxo_ref } = redeemer
     expect Some(_) = find_input(inputs, utxo_ref)
 
     let expected_pool_an =
-      bytearray.concat(
-        utxo_ref.transaction_id,
-        to_bytearray(from_int(utxo_ref.output_index)),
+      blake2b_224(
+        bytearray.concat(
+          utxo_ref.transaction_id,
+          to_bytearray(from_int(utxo_ref.output_index)),
+        ),
       )
 
     expect [Pair(nft_name, quantity)] =
@@ -100,7 +110,7 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
       // pool NFT has to be minted
       is_pool_nft_minting?,
       // admin must sign pool creation transaction
-      is_multisig_signing(inputs, admin)?,
+      is_signed_by(extra_signatories, inputs, withdrawals, mint, admin)?,
       // The pool asset should be an allowed asset
       list.has(allowed_assets, pool_asset)?,
       // pool utxo must contain only the pool nft and min pool lovelace
@@ -123,6 +133,8 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
       reference_inputs,
       withdrawals,
       redeemers,
+      mint,
+      extra_signatories,
       ..
     } = tx
     expect Some(own_input) = find_input(inputs, utxo)
@@ -196,7 +208,7 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
           is_value_valid?,
           is_pool_out_datum_correct?,
           // admin must sign transaction
-          is_multisig_signing(inputs, admin)?,
+          is_signed_by(extra_signatories, inputs, withdrawals, mint, admin)?,
         }
       }
 
@@ -236,7 +248,15 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
   }
 
   withdraw(_redeemer: Data, credential: Credential, tx: Transaction) {
-    let Transaction { inputs, outputs, reference_inputs, withdrawals, .. } = tx
+    let Transaction {
+      inputs,
+      outputs,
+      reference_inputs,
+      withdrawals,
+      mint,
+      extra_signatories,
+      ..
+    } = tx
 
     let own_payment_cred = credential
     expect Script(own_hash) = own_payment_cred
@@ -308,20 +328,27 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
 
     and {
       // admin must sign transaction
-      is_multisig_signing(inputs, admin)?,
+      is_signed_by(extra_signatories, inputs, withdrawals, mint, admin)?,
       is_pool_out_datum_correct?,
       is_pool_value_valid?,
     }
   }
 
   publish(_redeemer: Data, _certificate: Certificate, tx: Transaction) {
-    let Transaction { inputs, reference_inputs, .. } = tx
+    let Transaction {
+      inputs,
+      reference_inputs,
+      withdrawals,
+      mint,
+      extra_signatories,
+      ..
+    } = tx
 
     let GlobalSettingsDatum { admin, .. } =
       get_global_settings(reference_inputs, gs_validator_hash)
 
     // admin must sign transaction
-    is_multisig_signing(inputs, admin)?
+    is_signed_by(extra_signatories, inputs, withdrawals, mint, admin)?
   }
 
   else(_) {
@@ -338,9 +365,11 @@ test test_create_pool() {
 
   let (_, admin_input) = get_admin_input()
   let expected_pool_an =
-    bytearray.concat(
-      admin_input.output_reference.transaction_id,
-      to_bytearray(from_int(admin_input.output_reference.output_index)),
+    blake2b_224(
+      bytearray.concat(
+        admin_input.output_reference.transaction_id,
+        to_bytearray(from_int(admin_input.output_reference.output_index)),
+      ),
     )
   let mint = from_asset(pool_hash, expected_pool_an, 1)
 

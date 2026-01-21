@@ -1,21 +1,26 @@
 use aiken/collection/dict
 use aiken/collection/list
-use aiken/crypto.{ScriptHash}
-use cardano/address.{Address, Script}
-use cardano/assets.{AssetName, PolicyId, from_asset, from_lovelace}
+use aiken/crypto.{VerificationKeyHash}
+use cardano/address.{Address, Credential, Script}
+use cardano/assets.{
+  AssetName, Lovelace, PolicyId, Value, from_asset, from_lovelace,
+}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
   placeholder,
 }
 use lava/constants.{global_settings_nft}
 use lava/types.{
-  GlobalSettingsDatum, SpendScriptSigner, StakeType, WithdrawScriptSigner,
+  GlobalSettingsDatum, SignerType, SpendScriptSigner, StakeType,
+  WithdrawScriptSigner,
 }
-use lava/utils.{is_multisig_signing}
+use lava/utils.{is_signed_by}
 use mocktail/virgin_address.{mock_pub_key_address, mock_script_address}
 use mocktail/virgin_key_hash.{mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
-use test_utils/constants_t.{allowed_ast_one, utxo_ref_t}
+use test_utils/constants_t.{
+  admin_signer_t, admin_t, allowed_ast_one, utxo_ref_t,
+}
 use test_utils/fns_t.{get_admin_input}
 
 validator global_settings(
@@ -29,22 +34,54 @@ validator global_settings(
     utxo: OutputReference,
     self: Transaction,
   ) {
-    let Transaction { inputs, outputs, .. } = self
+    let Transaction {
+      inputs,
+      outputs,
+      extra_signatories,
+      withdrawals,
+      mint,
+      ..
+    } = self
     expect Some(own_input) = transaction.find_input(inputs, utxo)
     expect Script(own_hash) = own_input.output.address.payment_credential
 
     expect Some(GlobalSettingsDatum { admin, .. }) = datum
 
-    validate_update_gs(inputs, outputs, own_hash, admin)
+    validate_update_gs(
+      inputs,
+      outputs,
+      own_hash,
+      admin,
+      extra_signatories,
+      withdrawals,
+      mint,
+    )
   }
 
   mint(_redeemer: Data, policy_id: PolicyId, self: Transaction) {
-    let Transaction { inputs, outputs, mint, .. } = self
+    let Transaction {
+      inputs,
+      outputs,
+      mint,
+      withdrawals,
+      extra_signatories,
+      ..
+    } = self
 
     expect [Pair(name, quantity)] =
       mint |> assets.tokens(policy_id) |> dict.to_pairs
 
-    validate_create_gs(inputs, outputs, policy_id, name, quantity, utxo_ref)
+    validate_create_gs(
+      inputs,
+      outputs,
+      policy_id,
+      name,
+      quantity,
+      utxo_ref,
+      extra_signatories,
+      withdrawals,
+      mint,
+    )
   }
 
   else(_) {
@@ -59,6 +96,9 @@ fn validate_create_gs(
   name: AssetName,
   quantity: Int,
   utxo_ref: OutputReference,
+  extra_signatories: List<VerificationKeyHash>,
+  withdrawals: Pairs<Credential, Lovelace>,
+  mint: Value,
 ) {
   expect Some(the_output) =
     list.find(
@@ -88,7 +128,7 @@ fn validate_create_gs(
     (name == global_settings_nft)?,
     (quantity == 1)?,
     // admin must sign the transaction
-    is_multisig_signing(inputs, admin)?,
+    is_signed_by(extra_signatories, inputs, withdrawals, mint, admin)?,
   }
 }
 
@@ -96,15 +136,34 @@ fn validate_update_gs(
   inputs: List<Input>,
   outputs: List<Output>,
   own_hash: PolicyId,
-  admin: ScriptHash,
+  admin: SignerType,
+  extra_signatories: List<VerificationKeyHash>,
+  withdrawals: Pairs<Credential, Lovelace>,
+  mint: Value,
 ) {
   and {
-    validate_settings_output(outputs, own_hash)?,
-    is_multisig_signing(inputs, admin)?,
+    validate_settings_output(
+      outputs,
+      own_hash,
+      admin,
+      inputs,
+      extra_signatories,
+      withdrawals,
+      mint,
+    )?,
+    is_signed_by(extra_signatories, inputs, withdrawals, mint, admin)?,
   }
 }
 
-fn validate_settings_output(outputs: List<Output>, own_hash: PolicyId) {
+fn validate_settings_output(
+  outputs: List<Output>,
+  own_hash: PolicyId,
+  admin: SignerType,
+  inputs: List<Input>,
+  extra_signatories: List<VerificationKeyHash>,
+  withdrawals: Pairs<Credential, Lovelace>,
+  mint: Value,
+) {
   expect [control_output] =
     list.filter(
       outputs,
@@ -116,14 +175,22 @@ fn validate_settings_output(outputs: List<Output>, own_hash: PolicyId) {
 
   expect InlineDatum(output_datum) = control_output.datum
   // Datum must be of type GlobalSettingsDatum
-  expect GlobalSettingsDatum { .. } = output_datum
+  expect GlobalSettingsDatum { admin: new_admin, .. } = output_datum
 
-  // Must only contain "GSN" NFT apart from ADA
-  (assets.without_lovelace(control_output.value) == from_asset(
-    own_hash,
-    global_settings_nft,
-    1,
-  ))?
+  and {
+    // Must only contain "GSN" NFT apart from ADA
+    (assets.without_lovelace(control_output.value) == from_asset(
+      own_hash,
+      global_settings_nft,
+      1,
+    ))?,
+    // If admin field is being changed, new admin must also sign the transaction
+    if admin != new_admin {
+      is_signed_by(extra_signatories, inputs, withdrawals, mint, new_admin)?
+    } else {
+      True
+    },
+  }
 }
 
 // Tests
@@ -141,7 +208,7 @@ test test_create_global_settings() {
       value: assets.merge(from_lovelace(2000000), gsn),
       datum: InlineDatum(
         GlobalSettingsDatum {
-          admin: admin_sc,
+          admin: admin_signer_t,
           authorized_batchers: [WithdrawScriptSigner { script_hash: admin_sc }],
           allowed_assets: [],
           mint_validator_hash: mock_script_hash(15),
@@ -181,6 +248,7 @@ test test_create_global_settings() {
       ..placeholder,
       inputs: [admin_input, utxo_ref_input],
       outputs: [global_settings_output],
+      withdrawals: [Pair(Script(admin_t), 0)],
       mint,
     }
 
@@ -195,7 +263,7 @@ test test_update_global_settings() {
 
   let gs_input_datum =
     GlobalSettingsDatum {
-      admin: admin_sc,
+      admin: admin_signer_t,
       authorized_batchers: [WithdrawScriptSigner { script_hash: admin_sc }],
       allowed_assets: [],
       mint_validator_hash: mock_script_hash(15),
@@ -237,7 +305,7 @@ test test_update_global_settings() {
       value: assets.merge(from_lovelace(2000000), gsn),
       datum: InlineDatum(
         GlobalSettingsDatum {
-          admin: admin_sc,
+          admin: admin_signer_t,
           authorized_batchers: [
             WithdrawScriptSigner { script_hash: admin_sc },
             SpendScriptSigner { script_hash: new_sc },

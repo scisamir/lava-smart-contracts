@@ -40,6 +40,7 @@ validator rewards_validator(
       reference_inputs,
       extra_signatories,
       withdrawals,
+      mint,
       ..
     } = tx
 
@@ -174,7 +175,7 @@ validator rewards_validator(
         and {
           is_ra_value_correct?,
           // batcher signs transaction
-          is_signed_by(extra_signatories, inputs, withdrawals, batcher)?,
+          is_signed_by(extra_signatories, inputs, withdrawals, mint, batcher)?,
           // pool asset must be the reward asset
           (pool_asset == reward_asset)?,
           is_pool_out_datum_correct?,

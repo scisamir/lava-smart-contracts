@@ -2,7 +2,7 @@ use aiken/collection/dict
 use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
-use cardano/address.{Address, Credential, Inline, Script, VerificationKey}
+use cardano/address.{Address, Credential, Inline, Script}
 use cardano/assets.{
   PolicyId, from_asset, from_lovelace, quantity_of, without_lovelace,
 }
@@ -14,14 +14,17 @@ use lava/constants.{order_nft_name}
 use lava/types.{
   AssetType, BurnOrder, CancelOrder, CreatOrderRedeemer, GlobalSettingsDatum,
   MintOrder, OptIn, OrderDatum, OrderRedeemer, ProcessOrder, Redeem, StakeType,
+  VerificationKeySigner,
 }
-use lava/utils.{get_global_settings, signed_by}
+use lava/utils.{get_global_settings, is_signed_by}
 use mocktail/virgin_address.{mock_pub_key_address, mock_script_credential}
 use mocktail/virgin_key_hash.{mock_pub_key_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
 use test_utils/constants_t.{
-  gs_validator_hash_t, mint_validator_hash_t, pool_batching_cred_t,
+  allowed_ast_one_an, allowed_ast_one_pid, gs_validator_hash_t,
+  mint_validator_hash_t, pool_batching_cred_t,
 }
+use test_utils/fns_t.{get_global_settings_input}
 
 validator order_validator(
   gs_validator_hash: ScriptHash,
@@ -35,6 +38,8 @@ validator order_validator(
           outputs,
           extra_signatories,
           reference_inputs,
+          inputs,
+          withdrawals,
           ..
         } = tx
 
@@ -58,15 +63,8 @@ validator order_validator(
           )
 
         expect InlineDatum(order_datum) = order_output.datum
-        expect OrderDatum {
-          order_type,
-          receiver_address,
-          canceller,
-          pool_stake_asset_name,
-        } = order_datum
-
-        expect VerificationKey(receiver_vk) =
-          receiver_address.payment_credential
+        expect OrderDatum { order_type, canceller, pool_stake_asset_name, .. } =
+          order_datum
 
         expect Some(StakeType { asset_type, .. }) =
           list.find(
@@ -109,8 +107,7 @@ validator order_validator(
 
         and {
           is_order_nft_minting?,
-          list.has(extra_signatories, receiver_vk)?,
-          (receiver_vk == canceller)?,
+          is_signed_by(extra_signatories, inputs, withdrawals, mint, canceller)?,
           is_order_value_valid?,
         }
       }
@@ -168,7 +165,7 @@ validator order_validator(
             },
           )
 
-        signed_by(extra_signatories, canceller)?
+        is_signed_by(extra_signatories, inputs, withdrawals, mint, canceller)?
       }
 
       ProcessOrder -> pairs.has_key(withdrawals, pool_batching_cred)?
@@ -178,6 +175,55 @@ validator order_validator(
   else(_) {
     fail
   }
+}
+
+test test_create_order() {
+  let gs_input = get_global_settings_input()
+  let receiver_address = mock_pub_key_address(6, None)
+  let canceller_vk = mock_pub_key_hash(6)
+  let canceller = VerificationKeySigner(canceller_vk)
+  let deposit_amount = 1000
+  let order_cred = mock_script_credential(16)
+  expect Script(order_hash) = order_cred
+  let order_value =
+    from_lovelace(2_000_000)
+      |> assets.add(allowed_ast_one_pid, allowed_ast_one_an, deposit_amount)
+  let order_nft = from_asset(order_hash, order_nft_name, 1)
+
+  let order_datum =
+    OrderDatum {
+      order_type: OptIn { deposit_amount },
+      receiver_address,
+      canceller,
+      pool_stake_asset_name: "stTest",
+    }
+  let order_output =
+    Output {
+      address: Address {
+        payment_credential: order_cred,
+        stake_credential: Some(Inline(order_cred)),
+      },
+      value: assets.merge(order_value, order_nft),
+      datum: InlineDatum(order_datum),
+      reference_script: None,
+    }
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      outputs: [order_output],
+      extra_signatories: [canceller_vk],
+      mint: order_nft,
+      reference_inputs: [gs_input],
+    }
+
+  order_validator.mint(
+    gs_validator_hash_t,
+    pool_batching_cred_t,
+    MintOrder,
+    order_hash,
+    tx,
+  )
 }
 
 test test_process_opt_in_order() {
@@ -191,7 +237,7 @@ test test_process_opt_in_order() {
     OrderDatum {
       order_type: OptIn { deposit_amount },
       receiver_address,
-      canceller: mock_pub_key_hash(6),
+      canceller: VerificationKeySigner(mock_pub_key_hash(6)),
       pool_stake_asset_name: "stTest",
     }
 
@@ -238,7 +284,7 @@ test test_process_redeem_order() {
     OrderDatum {
       order_type: Redeem { st_amount },
       receiver_address,
-      canceller: mock_pub_key_hash(6),
+      canceller: VerificationKeySigner(mock_pub_key_hash(6)),
       pool_stake_asset_name: "stTest",
     }
 
@@ -276,14 +322,14 @@ test test_process_redeem_order() {
 
 test test_cancel_order() {
   let receiver_address = mock_pub_key_address(6, None)
-  let canceller = mock_pub_key_hash(6)
+  let canceller_vk = mock_pub_key_hash(6)
+  let canceller = VerificationKeySigner(canceller_vk)
   let deposit_amount = 1000
-  let extra = 100
   let order_cred = mock_script_credential(16)
   expect Script(order_hash) = order_cred
   let order_value =
     from_lovelace(2_000_000)
-      |> assets.add(mint_validator_hash_t, "test", deposit_amount + extra)
+      |> assets.add(mint_validator_hash_t, "test", deposit_amount)
 
   let order_utxo_ref = mock_utxo_ref(0, 16)
   let order_datum =
@@ -325,7 +371,7 @@ test test_cancel_order() {
       ..placeholder,
       inputs: [order_input],
       outputs: [user_order_output],
-      extra_signatories: [canceller],
+      extra_signatories: [canceller_vk],
       mint: order_nft_burn,
     }
 
