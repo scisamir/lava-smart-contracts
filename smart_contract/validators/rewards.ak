@@ -95,9 +95,10 @@ validator rewards_validator(
         let raw_pool_value =
           assets.from_lovelace(min_pool_lovelace)
             |> assets.add(pool_validator_hash, pool_nft_name, 1)
-        let base_expected_pool_value =
+        let expected_pool_value =
           if is_ra_ada {
             raw_pool_value
+              |> assets.add("", "", lovelace_of(pool_input.output.value))
               |> assets.add("", "", lovelace_of(own_input.output.value))
               |> assets.add("", "", -min_pool_lovelace)
           } else {
@@ -118,14 +119,6 @@ validator rewards_validator(
           list.filter(
             outputs,
             fn(output) {
-              let expected_pool_value =
-                if is_ra_ada {
-                  base_expected_pool_value
-                    |> assets.add("", "", lovelace_of(output.value))
-                } else {
-                  base_expected_pool_value
-                }
-
               and {
                 (output.address.payment_credential == Script(
                   pool_validator_hash,
@@ -149,8 +142,15 @@ validator rewards_validator(
           is_processing_open: is_processing_open_out,
         } = pool_out_datum
 
-        let new_pool_amount = quantity_of(own_input.output.value, ra_pid, ra_an)
-        let rewards_accrued = new_pool_amount - total_underlying
+        let pool_out_amount =
+          if is_ra_ada {
+            lovelace_of(pool_output.value) - min_pool_lovelace
+          } else {
+            quantity_of(pool_output.value, ra_pid, ra_an)
+          }
+        let rewards_accrued = pool_out_amount - total_underlying
+        // No negative rewards allowed
+        expect rewards_accrued >= 0
 
         let updated_total_underlying = total_underlying + rewards_accrued
         let updated_total_underlying_precised =
