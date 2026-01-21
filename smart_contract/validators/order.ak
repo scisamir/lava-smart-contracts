@@ -78,7 +78,7 @@ validator order_validator(
             },
           )
         let AssetType { policy_id: at_pid, asset_name: at_an, .. } = asset_type
-        let is_ada_asset = at_pid == "" && at_an == "lovelace"
+        let is_ada_asset = at_pid == "" && at_an == ""
 
         let is_order_value_valid =
           when order_type is {

@@ -147,7 +147,7 @@ pub fn find_pool_output(
   min_pool_lovelace: Int,
 ) -> Output {
   expect Script(own_hash) = own_payment_cred
-  let is_ada_asset = st_pid == "" && st_an == "lovelace"
+  let is_ada_asset = st_pid == "" && st_an == ""
 
   expect [pool_output] =
     list.filter(

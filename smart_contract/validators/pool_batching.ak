@@ -201,7 +201,7 @@ fn process_orders(
 
       expect pool_stake_asset_name == pso_asset_name
 
-      let is_ada_asset = policy_id == "" && asset_name == "lovelace"
+      let is_ada_asset = policy_id == "" && asset_name == ""
 
       let (order_amount, asset_amt_to_mint_or_burn) =
         when order_type is {

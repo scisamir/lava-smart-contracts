@@ -69,7 +69,7 @@ validator stake_validator(
     expect Some(stake_address) = stake_address_opt
     expect Some(datum_verifier_hash) = datum_verifier_hash_opt
 
-    let is_ada_asset = pool_asset_pid == "" && pool_asset_an == "lovelace"
+    let is_ada_asset = pool_asset_pid == "" && pool_asset_an == ""
 
     let pool_asset_quantity =
       if is_ada_asset {

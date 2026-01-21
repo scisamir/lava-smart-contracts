@@ -45,7 +45,11 @@ validator rewards_validator(
     } = tx
 
     when redeemer is {
-      AddRewards { asset: reward_asset, batcher_index } -> {
+      AddRewards {
+        asset: reward_asset,
+        batcher_index,
+        pool_nft_name: pool_nft_name_r,
+      } -> {
         let GlobalSettingsDatum { authorized_batchers, min_pool_lovelace, .. } =
           get_global_settings(reference_inputs, gs_validator_hash)
         expect Some(batcher) = list.at(authorized_batchers, batcher_index)
@@ -57,7 +61,7 @@ validator rewards_validator(
 
         let AssetType { policy_id: ra_pid, asset_name: ra_an, .. } =
           reward_asset
-        let is_ra_ada = ra_pid == "" && ra_an == "lovelace"
+        let is_ra_ada = ra_pid == "" && ra_an == ""
 
         // Reward UTxO should have only the concerned asset in it's value
         let is_ra_value_correct =
@@ -179,6 +183,8 @@ validator rewards_validator(
           // pool asset must be the reward asset
           (pool_asset == reward_asset)?,
           is_pool_out_datum_correct?,
+          // pool nft name in redeemer must be same as that of pool utxo
+          (pool_nft_name == pool_nft_name_r)?,
         }
       }
 
@@ -291,7 +297,11 @@ test test_add_rewards() {
     gs_validator_hash_t,
     pool_validator_hash_t,
     Some(rewards_datum),
-    AddRewards { asset: allowed_ast_one, batcher_index: 0 },
+    AddRewards {
+      asset: allowed_ast_one,
+      batcher_index: 0,
+      pool_nft_name: pool_nft_name_t,
+    },
     rewards_utxo_ref,
     tx,
   )

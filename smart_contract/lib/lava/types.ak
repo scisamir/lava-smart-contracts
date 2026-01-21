@@ -101,7 +101,7 @@ pub type StakeRedeemer {
 }
 
 pub type RewardsRedeemer {
-  AddRewards { asset: AssetType, batcher_index: Int }
+  AddRewards { asset: AssetType, batcher_index: Int, pool_nft_name: AssetName }
   SwapRewards
 }
 
