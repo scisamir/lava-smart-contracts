@@ -778,5 +778,11 @@ test test_add_ada_rewards_pool() {
       withdrawals: [Pair(Script(admin_t), 0), Pair(pool_cred, 1_000_000)],
     }
 
-  pool_validator.withdraw(gs_validator_hash_t, "", pool_cred, tx)
+  pool_validator.spend(
+    gs_validator_hash_t,
+    Some(pool_datum_in),
+    ClaimAdaRewards,
+    pool_utxo_ref,
+    tx,
+  ) && pool_validator.withdraw(gs_validator_hash_t, "", pool_cred, tx)
 }
