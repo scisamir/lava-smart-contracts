@@ -194,12 +194,7 @@ setPoolInfo(poolInfoData);
 console.error("Error fetching wallet data:", err);
 }
 } else {
-setWalletAddress("");
-setBalance(0);
-setWalletUtxos([]);
-setTokenBalances({});
-setPoolInfo([]);
-localStorage.removeItem(LOCAL_STORAGE_KEY);
+
 return;
 }
 };
