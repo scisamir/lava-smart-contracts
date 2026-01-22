@@ -686,7 +686,6 @@ test test_add_rewards_to_pool() {
         multiplier: 1_000_000,
       },
       batcher_index: 0,
-      pool_nft_name: pool_nft_name_t,
     }
   let reward_redeemer_data: Data = reward_redeemer
 

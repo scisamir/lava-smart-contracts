@@ -3,7 +3,9 @@ use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Inline, Script}
-use cardano/assets.{from_asset, from_lovelace, lovelace_of, quantity_of}
+use cardano/assets.{
+  AssetName, from_asset, from_lovelace, lovelace_of, quantity_of,
+}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
   placeholder,
@@ -27,6 +29,7 @@ use test_utils/fns_t.{get_global_settings_input}
 validator rewards_validator(
   gs_validator_hash: ScriptHash,
   pool_validator_hash: ScriptHash,
+  pool_nft_name_param: AssetName,
 ) {
   spend(
     _datum: Option<Data>,
@@ -45,11 +48,7 @@ validator rewards_validator(
     } = tx
 
     when redeemer is {
-      AddRewards {
-        asset: reward_asset,
-        batcher_index,
-        pool_nft_name: pool_nft_name_r,
-      } -> {
+      AddRewards { asset: reward_asset, batcher_index } -> {
         let GlobalSettingsDatum { authorized_batchers, min_pool_lovelace, .. } =
           get_global_settings(reference_inputs, gs_validator_hash)
         expect Some(batcher) = list.at(authorized_batchers, batcher_index)
@@ -183,8 +182,8 @@ validator rewards_validator(
           // pool asset must be the reward asset
           (pool_asset == reward_asset)?,
           is_pool_out_datum_correct?,
-          // pool nft name in redeemer must be same as that of pool utxo
-          (pool_nft_name == pool_nft_name_r)?,
+          // pool nft name in parameter must be same as that of pool utxo
+          (pool_nft_name == pool_nft_name_param)?,
         }
       }
 
@@ -296,12 +295,9 @@ test test_add_rewards() {
   rewards_validator.spend(
     gs_validator_hash_t,
     pool_validator_hash_t,
+    pool_nft_name_t,
     Some(rewards_datum),
-    AddRewards {
-      asset: allowed_ast_one,
-      batcher_index: 0,
-      pool_nft_name: pool_nft_name_t,
-    },
+    AddRewards { asset: allowed_ast_one, batcher_index: 0 },
     rewards_utxo_ref,
     tx,
   )
@@ -324,6 +320,7 @@ test test_swap_rewards() {
   rewards_validator.spend(
     gs_validator_hash_t,
     pool_validator_hash_t,
+    pool_nft_name_t,
     Some(rewards_datum),
     SwapRewards,
     rewards_utxo_ref,
