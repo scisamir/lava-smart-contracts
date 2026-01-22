@@ -43,6 +43,20 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
     console.log("txBuilder:", txBuilder);
     console.log("blockchainProvider:", blockchainProvider);
 
+    // New: Check network ID first to prevent generic errors
+    try {
+      const networkId = await wallet.getNetworkId();
+      if (networkId !== 0) { // 1 = Preprod testnet
+        toastFailure("Use prepod network");
+        setIsProcessing(false);
+        return;
+      }
+    } catch (err) {
+      toastFailure("Unable to verify network. Please try again.");
+      setIsProcessing(false);
+      return;
+    }
+
     if (!txBuilder || !blockchainProvider || !walletCollateral) {
       toastFailure("Error: Blockchain provider/txBuilder not initialized");
       setIsProcessing(false);
