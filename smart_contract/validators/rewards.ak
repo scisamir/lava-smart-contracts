@@ -55,6 +55,16 @@ validator rewards_validator(
 
         expect Some(own_input) = find_input(inputs, utxo)
 
+        // After finding own_input, verify it's the only rewards validator input
+        let rewards_input_count =
+          list.length(
+            list.filter(
+              inputs,
+              fn(input) { input.output.address == own_input.output.address },
+            ),
+          )
+        expect rewards_input_count == 1
+
         // Reward UTxO should have no datum
         expect NoDatum = own_input.output.datum
 
