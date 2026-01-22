@@ -230,11 +230,7 @@ fn process_orders(
             let partial_expected_oov =
               if is_ada_asset {
                 current_order.output.value
-                  |> assets.add(
-                      ada_policy_id,
-                      ada_asset_name,
-                      -deposit_amount * 1_000_000,
-                    )
+                  |> assets.add(ada_policy_id, ada_asset_name, -deposit_amount)
               } else {
                 current_order.output.value
                   |> assets.add(policy_id, asset_name, -deposit_amount)
