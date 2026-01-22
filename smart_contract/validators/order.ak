@@ -3,9 +3,7 @@ use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Credential, Inline, Script}
-use cardano/assets.{
-  PolicyId, from_asset, from_lovelace, quantity_of, without_lovelace,
-}
+use cardano/assets.{PolicyId, from_asset, from_lovelace, without_lovelace}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
   placeholder,
@@ -115,10 +113,10 @@ validator order_validator(
       BurnOrder -> {
         let Transaction { mint, .. } = tx
 
-        let burn_tokens = mint |> assets.tokens(policy_id) |> dict.to_pairs
-        let burned_order_count = -quantity_of(mint, policy_id, order_nft_name)
+        expect [Pair(_, quantity)] =
+          mint |> assets.tokens(policy_id) |> dict.to_pairs
 
-        (list.length(burn_tokens) == burned_order_count)?
+        (quantity < 0)?
       }
     }
   }
