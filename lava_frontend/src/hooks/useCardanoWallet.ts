@@ -51,7 +51,7 @@ export function useCardanoWallet() {
     );
   };
 
-  // Wallet Restore (SAFE)
+  // Wallet Restore (SAFE) - Updated for production reliability
   useEffect(() => {
     const restoreWallet = async () => {
       const lastWallet = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -61,20 +61,30 @@ export function useCardanoWallet() {
         return;
       }
 
-      const cardano = (window as any).cardano;
-      if (!cardano?.[lastWallet]) {
-        setHasTriedRestore(true);
-        return;
+      // Delay to allow wallet extension to load (especially in production)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Poll for wallet availability (up to 5 seconds)
+      let attempts = 0;
+      const maxAttempts = 50; // 50 * 100ms = 5 seconds
+      while (attempts < maxAttempts) {
+        const cardano = (window as any).cardano;
+        if (cardano?.[lastWallet]) {
+          try {
+            await connect(lastWallet);
+            break; // Success, exit loop
+          } catch (err) {
+            console.warn("Wallet restore failed:", err);
+            // Don't remove localStorage on first failure; allow retry or manual reconnect
+            // Only remove after multiple failures if needed (not implemented here)
+            break;
+          }
+        }
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 100)); // Wait 100ms before next check
       }
 
-      try {
-        await connect(lastWallet);
-      } catch (err) {
-        console.warn("Wallet restore failed:", err);
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-      } finally {
-        setHasTriedRestore(true);
-      }
+      setHasTriedRestore(true);
     };
 
     restoreWallet();
