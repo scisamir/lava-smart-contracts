@@ -19,6 +19,7 @@ import worldMap from "@/assets/world-map.png";
 import zenithLogo from "@/assets/zenith-logo.png";
 import auditorLogo from "@/assets/auditor.png";
 import bgBehindd from "@/assets/bgBehind.png";
+import striketoken from "@/assets/striketoken.jpeg";
 
 export const LAVA_LOGO = lavaColorful;
 export const BG_BEHIND = bgBehindd;
@@ -40,6 +41,7 @@ export const STRIKEFINANCE_LOGO = strikefinanceLogo;
 export const WORLD_MAP = worldMap;
 export const ZENITH_LOGO = zenithLogo;
 export const AUDITO_LOGO = auditorLogo;
+export const STRIKETOKENS_LOGO = striketoken;
 
 export default {
   LAVA_LOGO,
@@ -61,4 +63,5 @@ export default {
   WORLD_MAP,
   ZENITH_LOGO,
   AUDITO_LOGO,
+  STRIKETOKENS_LOGO,
 };
