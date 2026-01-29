@@ -147,13 +147,18 @@ const Navigation = () => {
 
             <div className="flex items-center gap-2">
               <div className="relative">
-                <Button
+                <button
                   ref={buttonRef}
                   onClick={() => setShowConnectModal((s) => !s)}
-                  className="bg-gradient-lava hover:opacity-90 transition-opacity nav-connect-button btn-lava nav-wallet-trigger"
+                  className="relative flex items-center justify-center w-10 h-10 bg-black border border-gray-600 hover:opacity-90 transition-opacity"
+                  style={{ width: 40, height: 40 }}
                 >
-                  <WalletIcon className="w-6 h-6" style={{ color: 'var(--Color-4, #666666)' }} />
-                </Button>
+                  <div className="absolute w-1 h-1 bg-white top-0 left-0"></div>
+                  <div className="absolute w-1 h-1 bg-white top-0 right-0"></div>
+                  <div className="absolute w-1 h-1 bg-white bottom-0 left-0"></div>
+                  <div className="absolute w-1 h-1 bg-white bottom-0 right-0"></div>
+                  <WalletIcon className="w-5 h-5" style={{ color: '#666666' }} />
+                </button>
 
                 {showConnectModal && (
                   <div
@@ -187,17 +192,21 @@ const Navigation = () => {
               {/* Mobile Menu */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="md:hidden nav-mobile-trigger"
+                  <button
+                    onClick={() => setMobileMenuOpen(true)}
+                    className="md:hidden relative flex items-center justify-center w-10 h-10 bg-black border border-white/13 hover:opacity-90 transition-opacity"
+                    style={{ width: 40, height: 40 }}
                   >
-                    <span className="nav-corner tl" />
-                    <span className="nav-corner tr" />
-                    <span className="nav-corner bl" />
-                    <span className="nav-corner br" />
-                    <Menu className="h-6 w-6" />
-                  </Button>
+                    <div className="absolute w-1 h-1 bg-white top-0 left-0"></div>
+                    <div className="absolute w-1 h-1 bg-white top-0 right-0"></div>
+                    <div className="absolute w-1 h-1 bg-white bottom-0 left-0"></div>
+                    <div className="absolute w-1 h-1 bg-white bottom-0 right-0"></div>
+                    <div className="absolute flex flex-col gap-[3px]" style={{ left: '12.39px', top: '12.85px' }}>
+                      <div className="bg-gray-400" style={{ width: '15.22px', height: '2.77px' }}></div>
+                      <div className="bg-gray-400" style={{ width: '15.22px', height: '2.77px' }}></div>
+                      <div className="bg-gray-400" style={{ width: '15.22px', height: '2.77px' }}></div>
+                    </div>
+                  </button>
                 </SheetTrigger>
 
                 <SheetContent

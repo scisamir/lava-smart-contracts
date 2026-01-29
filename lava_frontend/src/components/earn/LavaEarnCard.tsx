@@ -33,17 +33,17 @@ export const LavaEarnCard = () => {
       <div className="grid grid-cols-4 gap-4 text-center items-center">
         <div className="flex flex-col items-center">
           <p className="text-primary text-xs mb-1">APY</p>
-          <p className="text-2xl font-bold">6.3%</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-bold">6.3%</p>
         </div>
 
         <div className="flex flex-col items-center">
           <p className="text-primary text-xs mb-1">TVL</p>
-          <p className="text-2xl font-bold">$32.43M</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-bold">$32.43M</p>
         </div>
 
         <div className="flex flex-col items-center">
           <p className="text-primary text-xs mb-1">Infra</p>
-          <p className="text-2xl font-semibold">Veda</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-semibold">Veda</p>
         </div>
 
         <div className="flex flex-col items-center">

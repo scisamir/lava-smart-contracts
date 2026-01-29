@@ -92,7 +92,7 @@ const Portfolio = () => {
                 }}
               >
                 <p className="text-muted-foreground mb-2">Net Worth</p>
-                <div className="flex items-baseline gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row items-baseline gap-2 sm:gap-4 mb-6">
                   <h1 className="text-5xl md:text-6xl font-bold no-pixelify">
                     ${netWorth.toFixed(2)}
                   </h1>
@@ -101,31 +101,31 @@ const Portfolio = () => {
                   </span>
                 </div>
 
-                <div className="flex flex-wrap gap-x-10 gap-y-3">
+                <div className="grid grid-cols-2 gap-4 md:flex md:flex-wrap md:gap-x-10 md:gap-y-3">
   <div className="min-w-[140px]">
-    <p className="text-sm text-muted-foreground mb-1">Total PnL</p>
-    <p className={`text-xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
+    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total PnL</p>
+    <p className={`text-lg sm:text-xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
       {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
     </p>
   </div>
 
   <div className="min-w-[140px]">
-    <p className="text-sm text-muted-foreground mb-1">24h Gain/Loss</p>
-    <p className={`text-xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
+    <p className="text-xs sm:text-sm text-muted-foreground mb-1">24h Gain/Loss</p>
+    <p className={`text-lg sm:text-xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
       {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
     </p>
   </div>
 
   <div className="min-w-[160px]">
-    <p className="text-sm text-muted-foreground mb-1">Total Yield Earned</p>
-    <p className="text-xl font-semibold text-green-500 no-pixelify">
+    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total Yield Earned</p>
+    <p className="text-lg sm:text-xl font-semibold text-green-500 no-pixelify">
       ${totalYieldEarned.toFixed(2)}
     </p>
   </div>
 
   <div className="min-w-[120px]">
-    <p className="text-sm text-muted-foreground mb-1">Net APY</p>
-    <p className="text-xl font-semibold no-pixelify">{NET_APY}%</p>
+    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Net APY</p>
+    <p className="text-lg sm:text-xl font-semibold no-pixelify">{NET_APY}%</p>
   </div>
 </div>
               </div>

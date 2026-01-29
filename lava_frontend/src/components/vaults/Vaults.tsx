@@ -40,7 +40,7 @@ export const ValidatorHeader = () => {
             Total Lava Stake
           </p>
           <p
-            className="text-4xl font-bold"
+            className="text-2xl sm:text-3xl md:text-4xl font-bold"
             style={{
               fontFamily:
                 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
@@ -79,7 +79,7 @@ export const ValidatorHeader = () => {
             Block Height
           </p>
           <p
-            className="text-4xl font-bold"
+            className="text-2xl sm:text-3xl md:text-4xl font-bold"
             style={{
               fontFamily:
                 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
