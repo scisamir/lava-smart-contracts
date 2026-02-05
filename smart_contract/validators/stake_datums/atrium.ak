@@ -36,8 +36,8 @@ validator atrium(gs_validator_hash: ScriptHash, atrium_minting_pid: PolicyId) {
     expect [stake_output] =
       list.filter(outputs, fn(output) { output.address == stake_address })
 
-    expect InlineDatum(iag_datum) = stake_output.datum
-    expect DelegationDatum { keeper, .. } = iag_datum
+    expect InlineDatum(atrium_datum) = stake_output.datum
+    expect DelegationDatum { keeper, .. } = atrium_datum
     expect VerificationKey(frost_vk_hash) = frost_address.payment_credential
     let is_owner_hash_correct = keeper == frost_vk_hash
 
