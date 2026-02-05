@@ -21,8 +21,8 @@ validator iag(gs_validator_hash: ScriptHash, iag_minting_pid: PolicyId) {
     let GlobalSettingsDatum { stake_details, frost_address, .. } =
       get_global_settings(reference_inputs, gs_validator_hash)
 
-    expect Some(StakeType { address: stake_address_opt, .. }) =
-      list.find(
+    expect [StakeType { address: stake_address_opt, .. }] =
+      list.filter(
         stake_details,
         fn(sd) {
           let StakeType { pool_stake_asset_name, .. } = sd
