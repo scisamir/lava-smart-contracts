@@ -5,6 +5,7 @@ use cardano/address.{Credential, VerificationKey}
 use cardano/assets.{PolicyId}
 use cardano/transaction.{InlineDatum, Transaction}
 use external/stake_types.{DelegationDatum, ExternalStakeRedeemer}
+use lava/constants.{atrium_diffusion}
 use lava/types.{GlobalSettingsDatum, StakeType}
 use lava/utils.{get_global_settings}
 
@@ -41,12 +42,13 @@ validator atrium(gs_validator_hash: ScriptHash, atrium_minting_pid: PolicyId) {
     let is_owner_hash_correct = keeper == frost_vk_hash
 
     // Atrium mint must be successful and positive
-    expect [Pair(_, mint_amount)] =
+    expect [Pair(mint_name, mint_amount)] =
       mint |> assets.tokens(atrium_minting_pid) |> dict.to_pairs
 
     and {
       is_owner_hash_correct?,
       (mint_amount > 0)?,
+      (mint_name == atrium_diffusion)?,
     }
   }
 
