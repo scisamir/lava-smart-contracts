@@ -97,7 +97,7 @@ validator rewards_validator(
           total_st_assets_minted,
           pool_stake_asset_name,
           is_processing_open,
-          ..
+          exchange_rate,
         } = pool_in_datum
 
         expect [Pair(pool_nft_name, _)] =
@@ -162,16 +162,28 @@ validator rewards_validator(
             quantity_of(pool_output.value, ra_pid, ra_an)
           }
         let rewards_accrued = pool_out_amount - total_underlying
-        // No negative rewards allowed
-        expect rewards_accrued >= 0
 
-        let updated_total_underlying = total_underlying + rewards_accrued
-        let updated_total_underlying_precised =
-          updated_total_underlying * precision_factor
-        let updated_exchange_rate =
-          updated_total_underlying_precised / total_st_assets_minted
-        let updated_total_rewards_accrued =
-          total_rewards_accrued + rewards_accrued
+        let (
+          updated_total_underlying,
+          updated_exchange_rate,
+          updated_total_rewards_accrued,
+        ) =
+          if rewards_accrued > 0 {
+            let updated_total_underlying = total_underlying + rewards_accrued
+            let updated_total_underlying_precised =
+              updated_total_underlying * precision_factor
+            let updated_exchange_rate =
+              updated_total_underlying_precised / total_st_assets_minted
+            let updated_total_rewards_accrued =
+              total_rewards_accrued + rewards_accrued
+            (
+              updated_total_underlying,
+              updated_exchange_rate,
+              updated_total_rewards_accrued,
+            )
+          } else {
+            (total_underlying, exchange_rate, total_rewards_accrued)
+          }
 
         let is_pool_out_datum_correct = and {
             pool_batching_cred == pool_batching_cred_out,
@@ -179,7 +191,7 @@ validator rewards_validator(
             pool_asset == pool_asset_out,
             pool_stake_asset_name == pool_stake_asset_name_out,
             is_processing_open == is_processing_open_out,
-            // changed
+            // expected changed
             updated_total_underlying == total_underlying_out,
             updated_exchange_rate == exchange_rate_out,
             updated_total_rewards_accrued == total_rewards_accrued_out,
