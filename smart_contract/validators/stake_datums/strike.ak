@@ -2,13 +2,13 @@ use aiken/collection/dict
 use aiken/collection/list
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Credential, Script, VerificationKey}
-use cardano/assets
+use cardano/assets.{PolicyId}
 use cardano/transaction.{InlineDatum, Transaction}
 use external/stake_types.{ExternalStakeRedeemer, StrikeStakeDatum}
 use lava/types.{GlobalSettingsDatum, StakeType}
 use lava/utils.{get_global_settings}
 
-validator strike(gs_validator_hash: ScriptHash) {
+validator strike(gs_validator_hash: ScriptHash, strike_minting_pid: PolicyId) {
   withdraw(
     redeemer: ExternalStakeRedeemer,
     _account: Credential,
@@ -36,7 +36,7 @@ validator strike(gs_validator_hash: ScriptHash) {
 
     expect Script(strike_hash) = stake_address.payment_credential
     expect [Pair(_, q1),
-      Pair(_, q2)] = mint |> assets.tokens(strike_hash) |> dict.to_pairs
+      Pair(_, q2)] = mint |> assets.tokens(strike_minting_pid) |> dict.to_pairs
     let positive_mint_from_strike = q1 == 1 && q2 == 1
 
     expect InlineDatum(strike_datum) = stake_output.datum
@@ -50,6 +50,7 @@ validator strike(gs_validator_hash: ScriptHash) {
       is_owner_hash_correct?,
       // strike hash/mint policy must be correct
       (strike_hash == mint_policy_id)?,
+      (strike_minting_pid == strike_hash)?,
     }
   }
 
