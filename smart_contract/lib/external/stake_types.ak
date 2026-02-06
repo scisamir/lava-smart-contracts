@@ -1,4 +1,5 @@
 use aiken/crypto.{VerificationKeyHash}
+use cardano/address.{Address}
 use cardano/assets.{AssetName, PolicyId}
 use lava/types.{AssetType}
 
@@ -38,4 +39,17 @@ pub type DelegationDatum {
   state: DelegationState,
   // the size of the delegation in bytes, it is determined off-chain during delegation creation
   delegation_size: Int,
+}
+
+/// Min
+pub type CustomAssetType {
+  policy_id: PolicyId,
+  asset_name: AssetName,
+}
+
+pub type MinDatum {
+  reward_address: Address,
+  one_always_like_that: Int,
+  min_token: CustomAssetType,
+  staking_period: Int,
 }

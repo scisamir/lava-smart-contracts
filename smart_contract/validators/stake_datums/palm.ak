@@ -4,12 +4,12 @@ use aiken/crypto.{ScriptHash}
 use cardano/address.{Credential}
 use cardano/assets.{PolicyId}
 use cardano/transaction.{Transaction}
-use external/constants_e.{atrium_diffusion}
+use external/constants_e.{palm_staking_proxy_guard_token}
 use external/stake_types.{ExternalStakeRedeemer}
 use lava/types.{GlobalSettingsDatum, StakeType}
 use lava/utils.{get_global_settings}
 
-validator atrium(gs_validator_hash: ScriptHash, atrium_minting_pid: PolicyId) {
+validator palm(gs_validator_hash: ScriptHash, palm_minting_pid: PolicyId) {
   withdraw(
     redeemer: ExternalStakeRedeemer,
     _account: Credential,
@@ -36,13 +36,13 @@ validator atrium(gs_validator_hash: ScriptHash, atrium_minting_pid: PolicyId) {
     expect [_stake_output] =
       list.filter(outputs, fn(output) { output.address == stake_address })
 
-    // Atrium mint must be successful and positive
+    // Palm mint must be successful and positive
     expect [Pair(mint_name, mint_amount)] =
-      mint |> assets.tokens(atrium_minting_pid) |> dict.to_pairs
+      mint |> assets.tokens(palm_minting_pid) |> dict.to_pairs
 
     and {
-      (mint_amount > 0)?,
-      (mint_name == atrium_diffusion)?,
+      (mint_amount == 1)?,
+      (mint_name == palm_staking_proxy_guard_token)?,
     }
   }
 

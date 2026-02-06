@@ -1,25 +1,26 @@
-use aiken/collection/dict
 use aiken/collection/list
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Credential}
-use cardano/assets.{PolicyId}
-use cardano/transaction.{Transaction}
-use external/constants_e.{atrium_diffusion}
-use external/stake_types.{ExternalStakeRedeemer}
+use cardano/transaction.{InlineDatum, Transaction}
+use external/stake_types.{CustomAssetType, ExternalStakeRedeemer, MinDatum}
 use lava/types.{GlobalSettingsDatum, StakeType}
 use lava/utils.{get_global_settings}
 
-validator atrium(gs_validator_hash: ScriptHash, atrium_minting_pid: PolicyId) {
+validator min(
+  gs_validator_hash: ScriptHash,
+  asset_param: CustomAssetType,
+  staking_period_param: Int,
+) {
   withdraw(
     redeemer: ExternalStakeRedeemer,
     _account: Credential,
     tx: Transaction,
   ) {
-    let Transaction { outputs, reference_inputs, mint, .. } = tx
+    let Transaction { outputs, reference_inputs, .. } = tx
 
     let ExternalStakeRedeemer { pool_stake_asset_name: ps_asset_name, .. } =
       redeemer
-    let GlobalSettingsDatum { stake_details, .. } =
+    let GlobalSettingsDatum { stake_details, frost_address, .. } =
       get_global_settings(reference_inputs, gs_validator_hash)
 
     expect [StakeType { address: stake_address_opt, .. }] =
@@ -33,16 +34,23 @@ validator atrium(gs_validator_hash: ScriptHash, atrium_minting_pid: PolicyId) {
     expect Some(stake_address) = stake_address_opt
 
     // Stake going to the right address
-    expect [_stake_output] =
+    expect [stake_output] =
       list.filter(outputs, fn(output) { output.address == stake_address })
 
-    // Atrium mint must be successful and positive
-    expect [Pair(mint_name, mint_amount)] =
-      mint |> assets.tokens(atrium_minting_pid) |> dict.to_pairs
+    expect InlineDatum(min_datum) = stake_output.datum
+    expect MinDatum {
+      reward_address,
+      one_always_like_that,
+      min_token,
+      staking_period,
+    } = min_datum
+    let is_reward_address_correct = reward_address == frost_address
 
     and {
-      (mint_amount > 0)?,
-      (mint_name == atrium_diffusion)?,
+      is_reward_address_correct?,
+      (one_always_like_that == 1)?,
+      (min_token == asset_param)?,
+      (staking_period == staking_period_param)?,
     }
   }
 
