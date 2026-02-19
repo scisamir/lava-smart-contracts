@@ -23,7 +23,7 @@ validator minswap_swap(
       max_batcher_fee: max_batcher_fee_r,
     } = redeemer
     let AssetType { policy_id: fa_pid, asset_name: fa_an, .. } = swap_from_asset
-    let is_fa_ada = fa_pid == "" && fa_an == "lovelace"
+    let is_fa_ada = fa_pid == "" && fa_an == ""
 
     // Reward utxo must contain only the specified asset apart from ADA
     expect [reward_utxo] =

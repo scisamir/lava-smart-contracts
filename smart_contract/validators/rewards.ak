@@ -3,7 +3,9 @@ use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Inline, Script}
-use cardano/assets.{from_asset, from_lovelace, lovelace_of, quantity_of}
+use cardano/assets.{
+  AssetName, from_asset, from_lovelace, lovelace_of, quantity_of,
+}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
   placeholder,
@@ -27,6 +29,7 @@ use test_utils/fns_t.{get_global_settings_input}
 validator rewards_validator(
   gs_validator_hash: ScriptHash,
   pool_validator_hash: ScriptHash,
+  pool_nft_name_param: AssetName,
 ) {
   spend(
     _datum: Option<Data>,
@@ -40,6 +43,7 @@ validator rewards_validator(
       reference_inputs,
       extra_signatories,
       withdrawals,
+      mint,
       ..
     } = tx
 
@@ -51,12 +55,22 @@ validator rewards_validator(
 
         expect Some(own_input) = find_input(inputs, utxo)
 
+        // After finding own_input, verify it's the only rewards validator input
+        let rewards_input_count =
+          list.length(
+            list.filter(
+              inputs,
+              fn(input) { input.output.address == own_input.output.address },
+            ),
+          )
+        expect rewards_input_count == 1
+
         // Reward UTxO should have no datum
         expect NoDatum = own_input.output.datum
 
         let AssetType { policy_id: ra_pid, asset_name: ra_an, .. } =
           reward_asset
-        let is_ra_ada = ra_pid == "" && ra_an == "lovelace"
+        let is_ra_ada = ra_pid == "" && ra_an == ""
 
         // Reward UTxO should have only the concerned asset in it's value
         let is_ra_value_correct =
@@ -83,7 +97,7 @@ validator rewards_validator(
           total_st_assets_minted,
           pool_stake_asset_name,
           is_processing_open,
-          ..
+          exchange_rate,
         } = pool_in_datum
 
         expect [Pair(pool_nft_name, _)] =
@@ -91,33 +105,33 @@ validator rewards_validator(
             |> assets.tokens(pool_validator_hash)
             |> dict.to_pairs
 
+        let raw_pool_value =
+          assets.from_lovelace(min_pool_lovelace)
+            |> assets.add(pool_validator_hash, pool_nft_name, 1)
+        let expected_pool_value =
+          if is_ra_ada {
+            raw_pool_value
+              |> assets.add("", "", lovelace_of(pool_input.output.value))
+              |> assets.add("", "", lovelace_of(own_input.output.value))
+              |> assets.add("", "", -min_pool_lovelace)
+          } else {
+            raw_pool_value
+              |> assets.add(
+                  ra_pid,
+                  ra_an,
+                  quantity_of(pool_input.output.value, ra_pid, ra_an),
+                )
+              |> assets.add(
+                  ra_pid,
+                  ra_an,
+                  quantity_of(own_input.output.value, ra_pid, ra_an),
+                )
+          }
+
         expect [pool_output] =
           list.filter(
             outputs,
             fn(output) {
-              let raw_pool_value =
-                assets.from_lovelace(min_pool_lovelace)
-                  |> assets.add(pool_validator_hash, pool_nft_name, 1)
-              let expected_pool_value =
-                if is_ra_ada {
-                  raw_pool_value
-                    |> assets.add("", "", lovelace_of(output.value))
-                    |> assets.add("", "", lovelace_of(own_input.output.value))
-                    |> assets.add("", "", -min_pool_lovelace)
-                } else {
-                  raw_pool_value
-                    |> assets.add(
-                        ra_pid,
-                        ra_an,
-                        quantity_of(pool_input.output.value, ra_pid, ra_an),
-                      )
-                    |> assets.add(
-                        ra_pid,
-                        ra_an,
-                        quantity_of(own_input.output.value, ra_pid, ra_an),
-                      )
-                }
-
               and {
                 (output.address.payment_credential == Script(
                   pool_validator_hash,
@@ -141,16 +155,35 @@ validator rewards_validator(
           is_processing_open: is_processing_open_out,
         } = pool_out_datum
 
-        let new_pool_amount = quantity_of(own_input.output.value, ra_pid, ra_an)
-        let rewards_accrued = new_pool_amount - total_underlying
+        let pool_out_amount =
+          if is_ra_ada {
+            lovelace_of(pool_output.value) - min_pool_lovelace
+          } else {
+            quantity_of(pool_output.value, ra_pid, ra_an)
+          }
+        let rewards_accrued = pool_out_amount - total_underlying
 
-        let updated_total_underlying = total_underlying + rewards_accrued
-        let updated_total_underlying_precised =
-          updated_total_underlying * precision_factor
-        let updated_exchange_rate =
-          updated_total_underlying_precised / total_st_assets_minted
-        let updated_total_rewards_accrued =
-          total_rewards_accrued + rewards_accrued
+        let (
+          updated_total_underlying,
+          updated_exchange_rate,
+          updated_total_rewards_accrued,
+        ) =
+          if rewards_accrued > 0 {
+            let updated_total_underlying = total_underlying + rewards_accrued
+            let updated_total_underlying_precised =
+              updated_total_underlying * precision_factor
+            let updated_exchange_rate =
+              updated_total_underlying_precised / total_st_assets_minted
+            let updated_total_rewards_accrued =
+              total_rewards_accrued + rewards_accrued
+            (
+              updated_total_underlying,
+              updated_exchange_rate,
+              updated_total_rewards_accrued,
+            )
+          } else {
+            (total_underlying, exchange_rate, total_rewards_accrued)
+          }
 
         let is_pool_out_datum_correct = and {
             pool_batching_cred == pool_batching_cred_out,
@@ -158,7 +191,7 @@ validator rewards_validator(
             pool_asset == pool_asset_out,
             pool_stake_asset_name == pool_stake_asset_name_out,
             is_processing_open == is_processing_open_out,
-            // changed
+            // expected changed
             updated_total_underlying == total_underlying_out,
             updated_exchange_rate == exchange_rate_out,
             updated_total_rewards_accrued == total_rewards_accrued_out,
@@ -167,10 +200,12 @@ validator rewards_validator(
         and {
           is_ra_value_correct?,
           // batcher signs transaction
-          is_signed_by(extra_signatories, inputs, withdrawals, batcher)?,
+          is_signed_by(extra_signatories, inputs, withdrawals, mint, batcher)?,
           // pool asset must be the reward asset
           (pool_asset == reward_asset)?,
           is_pool_out_datum_correct?,
+          // pool nft name in parameter must be same as that of pool utxo
+          (pool_nft_name == pool_nft_name_param)?,
         }
       }
 
@@ -282,6 +317,7 @@ test test_add_rewards() {
   rewards_validator.spend(
     gs_validator_hash_t,
     pool_validator_hash_t,
+    pool_nft_name_t,
     Some(rewards_datum),
     AddRewards { asset: allowed_ast_one, batcher_index: 0 },
     rewards_utxo_ref,
@@ -306,6 +342,7 @@ test test_swap_rewards() {
   rewards_validator.spend(
     gs_validator_hash_t,
     pool_validator_hash_t,
+    pool_nft_name_t,
     Some(rewards_datum),
     SwapRewards,
     rewards_utxo_ref,

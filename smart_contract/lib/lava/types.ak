@@ -22,10 +22,11 @@ pub type SignerType {
   VerificationKeySigner { verification_key_hash: VerificationKeyHash }
   SpendScriptSigner { script_hash: ScriptHash }
   WithdrawScriptSigner { script_hash: ScriptHash }
+  MintScriptSigner { script_hash: ScriptHash }
 }
 
 pub type GlobalSettingsDatum {
-  admin: ScriptHash,
+  admin: SignerType,
   authorized_batchers: List<SignerType>,
   allowed_assets: List<AssetType>,
   mint_validator_hash: ScriptHash,
@@ -43,7 +44,7 @@ pub type MintRedeemer {
 }
 
 pub type CreatOrderRedeemer {
-  MintOrder { utxo_ref: OutputReference }
+  MintOrder
   BurnOrder
 }
 
@@ -60,7 +61,7 @@ pub type OrderType {
 pub type OrderDatum {
   order_type: OrderType,
   receiver_address: Address,
-  canceller: VerificationKeyHash,
+  canceller: SignerType,
   pool_stake_asset_name: AssetName,
 }
 

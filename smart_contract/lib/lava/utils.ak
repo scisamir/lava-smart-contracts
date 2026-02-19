@@ -3,12 +3,14 @@ use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Credential, Inline, Script}
-use cardano/assets.{AssetName, Lovelace, PolicyId, lovelace_of, quantity_of}
+use cardano/assets.{
+  AssetName, Lovelace, PolicyId, Value, lovelace_of, quantity_of,
+}
 use cardano/transaction.{InlineDatum, Input, Output}
 use lava/constants.{global_settings_nft}
 use lava/types.{
-  GlobalSettingsDatum, SignerType, SpendScriptSigner, VerificationKeySigner,
-  WithdrawScriptSigner,
+  GlobalSettingsDatum, MintScriptSigner, SignerType, SpendScriptSigner,
+  VerificationKeySigner, WithdrawScriptSigner,
 }
 
 /// validate that the transaction is signed by 'signer'
@@ -65,6 +67,7 @@ pub fn get_signer_hash(signer: SignerType) {
       VerificationKeySigner { verification_key_hash } -> verification_key_hash
       SpendScriptSigner { script_hash } -> script_hash
       WithdrawScriptSigner { script_hash } -> script_hash
+      MintScriptSigner { script_hash } -> script_hash
     }
 
   signer_hash
@@ -75,11 +78,13 @@ pub fn is_signed_by(
   extra_signatories: List<VerificationKeyHash>,
   inputs: List<Input>,
   withdrawals: Pairs<Credential, Lovelace>,
+  mint: Value,
   signer: SignerType,
 ) {
   when signer is {
     VerificationKeySigner { verification_key_hash } ->
       list.has(extra_signatories, verification_key_hash)
+
     SpendScriptSigner { script_hash } ->
       list.any(
         inputs,
@@ -87,8 +92,14 @@ pub fn is_signed_by(
           input.output.address.payment_credential == Script(script_hash)
         },
       )
+
     WithdrawScriptSigner { script_hash } ->
       pairs.has_key(withdrawals, Script(script_hash))
+
+    MintScriptSigner { script_hash } -> {
+      let some_mint = mint |> assets.tokens(script_hash) |> dict.to_pairs
+      some_mint != []
+    }
   }
 }
 
@@ -136,7 +147,7 @@ pub fn find_pool_output(
   min_pool_lovelace: Int,
 ) -> Output {
   expect Script(own_hash) = own_payment_cred
-  let is_ada_asset = st_pid == "" && st_an == "lovelace"
+  let is_ada_asset = st_pid == "" && st_an == ""
 
   expect [pool_output] =
     list.filter(
@@ -189,7 +200,5 @@ pub fn find_pool_output(
       },
     )
 
-  // fn(output) {
-  // },
   pool_output
 }

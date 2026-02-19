@@ -32,6 +32,7 @@ validator stake_validator(
       reference_inputs,
       withdrawals,
       extra_signatories,
+      mint,
       ..
     } = tx
 
@@ -68,7 +69,7 @@ validator stake_validator(
     expect Some(stake_address) = stake_address_opt
     expect Some(datum_verifier_hash) = datum_verifier_hash_opt
 
-    let is_ada_asset = pool_asset_pid == "" && pool_asset_an == "lovelace"
+    let is_ada_asset = pool_asset_pid == "" && pool_asset_an == ""
 
     let pool_asset_quantity =
       if is_ada_asset {
@@ -123,7 +124,7 @@ validator stake_validator(
       // Stake datum is being verified
       pairs.has_key(withdrawals, Script(datum_verifier_hash))?,
       // batcher must sign transaction
-      is_signed_by(extra_signatories, inputs, withdrawals, batcher)?,
+      is_signed_by(extra_signatories, inputs, withdrawals, mint, batcher)?,
       // pool stake asset name in pool datum should be same in stake details
       (pool_stake_asset_name == ps_an)?,
     }

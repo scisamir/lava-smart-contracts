@@ -7,7 +7,8 @@ use mocktail/virgin_address.{mock_pub_key_address, mock_script_address}
 use mocktail/virgin_key_hash.{mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
 use test_utils/constants_t.{
-  admin_t, allowed_ast_one, gs_validator_hash_t, mint_validator_hash_t,
+  admin_signer_t, admin_t, allowed_ast_one, gs_validator_hash_t,
+  mint_validator_hash_t,
 }
 
 pub fn get_admin_input() {
@@ -33,7 +34,7 @@ pub fn get_global_settings_input() {
 
   let gs_input_datum =
     GlobalSettingsDatum {
-      admin: admin_t,
+      admin: admin_signer_t,
       authorized_batchers: [WithdrawScriptSigner { script_hash: admin_t }],
       allowed_assets: [allowed_ast_one],
       mint_validator_hash: mint_validator_hash_t,

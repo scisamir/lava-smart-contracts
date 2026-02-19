@@ -1,19 +1,18 @@
 use aiken/collection/dict
 use aiken/collection/list
-use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Credential, Inline, Script, VerificationKey}
 use cardano/assets.{
-  AssetName, PolicyId, ada_asset_name, ada_policy_id, from_asset, from_lovelace,
-  lovelace_of, quantity_of,
+  AssetName, PolicyId, Value, ada_asset_name, ada_policy_id, from_asset,
+  from_lovelace, lovelace_of, quantity_of,
 }
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, Transaction, placeholder,
 }
-use lava/constants.{precision_factor}
+use lava/constants.{order_nft_name, precision_factor}
 use lava/types.{
   AssetType, BatchingRedeemer, GlobalSettingsDatum, OptIn, OrderDatum, PoolDatum,
-  Redeem,
+  Redeem, VerificationKeySigner,
 }
 use lava/utils.{
   find_pool_input, get_global_settings, get_signer_hash, is_signed_by,
@@ -107,32 +106,24 @@ validator pool_batching(
     // Processing of orders of the pool should be open
     expect is_processing_open
 
+    expect Some(an_order_input) = list.at(order_inputs, 0)
+    expect Script(order_hash) = an_order_input.output.address.payment_credential
+    let burned_order_count = -quantity_of(mint, order_hash, "")
+
     let expected_total_mint =
       updated_total_st_assets_minted - total_st_assets_minted
 
-    expect [Pair(mint_name, mint_quantity)] =
-      mint |> assets.tokens(mint_validator_hash) |> dict.to_pairs
-
-    expect Some(an_order_input) = list.at(order_inputs, 0)
-    expect Script(order_hash) = an_order_input.output.address.payment_credential
-    let order_nft_mint = mint |> assets.tokens(order_hash) |> dict.to_pairs
-    let order_nm_keys_burn = pairs.find_all(order_nft_mint, -1)
-
     and {
       // batcher signs transaction
-      is_signed_by(extra_signatories, inputs, withdrawals, batcher)?,
+      is_signed_by(extra_signatories, inputs, withdrawals, mint, batcher)?,
       // pool asset is the batching asset
       (pool_asset == batching_asset)?,
       // Check if it's an allowed asset (in case where allowed_assets has been updated but pool still exists)
       list.has(allowed_assets, pool_asset)?,
-      // Must mint calculated amount of stake tokens
-      (expected_total_mint == mint_quantity)?,
-      // Must mint allowed allowed stake asset name
-      (pool_stake_asset_name == mint_name)?,
       // Pool stake asset name in pool datum must be same in batching redeemer
       (pool_stake_asset_name == ps_an_batcher)?,
       // Number of orders must be equivalent to the number of NFTs burnt
-      (list.length(order_inputs) == list.length(order_nm_keys_burn))?,
+      (list.length(order_inputs) == burned_order_count)?,
       // Verify pool output
       verify_pool_output(
         pool_input,
@@ -150,11 +141,38 @@ validator pool_batching(
         updated_total_underlying,
         min_pool_lovelace,
       )?,
+      if expected_total_mint != 0 {
+        verify_stake_tokens_mint(
+          mint,
+          mint_validator_hash,
+          expected_total_mint,
+          pool_stake_asset_name,
+        )
+      } else {
+        True
+      },
     }
   }
 
   else(_) {
     fail
+  }
+}
+
+fn verify_stake_tokens_mint(
+  mint: Value,
+  mint_validator_hash: ScriptHash,
+  expected_total_mint: Int,
+  pool_stake_asset_name: AssetName,
+) {
+  expect [Pair(mint_name, mint_quantity)] =
+    mint |> assets.tokens(mint_validator_hash) |> dict.to_pairs
+
+  and {
+    // Must mint calculated amount of stake tokens
+    (expected_total_mint == mint_quantity)?,
+    // Must mint allowed allowed stake asset name
+    (pool_stake_asset_name == mint_name)?,
   }
 }
 
@@ -183,14 +201,14 @@ fn process_orders(
 
       expect pool_stake_asset_name == pso_asset_name
 
-      let is_ada_asset = policy_id == "" && asset_name == "lovelace"
+      let is_ada_asset = policy_id == "" && asset_name == ""
 
       let (order_amount, asset_amt_to_mint_or_burn) =
         when order_type is {
           OptIn { deposit_amount } -> {
             let order_amount =
               if is_ada_asset {
-                lovelace_of(current_order.output.value) / 1_000_000
+                lovelace_of(current_order.output.value)
               } else {
                 quantity_of(current_order.output.value, policy_id, asset_name)
               }
@@ -212,11 +230,7 @@ fn process_orders(
             let partial_expected_oov =
               if is_ada_asset {
                 current_order.output.value
-                  |> assets.add(
-                      ada_policy_id,
-                      ada_asset_name,
-                      -deposit_amount * 1_000_000,
-                    )
+                  |> assets.add(ada_policy_id, ada_asset_name, -deposit_amount)
               } else {
                 current_order.output.value
                   |> assets.add(policy_id, asset_name, -deposit_amount)
@@ -268,11 +282,7 @@ fn process_orders(
             let partial_expected_oov =
               if is_ada_asset {
                 current_order.output.value
-                  |> assets.add(
-                      ada_policy_id,
-                      ada_asset_name,
-                      order_amount * 1_000_000,
-                    )
+                  |> assets.add(ada_policy_id, ada_asset_name, order_amount)
               } else {
                 current_order.output.value
                   |> assets.add(policy_id, asset_name, order_amount)
@@ -416,7 +426,7 @@ test test_batching_opt_in() {
     OrderDatum {
       order_type: OptIn { deposit_amount },
       receiver_address,
-      canceller: mock_pub_key_hash(6),
+      canceller: VerificationKeySigner(mock_pub_key_hash(6)),
       pool_stake_asset_name: "stTest",
     }
   let order_input =
@@ -520,7 +530,7 @@ test test_batching_opt_in() {
         pool_stake_asset_name,
         asset_amt_to_mint,
       ),
-      from_asset(order_hash, "orderoderone", -1),
+      from_asset(order_hash, order_nft_name, -1),
     )
 
   let tx =
@@ -568,7 +578,7 @@ test test_batching_redeem() {
     OrderDatum {
       order_type: Redeem { st_amount },
       receiver_address,
-      canceller: mock_pub_key_hash(6),
+      canceller: VerificationKeySigner(mock_pub_key_hash(6)),
       pool_stake_asset_name: "stTest",
     }
   let order_input =
@@ -666,7 +676,7 @@ test test_batching_redeem() {
   let mint =
     assets.merge(
       from_asset(mint_validator_hash_t, pool_stake_asset_name, -st_amount),
-      from_asset(order_hash, "orderoderone", -1),
+      from_asset(order_hash, order_nft_name, -1),
     )
 
   let tx =

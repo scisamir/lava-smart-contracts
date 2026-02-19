@@ -1,4 +1,4 @@
-use lava/types.{AssetType}
+use lava/types.{AssetType, SpendScriptSigner}
 use mocktail/virgin_address.{mock_script_credential}
 use mocktail/virgin_key_hash.{mock_policy_id, mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
@@ -29,3 +29,5 @@ pub const allowed_ast_one =
 
 pub const pool_nft_name_t =
   #"cd82a190d3b4ef95a50bd791882959f541e308adb69b12d022d94a6d9f02bcf03130"
+
+pub const admin_signer_t = SpendScriptSigner { script_hash: admin_t }

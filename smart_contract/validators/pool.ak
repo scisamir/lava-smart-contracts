@@ -1,11 +1,12 @@
 use aiken/collection/dict
 use aiken/collection/list
 use aiken/collection/pairs
-use aiken/crypto.{ScriptHash}
+use aiken/crypto.{ScriptHash, blake2b_224}
 use aiken/primitive/bytearray
 use aiken/primitive/string.{from_int, to_bytearray}
 use cardano/address.{Address, Credential, Inline, Script}
 use cardano/assets.{PolicyId, from_asset, from_lovelace, lovelace_of}
+use cardano/certificate.{Certificate}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Spend, Transaction,
   find_input, placeholder,
@@ -17,7 +18,7 @@ use lava/types.{
   UpdatePoolProcessingState,
 }
 use lava/utils.{
-  find_pool_input, find_pool_output, get_global_settings, is_multisig_signing,
+  find_pool_input, find_pool_output, get_global_settings, is_signed_by,
 }
 use mocktail/virgin_key_hash.{mock_policy_id, mock_script_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
@@ -30,15 +31,25 @@ use test_utils/fns_t.{get_admin_input, get_global_settings_input}
 validator pool_validator(gs_validator_hash: ScriptHash) {
   // minting to create pool
   mint(redeemer: CreatPoolRedeemer, policy_id: PolicyId, tx: Transaction) {
-    let Transaction { mint, outputs, inputs, reference_inputs, .. } = tx
+    let Transaction {
+      mint,
+      outputs,
+      inputs,
+      reference_inputs,
+      withdrawals,
+      extra_signatories,
+      ..
+    } = tx
 
     let CreatPoolRedeemer { utxo_ref } = redeemer
     expect Some(_) = find_input(inputs, utxo_ref)
 
     let expected_pool_an =
-      bytearray.concat(
-        utxo_ref.transaction_id,
-        to_bytearray(from_int(utxo_ref.output_index)),
+      blake2b_224(
+        bytearray.concat(
+          utxo_ref.transaction_id,
+          to_bytearray(from_int(utxo_ref.output_index)),
+        ),
       )
 
     expect [Pair(nft_name, quantity)] =
@@ -99,7 +110,7 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
       // pool NFT has to be minted
       is_pool_nft_minting?,
       // admin must sign pool creation transaction
-      is_multisig_signing(inputs, admin)?,
+      is_signed_by(extra_signatories, inputs, withdrawals, mint, admin)?,
       // The pool asset should be an allowed asset
       list.has(allowed_assets, pool_asset)?,
       // pool utxo must contain only the pool nft and min pool lovelace
@@ -122,6 +133,8 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
       reference_inputs,
       withdrawals,
       redeemers,
+      mint,
+      extra_signatories,
       ..
     } = tx
     expect Some(own_input) = find_input(inputs, utxo)
@@ -183,12 +196,19 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
             (is_processing_open != is_processing_open_out)?,
           }
 
+        let is_value_valid = and {
+            lovelace_of(pool_output.value) >= min_pool_lovelace,
+            assets.without_lovelace(own_input.output.value) == assets.without_lovelace(
+              pool_output.value,
+            ),
+          }
+
         and {
           // pool in and out value must be unchaged
-          own_input.output.value == pool_output.value,
+          is_value_valid?,
           is_pool_out_datum_correct?,
           // admin must sign transaction
-          is_multisig_signing(inputs, admin)?,
+          is_signed_by(extra_signatories, inputs, withdrawals, mint, admin)?,
         }
       }
 
@@ -228,7 +248,15 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
   }
 
   withdraw(_redeemer: Data, credential: Credential, tx: Transaction) {
-    let Transaction { inputs, outputs, reference_inputs, withdrawals, .. } = tx
+    let Transaction {
+      inputs,
+      outputs,
+      reference_inputs,
+      withdrawals,
+      mint,
+      extra_signatories,
+      ..
+    } = tx
 
     let own_payment_cred = credential
     expect Script(own_hash) = own_payment_cred
@@ -300,10 +328,27 @@ validator pool_validator(gs_validator_hash: ScriptHash) {
 
     and {
       // admin must sign transaction
-      is_multisig_signing(inputs, admin)?,
+      is_signed_by(extra_signatories, inputs, withdrawals, mint, admin)?,
       is_pool_out_datum_correct?,
       is_pool_value_valid?,
     }
+  }
+
+  publish(_redeemer: Data, _certificate: Certificate, tx: Transaction) {
+    let Transaction {
+      inputs,
+      reference_inputs,
+      withdrawals,
+      mint,
+      extra_signatories,
+      ..
+    } = tx
+
+    let GlobalSettingsDatum { admin, .. } =
+      get_global_settings(reference_inputs, gs_validator_hash)
+
+    // admin must sign transaction
+    is_signed_by(extra_signatories, inputs, withdrawals, mint, admin)?
   }
 
   else(_) {
@@ -320,9 +365,11 @@ test test_create_pool() {
 
   let (_, admin_input) = get_admin_input()
   let expected_pool_an =
-    bytearray.concat(
-      admin_input.output_reference.transaction_id,
-      to_bytearray(from_int(admin_input.output_reference.output_index)),
+    blake2b_224(
+      bytearray.concat(
+        admin_input.output_reference.transaction_id,
+        to_bytearray(from_int(admin_input.output_reference.output_index)),
+      ),
     )
   let mint = from_asset(pool_hash, expected_pool_an, 1)
 
@@ -670,7 +717,7 @@ test test_add_ada_rewards_pool() {
     AssetType {
       is_stable: False,
       policy_id: "",
-      asset_name: "lovelace",
+      asset_name: "",
       multiplier: 1_000_000,
     }
 
@@ -731,5 +778,11 @@ test test_add_ada_rewards_pool() {
       withdrawals: [Pair(Script(admin_t), 0), Pair(pool_cred, 1_000_000)],
     }
 
-  pool_validator.withdraw(gs_validator_hash_t, "", pool_cred, tx)
+  pool_validator.spend(
+    gs_validator_hash_t,
+    Some(pool_datum_in),
+    ClaimAdaRewards,
+    pool_utxo_ref,
+    tx,
+  ) && pool_validator.withdraw(gs_validator_hash_t, "", pool_cred, tx)
 }
