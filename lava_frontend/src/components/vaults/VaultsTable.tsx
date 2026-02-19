@@ -2,11 +2,6 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import {
   LAVA_LOGO,
-  PASHOV_LOGO,
-  SPEARBIT_LOGO,
-  ZENITH_LOGO,
-  SSA_LOGO,
-  CODE_ARENA_LOGO,
 } from "@/lib/images";
 import {
   Table,
@@ -17,73 +12,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
-import { TOKEN_PAIRS } from "@/lib/types";
-
-const vaults = [
-  {
-    name: "Hyperlend",
-    logo: PASHOV_LOGO.src,
-    score: "87.87",
-    status: "Purring",
-    recentBlocks: 453,
-    stStake: "1,000",
-    staked: "1,000",
-  },
-  {
-    name: "Pendle",
-    logo: SPEARBIT_LOGO.src,
-    score: "87.87",
-    status: "Purring",
-    recentBlocks: 423,
-    stStake: "1,000",
-    staked: "1,000",
-  },
-  {
-    name: "Project X",
-    logo: ZENITH_LOGO.src,
-    score: "87.87",
-    status: "Purring",
-    recentBlocks: 543,
-    stStake: "1,000",
-    staked: "1,000",
-  },
-  {
-    name: "Valantis",
-    logo: SSA_LOGO.src,
-    score: "87.87",
-    status: "Purring",
-    recentBlocks: 543,
-    stStake: "1,000",
-    staked: "1,000",
-  },
-  {
-    name: "Hydra",
-    logo: CODE_ARENA_LOGO.src,
-    score: "87.87",
-    status: "Purring",
-    recentBlocks: 213,
-    stStake: "1,000",
-    staked: "1,000",
-  },
-];
 
 export const VaultsTable = () => {
   const { poolInfo } = useCardanoWallet();
-  const poolInfoExtended = poolInfo.map((info) => {
-    return {
-      ...info,
-      logo: SPEARBIT_LOGO.src,
-      score: "87.87",
-      status: info.isPoolOpen ? "Open" : "Closed",
-      recentBlocks: 543,
-      stStake: info.totalStAssetsMinted,
-      staked: info.totalUnderlying,
-      tokenPair: TOKEN_PAIRS.find((p) => p.derivative === info.name) ?? {
-        base: "",
-        derivative: "",
-      },
-    };
-  });
+  const poolInfoExtended = poolInfo;
 
   return (
     <div className="space-y-6">
@@ -208,7 +140,7 @@ export const VaultsTable = () => {
                     <span>
                       {vault.stStake}{" "}
                       <span className="text-muted-foreground">
-                        {vault.tokenPair.derivative}
+                        {vault.tokenPair?.derivative ?? ""}
                       </span>
                     </span>
                   </div>
@@ -226,7 +158,7 @@ export const VaultsTable = () => {
                     <span>
                       {vault.staked}{" "}
                       <span className="text-muted-foreground">
-                        {vault.tokenPair.base}
+                        {vault.tokenPair?.base ?? ""}
                       </span>
                     </span>
                   </div>

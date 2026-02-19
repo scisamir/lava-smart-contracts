@@ -10,84 +10,46 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import {
-  FLUIDTOKENS_LOGO,
-  MINSWAP_LOGO,
-  SPLASH_LOGO,
-  LIQWID_LOGO,
-  IAGON_LOGO,
-  CIRCLE_LOGO,
-} from "@/lib/images";
-import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
-const protocols = [
-  {
-    name: "Hyperlend",
-    logo: FLUIDTOKENS_LOGO.src,
-    color: "bg-cyan-500",
-    rewards: [MINSWAP_LOGO.src, SPLASH_LOGO.src, LIQWID_LOGO.src],
-    tvl: "$3.43M",
-    borrowRate: "0.05% APY",
-    supplyRate: "0.05% APY",
-    category: "DEX",
-  },
-  {
-    name: "Pendle",
-    logo: MINSWAP_LOGO.src,
-    color: "bg-slate-400",
-    rewards: [LIQWID_LOGO.src, IAGON_LOGO.src, CIRCLE_LOGO.src],
-    tvl: "$2.11M",
-    borrowRate: "0.07% APY",
-    supplyRate: "0.03% APY",
-    category: "Yield",
-  },
-  {
-    name: "Project X",
-    logo: SPLASH_LOGO.src,
-    color: "bg-white",
-    rewards: [FLUIDTOKENS_LOGO.src, MINSWAP_LOGO.src, SPLASH_LOGO.src],
-    tvl: "$5.20M",
-    borrowRate: "0.06% APY",
-    supplyRate: "0.04% APY",
-    category: "DEX",
-  },
-  {
-    name: "Valantis",
-    logo: LIQWID_LOGO.src,
-    color: "bg-slate-300",
-    rewards: [IAGON_LOGO.src, CIRCLE_LOGO.src, FLUIDTOKENS_LOGO.src],
-    tvl: "$1.89M",
-    borrowRate: "0.04% APY",
-    supplyRate: "0.02% APY",
-    category: "Lending",
-  },
-  {
-    name: "Hydra",
-    logo: IAGON_LOGO.src,
-    color: "bg-cyan-600",
-    rewards: [SPLASH_LOGO.src, MINSWAP_LOGO.src, LIQWID_LOGO.src],
-    tvl: "$6.42M",
-    borrowRate: "0.08% APY",
-    supplyRate: "0.05% APY",
-    category: "Lending",
-  },
-];
+type Market = {
+  name: string;
+  logo: string;
+  color: string;
+  rewards: string[];
+  tvl: string;
+  borrowRate: string;
+  supplyRate: string;
+  category: string;
+};
 
 export const ProtocolsTable = () => {
-  const { poolInfo } = useCardanoWallet();
-  const poolInfoExtended = poolInfo.map((info) => {
-    return {
-      ...info,
-      logo: FLUIDTOKENS_LOGO.src,
-      color: "bg-cyan-600",
-      rewards: [IAGON_LOGO.src, CIRCLE_LOGO.src, FLUIDTOKENS_LOGO.src],
-      tvl: "$1.89M",
-      borrowRate: "0.04% APY",
-      supplyRate: "0.02% APY",
-      category: "Yield",
+  const [markets, setMarkets] = useState<Market[]>([]);
+
+  useEffect(() => {
+    const fetchMarkets = async () => {
+      try {
+        const backendBaseUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
+          "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
+
+        const response = await fetch(`${backendBaseUrl}/markets`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch markets: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const apiMarkets = Array.isArray(data?.markets) ? data.markets : [];
+        setMarkets(apiMarkets);
+      } catch (error) {
+        console.error("Failed to fetch markets:", error);
+        setMarkets([]);
+      }
     };
-  });
+
+    fetchMarkets();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -157,7 +119,7 @@ export const ProtocolsTable = () => {
           </TableHeader>
 
           <TableBody>
-            {poolInfoExtended.map((p, index) => (
+            {markets.map((p, index) => (
               <TableRow
                 key={index}
                 className="border-0 hover:bg-muted/50 transition-colors"
@@ -215,7 +177,7 @@ export const ProtocolsTable = () => {
 
       {/* MOBILE CARDS */}
       <div className="space-y-4 md:hidden mt-6">
-        {protocols.map((p, index) => (
+        {markets.map((p, index) => (
           <Card
             key={index}
             className="p-4 rounded-xl border border-border bg-card"

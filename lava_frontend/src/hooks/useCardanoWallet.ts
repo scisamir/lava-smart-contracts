@@ -11,8 +11,7 @@ import {
   stringToHex,
   UTxO,
 } from "@meshsdk/core";
-import { fetchPoolInfo } from "@/e2e/utils";
-import { PoolInfo } from "@/lib/types";
+import { BackendVault } from "@/lib/types";
 
 const LOCAL_STORAGE_KEY = "connectedWallet";
 
@@ -32,7 +31,7 @@ export function useCardanoWallet() {
   const [tokenBalances, setTokenBalances] = useState<{ [key: string]: number }>(
     {}
   );
-  const [poolInfo, setPoolInfo] = useState<PoolInfo[]>([]);
+  const [poolInfo, setPoolInfo] = useState<BackendVault[]>([]);
 
   //CRITICAL FLAG
   const [hasTriedRestore, setHasTriedRestore] = useState(false);
@@ -95,27 +94,34 @@ export function useCardanoWallet() {
         const addr = await wallet.getChangeAddress();
         setWalletAddress(addr);
 
-        const assets = await wallet.getAssets();
-        const adaAsset = assets.find((a) => a.unit === "lovelace");
-        setBalance(
-          adaAsset ? Number(adaAsset.quantity) / 1_000_000 : 0
+        const backendBaseUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
+          "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
+
+        const balanceRes = await fetch(
+          `${backendBaseUrl}/user-balance?address=${encodeURIComponent(addr)}`
         );
+
+        if (!balanceRes.ok) {
+          throw new Error(`Failed to fetch user balance: ${balanceRes.status}`);
+        }
+
+        const balanceData = await balanceRes.json();
+
+        setBalance(Number(balanceData.balance ?? 0));
+        setTokenBalances(balanceData.tokenBalances ?? {});
+        setWalletUtxos((balanceData.walletUtxos ?? []) as UTxO[]);
+        setWalletCollateral((balanceData.collateral ?? null) as UTxO | null);
 
         const { pubKeyHash, stakeCredentialHash } =
           deserializeAddress(addr);
 
-        const walletUtxos = await wallet.getUtxos();
-        const walletCollateral =
-          walletUtxos.filter(
-            (utxo) =>
-              Number(utxo.output.amount[0].quantity) >= 7_000_000 &&
-              utxo.output.amount.length <= 4
-          )[0] ?? null;
-
         if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
 
         const maestroKey = process.env.NEXT_PUBLIC_MAESTRO_KEY;
-        if (!maestroKey) throw new Error("MAESTRO_KEY missing");
+        if (!maestroKey) {
+          throw new Error("MAESTRO_KEY missing for tx builder/provider");
+        }
 
         const bp = new MaestroProvider({
           network: "Preprod",
@@ -130,53 +136,29 @@ export function useCardanoWallet() {
         });
         tb.setNetwork("preprod");
 
-        const test = getTokenBalance(
-          assets,
-          "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea",
-          "test"
-        );
-        const stTest = getTokenBalance(
-          assets,
-          "9c1dd9791eba86728634ec4d1531ff3f7ace179c3f8b1e75bfbf1906",
-          "stTest"
-        );
-        const tStrike = getTokenBalance(
-          assets,
-          "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea",
-          "tStrike"
-        );
-        const LStrike = getTokenBalance(
-          assets,
-          "9c1dd9791eba86728634ec4d1531ff3f7ace179c3f8b1e75bfbf1906",
-          "LStrike"
-        );
-        const tPulse = getTokenBalance(
-          assets,
-          "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea",
-          "tPulse"
-        );
-        const LPulse = getTokenBalance(
-          assets,
-          "9c1dd9791eba86728634ec4d1531ff3f7ace179c3f8b1e75bfbf1906",
-          "LPulse"
-        );
+        const vaultsRes = await fetch(`${backendBaseUrl}/lava-vaults`);
+        if (!vaultsRes.ok) {
+          throw new Error(`Failed to fetch lava vaults: ${vaultsRes.status}`);
+        }
 
-        const poolInfoData = await fetchPoolInfo(bp);
+        const vaultsData = await vaultsRes.json();
+        const poolInfoData: BackendVault[] = (vaultsData.vaults ?? []).map(
+          (vault: any) => ({
+            name: String(vault.name ?? ""),
+            logo: String(vault.logo ?? ""),
+            score: String(vault.score ?? "0"),
+            status: String(vault.status ?? "Closed"),
+            recentBlocks: Number(vault.recentBlocks ?? 0),
+            stStake: String(vault.stStake ?? "0"),
+            staked: String(vault.staked ?? "0"),
+            tokenPair: vault.tokenPair ?? { base: "", derivative: "" },
+          })
+        );
 
         setTxBuilder(tb);
         setBlockchainProvider(bp);
         setWalletVK(pubKeyHash);
         setWalletSK(stakeCredentialHash ?? "");
-        setWalletCollateral(walletCollateral);
-        setWalletUtxos(walletUtxos);
-        setTokenBalances({
-          test,
-          stTest,
-          tStrike,
-          LStrike,
-          tPulse,
-          LPulse,
-        });
         setPoolInfo(poolInfoData);
       } catch (err) {
         console.error("Error fetching wallet data:", err);
@@ -190,6 +172,9 @@ export function useCardanoWallet() {
     // Only clear UI state (not localStorage)
     setWalletAddress("");
     setBalance(0);
+    setTxBuilder(null);
+    setBlockchainProvider(null);
+    setWalletCollateral(null);
     setWalletUtxos([]);
     setTokenBalances({});
     setPoolInfo([]);

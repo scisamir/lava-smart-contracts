@@ -26,3 +26,14 @@ export type PoolInfo = {
   totalUnderlying: number;
   totalStAssetsMinted: number;
 };
+
+export type BackendVault = {
+  name: string;
+  logo: string;
+  score: string;
+  status: string;
+  recentBlocks: number;
+  stStake: string;
+  staked: string;
+  tokenPair: TokenPair;
+};

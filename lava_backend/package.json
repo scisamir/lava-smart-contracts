@@ -1,0 +1,30 @@
+{
+  "name": "lava_backend",
+  "version": "0.1.0",
+  "bin": {
+    "lava_backend": "bin/lava_backend.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "build-lambda": "rm -rf lambda/dist && esbuild lambda/get-user-st-balance.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-markets.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-lava-vaults.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk"
+  },
+  "devDependencies": {
+    "@meshsdk/core": "^1.9.0-beta.98",
+    "@types/aws-lambda": "^8.10.0",
+    "@types/jest": "^30",
+    "@types/node": "^24.10.1",
+    "aws-cdk": "2.1106.0",
+    "esbuild": "^0.27.3",
+    "jest": "^30",
+    "ts-jest": "^29",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.9.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.238.0",
+    "constructs": "^10.0.0"
+  }
+}
