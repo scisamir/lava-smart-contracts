@@ -56,7 +56,7 @@ const unsignedTx = await txBuilder
     multiSigUtxos[0].input.txHash,
     multiSigUtxos[0].input.outputIndex,
     multiSigUtxos[0].output.amount,
-    multiSigUtxos[0].output.address
+    multiSigUtxos[0].output.address,
   )
   .txInScript(multiSigCbor)
   .mintPlutusScriptV3()
@@ -72,7 +72,7 @@ const unsignedTx = await txBuilder
   .txOut(multiSigAddress, multiSigUtxos[0].output.amount)
   .txInCollateral(
     wallet1Collateral.input.txHash,
-    wallet1Collateral.input.outputIndex
+    wallet1Collateral.input.outputIndex,
   )
   .setTotalCollateral("5000000")
   .readOnlyTxInReference(gsUtxo.input.txHash, gsUtxo.input.outputIndex)
@@ -84,4 +84,4 @@ const signedTx1 = await wallet1.signTx(unsignedTx, true);
 const signedTx2 = await wallet2.signTx(signedTx1, true);
 
 const txHash = await wallet1.submitTx(signedTx2);
-console.log("Create pool tx hash:", txHash);
+console.log("Create test pool tx hash:", txHash);
