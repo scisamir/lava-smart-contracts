@@ -4,7 +4,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
 import { toast } from "react-toastify";
-import { cancelOrder } from "@/e2e/order/cancel_order";
 import { OrderListProps, UserOrderType } from "@/lib/types";
 import { useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
@@ -15,8 +14,6 @@ export const OrderList = ({ orders }: OrderListProps) => {
 
   const {
     connected,
-    txBuilder,
-    blockchainProvider,
     walletCollateral,
     wallet,
     walletAddress,
@@ -52,11 +49,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
     setIsProcessing(true);
     setTxHash(orderTxHash);
 
-    console.log("txBuilder:", txBuilder);
-    console.log("walletCollateral:", walletCollateral);
-    console.log("blockchainProvider:", blockchainProvider);
-
-    if (!txBuilder || !walletCollateral || !blockchainProvider) {
+    if (!walletCollateral) {
       toastFailure("Error: Check collateral");
       setIsProcessing(false);
       return;
@@ -64,19 +57,30 @@ export const OrderList = ({ orders }: OrderListProps) => {
 
     let txHash = "";
     try {
-      txHash = await cancelOrder(
-        blockchainProvider,
-        txBuilder,
-        wallet,
-        walletAddress,
-        walletCollateral,
-        walletUtxos,
-        walletVK,
-        orderTxHash
-      );
-      txBuilder.reset();
+      const backendBaseUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
+        "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
+
+      const response = await fetch(`${backendBaseUrl}/build-cancel-order-tx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress,
+          walletVK,
+          walletCollateral,
+          walletUtxos,
+          orderTxHash,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to build cancel tx: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
-      txBuilder.reset();
       setTxHash("");
       setIsProcessing(false);
       toastFailure(e);
@@ -85,13 +89,10 @@ export const OrderList = ({ orders }: OrderListProps) => {
       return;
     }
 
-    blockchainProvider.onTxConfirmed(txHash, () => {
-      txBuilder.reset();
-      setTxHash("");
-      setIsProcessing(false);
-      toastSuccess(txHash);
-      console.log("Cancel order tx hash:", txHash);
-    });
+    setTxHash("");
+    setIsProcessing(false);
+    toastSuccess(txHash);
+    console.log("Cancel order tx hash:", txHash);
   };
 
   return (

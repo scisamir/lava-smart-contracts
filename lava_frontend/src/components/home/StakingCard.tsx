@@ -7,8 +7,6 @@ import { ArrowDown, ChevronDown, Zap, Wallet } from "lucide-react";
 import { LAVA_LOGO, STRIKETOKENS_LOGO, SPLASH_LOGO, FLUIDTOKENS_LOGO } from "@/lib/images";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
-import { createOptInOrder } from "@/e2e/order/create_opt_in_order";
-import { createRedeemOrder } from "@/e2e/order/create_redeem_order";
 import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
 
 // PixelCorner removed — unused decorative element
@@ -44,14 +42,13 @@ export const StakingCard = () => {
 
   const {
     connected,
-    txBuilder,
-    blockchainProvider,
     wallet,
     walletAddress,
     walletVK,
     walletSK,
     walletUtxos,
     tokenBalances,
+    reloadWalletState,
   } = useCardanoWallet();
 
   const conversionRate = 0.996;
@@ -102,30 +99,35 @@ export const StakingCard = () => {
 
   const handleCreateOptInOrder = async (amount: number, tokenName: string) => {
     setIsProcessing(true);
-    console.log("txBuilder:", txBuilder);
-    console.log("blockchainProvider:", blockchainProvider);
-
-    if (!txBuilder || !blockchainProvider) {
-      toastFailure("Error: Blockchain not initialized!");
-      setIsProcessing(false);
-      return;
-    }
 
     let txHash = "";
     try {
-      txHash = await createOptInOrder(
-        txBuilder,
-        wallet,
-        walletAddress,
-        walletUtxos,
-        walletVK,
-        walletSK,
-        amount,
-        tokenName
-      );
-      txBuilder.reset();
+      const backendBaseUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
+        "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
+
+      const response = await fetch(`${backendBaseUrl}/build-user-order-tx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderType: "opt-in",
+          amount,
+          tokenName,
+          walletAddress,
+          walletVK,
+          walletSK,
+          walletUtxos,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to build tx: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
-      txBuilder.reset();
       setIsProcessing(false);
       toastFailure(e);
       console.error("e tx:", e);
@@ -133,40 +135,43 @@ export const StakingCard = () => {
       return;
     }
 
-    blockchainProvider.onTxConfirmed(txHash, () => {
-      txBuilder.reset();
-      setIsProcessing(false);
-      toastSuccess(txHash);
-      console.log("Create opt in order tx hash:", txHash);
-    });
+    setIsProcessing(false);
+    toastSuccess(txHash);
+    await reloadWalletState();
+    console.log("Create opt in order tx hash:", txHash);
   };
 
   const handleCreateRedeemOrder = async (amount: number, tokenName: string) => {
     setIsProcessing(true);
-    console.log("txBuilder:", txBuilder);
-    console.log("blockchainProvider:", blockchainProvider);
-
-    if (!txBuilder || !blockchainProvider) {
-      toastFailure("Error: Blockchain not initialized!");
-      setIsProcessing(false);
-      return;
-    }
 
     let txHash = "";
     try {
-      txHash = await createRedeemOrder(
-        txBuilder,
-        wallet,
-        walletAddress,
-        walletUtxos,
-        walletVK,
-        walletSK,
-        amount,
-        tokenName
-      );
-      txBuilder.reset();
+      const backendBaseUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
+        "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
+
+      const response = await fetch(`${backendBaseUrl}/build-user-order-tx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderType: "redeem",
+          amount,
+          tokenName,
+          walletAddress,
+          walletVK,
+          walletSK,
+          walletUtxos,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to build tx: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
-      txBuilder.reset();
       setIsProcessing(false);
       toastFailure(e);
       console.error("e tx:", e);
@@ -174,12 +179,10 @@ export const StakingCard = () => {
       return;
     }
 
-    blockchainProvider.onTxConfirmed(txHash, () => {
-      txBuilder.reset();
-      setIsProcessing(false);
-      toastSuccess(txHash);
-      console.log("Create redeem order tx hash:", txHash);
-    });
+    setIsProcessing(false);
+    toastSuccess(txHash);
+    await reloadWalletState();
+    console.log("Create redeem order tx hash:", txHash);
   };
 
   // helper for which token balance to use

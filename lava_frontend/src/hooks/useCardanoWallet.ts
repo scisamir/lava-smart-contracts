@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useWallet } from "@meshsdk/react";
-import { BlockchainProviderType } from "@/e2e/types";
 import {
   AssetExtended,
   deserializeAddress,
@@ -22,7 +21,7 @@ export function useCardanoWallet() {
   const [balance, setBalance] = useState(0);
   const [txBuilder, setTxBuilder] = useState<MeshTxBuilder | null>(null);
   const [blockchainProvider, setBlockchainProvider] =
-    useState<BlockchainProviderType | null>(null);
+    useState<MaestroProvider | null>(null);
   const [walletVK, setWalletVK] = useState<string>("");
   const [walletSK, setWalletSK] = useState<string>("");
   const [walletUtxos, setWalletUtxos] = useState<UTxO[]>([]);
@@ -119,22 +118,27 @@ export function useCardanoWallet() {
         if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
 
         const maestroKey = process.env.NEXT_PUBLIC_MAESTRO_KEY;
-        if (!maestroKey) {
-          throw new Error("MAESTRO_KEY missing for tx builder/provider");
+        if (maestroKey) {
+          const bp = new MaestroProvider({
+            network: "Preprod",
+            apiKey: maestroKey,
+          });
+
+          const tb = new MeshTxBuilder({
+            fetcher: bp,
+            submitter: bp,
+            evaluator: bp,
+            verbose: true,
+          });
+          tb.setNetwork("preprod");
+
+          setTxBuilder(tb);
+          setBlockchainProvider(bp);
+        } else {
+          setTxBuilder(null);
+          setBlockchainProvider(null);
+          console.warn("NEXT_PUBLIC_MAESTRO_KEY is not set; frontend tx builder/provider disabled.");
         }
-
-        const bp = new MaestroProvider({
-          network: "Preprod",
-          apiKey: maestroKey,
-        });
-
-        const tb = new MeshTxBuilder({
-          fetcher: bp,
-          submitter: bp,
-          evaluator: bp,
-          verbose: true,
-        });
-        tb.setNetwork("preprod");
 
         const vaultsRes = await fetch(`${backendBaseUrl}/lava-vaults`);
         if (!vaultsRes.ok) {
@@ -155,8 +159,6 @@ export function useCardanoWallet() {
           })
         );
 
-        setTxBuilder(tb);
-        setBlockchainProvider(bp);
         setWalletVK(pubKeyHash);
         setWalletSK(stakeCredentialHash ?? "");
         setPoolInfo(poolInfoData);
