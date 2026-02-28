@@ -204,7 +204,9 @@ export const VaultsTable = () => {
                               className="w-full h-full object-contain"
                             />
                           </div>
-                          <span>{vault.stStake} stADA</span>
+                          <span>
+                            {vault.stStake} {vault.tokenPair?.derivative ?? ""}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -236,7 +238,9 @@ export const VaultsTable = () => {
                               className="w-full h-full object-contain"
                             />
                           </div>
-                          <span>{vault.staked} ADA</span>
+                          <span>
+                            {vault.staked} {vault.tokenPair?.base ?? ""}
+                          </span>
                         </div>
                       </div>
                     </div>

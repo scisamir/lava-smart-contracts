@@ -4,6 +4,8 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 
 export class LavaBackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -66,7 +68,27 @@ export class LavaBackendStack extends cdk.Stack {
       handler: 'get-lava-vaults.handler',
       // layers: [backendLayer],
       environment: {
+        TABLE_NAME: table.tableName,
+      },
+    });
+
+    const syncLavaVaultsLambda = new lambda.Function(this, 'SyncLavaVaultsFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      code: lambda.Code.fromAsset('lambda/dist'),
+      handler: 'sync-lava-vaults.handler',
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 1024,
+      environment: {
         MAESTRO_API_KEY: maestroApiKey,
+        TABLE_NAME: table.tableName,
+      },
+    });
+
+    const upsertTokenMetadataLambda = new lambda.Function(this, 'UpsertTokenMetadataFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      code: lambda.Code.fromAsset('lambda/dist'),
+      handler: 'upsert-token-metadata.handler',
+      environment: {
         TABLE_NAME: table.tableName,
       },
     });
@@ -139,12 +161,19 @@ export class LavaBackendStack extends cdk.Stack {
     table.grantReadWriteData(getUserBalanceLambda);
     table.grantReadWriteData(getMarketsLambda);
     table.grantReadWriteData(getLavaVaultsLambda);
+    table.grantReadWriteData(syncLavaVaultsLambda);
+    table.grantReadWriteData(upsertTokenMetadataLambda);
     table.grantReadWriteData(getBatchStatsLambda);
     table.grantReadWriteData(postBatchOrdersLambda);
     table.grantReadWriteData(buildUserOrderTxLambda);
     table.grantReadWriteData(buildMintTestTokensTxLambda);
     table.grantReadWriteData(getUserOrdersLambda);
     table.grantReadWriteData(buildCancelOrderTxLambda);
+
+    const vaultSyncSchedule = new events.Rule(this, 'VaultSyncEveryFiveMinutes', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(10)),
+    });
+    vaultSyncSchedule.addTarget(new targets.LambdaFunction(syncLavaVaultsLambda));
 
     // ======================
     // API Gateway
@@ -220,6 +249,41 @@ export class LavaBackendStack extends cdk.Stack {
     vaultsResource.addMethod(
       'GET',
       new apigateway.LambdaIntegration(getLavaVaultsLambda),
+      {
+        methodResponses: [
+          {
+            statusCode: '200',
+            responseParameters: {
+              'method.response.header.Access-Control-Allow-Origin': true,
+              'method.response.header.Access-Control-Allow-Headers': true,
+              'method.response.header.Access-Control-Allow-Methods': true,
+            },
+          },
+        ],
+      }
+    );
+
+    const tokenMetadataResource = api.root.addResource('token-metadata');
+    tokenMetadataResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(upsertTokenMetadataLambda),
+      {
+        methodResponses: [
+          {
+            statusCode: '200',
+            responseParameters: {
+              'method.response.header.Access-Control-Allow-Origin': true,
+              'method.response.header.Access-Control-Allow-Headers': true,
+              'method.response.header.Access-Control-Allow-Methods': true,
+            },
+          },
+        ],
+      }
+    );
+
+    tokenMetadataResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(upsertTokenMetadataLambda),
       {
         methodResponses: [
           {

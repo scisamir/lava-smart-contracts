@@ -9,7 +9,7 @@
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "build-lambda": "rm -rf lambda/dist && esbuild lambda/get-user-st-balance.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-markets.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-lava-vaults.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/post-batch-orders.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-batch-stats.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/build-user-order-tx.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/build-mint-test-tokens-tx.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-user-orders.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/build-cancel-order-tx.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk"
+    "build-lambda": "rm -rf lambda/dist && esbuild lambda/get-user-st-balance.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-markets.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-lava-vaults.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/sync-lava-vaults.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/upsert-token-metadata.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/post-batch-orders.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-batch-stats.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/build-user-order-tx.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/build-mint-test-tokens-tx.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-user-orders.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/build-cancel-order-tx.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk"
   },
   "devDependencies": {
     "@meshsdk/core": "^1.9.0-beta.98",
@@ -24,6 +24,8 @@
     "typescript": "~5.9.3"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.925.0",
+    "@aws-sdk/lib-dynamodb": "^3.925.0",
     "aws-cdk-lib": "^2.238.0",
     "constructs": "^10.0.0"
   }

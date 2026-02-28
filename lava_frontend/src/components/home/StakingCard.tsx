@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowDown, ChevronDown, Zap, Wallet } from "lucide-react";
@@ -39,6 +39,14 @@ export const StakingCard = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isSwapped, setIsSwapped] = useState<boolean>(false);
   const [selectedToken, setSelectedToken] = useState<TokenPair>(TOKEN_PAIRS[1]);
+  const [isTokenMenuOpen, setIsTokenMenuOpen] = useState<boolean>(false);
+  const [tokenMenuStyle, setTokenMenuStyle] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  }>({ top: 0, left: 0, width: 220 });
+  const tokenButtonRef = useRef<HTMLButtonElement | null>(null);
+  const tokenMenuRef = useRef<HTMLDivElement | null>(null);
 
   const {
     connected,
@@ -48,8 +56,44 @@ export const StakingCard = () => {
     walletSK,
     walletUtxos,
     tokenBalances,
+    poolInfo,
     reloadWalletState,
   } = useCardanoWallet();
+
+  const availableTokenPairs: TokenPair[] = (() => {
+    const fromVaults = (poolInfo ?? [])
+      .map((vault) => ({
+        base: String(vault?.tokenPair?.base ?? ""),
+        derivative: String(vault?.tokenPair?.derivative ?? ""),
+      }))
+      .filter((pair) => pair.base.length > 0 && pair.derivative.length > 0);
+
+    const source = fromVaults.length > 0 ? fromVaults : TOKEN_PAIRS;
+    const uniquePairs: TokenPair[] = [];
+
+    source.forEach((pair) => {
+      const exists = uniquePairs.some(
+        (p) => p.base === pair.base && p.derivative === pair.derivative
+      );
+      if (!exists) {
+        uniquePairs.push(pair);
+      }
+    });
+
+    return uniquePairs;
+  })();
+
+  useEffect(() => {
+    const selectedStillExists = availableTokenPairs.some(
+      (pair) =>
+        pair.base === selectedToken.base &&
+        pair.derivative === selectedToken.derivative
+    );
+
+    if (!selectedStillExists && availableTokenPairs.length > 0) {
+      setSelectedToken(availableTokenPairs[0]);
+    }
+  }, [availableTokenPairs, selectedToken.base, selectedToken.derivative]);
 
   const conversionRate = 0.996;
   const usdRate = 0.32;
@@ -72,6 +116,53 @@ export const StakingCard = () => {
   const handleSwap = () => {
     setIsSwapped((prev) => !prev);
   };
+
+  const handleSelectTokenPair = (pair: TokenPair) => {
+    setSelectedToken(pair);
+    setIsTokenMenuOpen(false);
+  };
+
+  useEffect(() => {
+    if (!isTokenMenuOpen) {
+      return;
+    }
+
+    const updateMenuPosition = () => {
+      const rect = tokenButtonRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return;
+      }
+
+      setTokenMenuStyle({
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: Math.max(220, rect.width + 40),
+      });
+    };
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        tokenButtonRef.current?.contains(target) ||
+        tokenMenuRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setIsTokenMenuOpen(false);
+    };
+
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isTokenMenuOpen]);
 
   useEffect(() => {
     if (isProcessing === true) setAmount("0.00");
@@ -246,10 +337,21 @@ export const StakingCard = () => {
               );
             })()}
 
-            <span className="text-[24px] font-medium text-white flex items-center gap-2">
-              {isSwapped ? selectedToken.derivative : selectedToken.base}
-              <ChevronDown className="w-5 h-5 text-[#D5463E]" />
-            </span>
+            <div>
+              <button
+                ref={tokenButtonRef}
+                type="button"
+                onClick={() => setIsTokenMenuOpen((prev) => !prev)}
+                className="text-[24px] font-medium text-white flex items-center gap-2"
+              >
+                {isSwapped ? selectedToken.derivative : selectedToken.base}
+                <ChevronDown
+                  className={`w-5 h-5 text-[#D5463E] transition-transform ${
+                    isTokenMenuOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
           <div className="text-right">
@@ -357,6 +459,40 @@ export const StakingCard = () => {
     <Cluster right={0.31} top={-0.25} rotate={-270} />
     <Cluster left={0.31} bottom={-0.25} rotate={-90} />
     <Cluster right={0.31} bottom={-0.25} rotate={180} />
+
+    {isTokenMenuOpen && (
+      <div
+        ref={tokenMenuRef}
+        className="fixed max-h-[220px] overflow-y-auto bg-[#111111] border border-[#2A2A2A] shadow-2xl z-[9999]"
+        style={{
+          top: tokenMenuStyle.top,
+          left: tokenMenuStyle.left,
+          width: tokenMenuStyle.width,
+        }}
+      >
+        {availableTokenPairs.map((pair) => {
+          const pairLabel = isSwapped
+            ? `${pair.derivative} / ${pair.base}`
+            : `${pair.base} / ${pair.derivative}`;
+          const isSelected =
+            pair.base === selectedToken.base &&
+            pair.derivative === selectedToken.derivative;
+
+          return (
+            <button
+              key={`${pair.base}-${pair.derivative}`}
+              type="button"
+              onClick={() => handleSelectTokenPair(pair)}
+              className={`w-full px-3 py-2 text-left text-sm border-b border-[#1F1F1F] last:border-b-0 hover:bg-[#1B1B1B] ${
+                isSelected ? "text-[#D5463E]" : "text-white"
+              }`}
+            >
+              {pairLabel}
+            </button>
+          );
+        })}
+      </div>
+    )}
 
     {/* ACTION BUTTON */}
     <Button
