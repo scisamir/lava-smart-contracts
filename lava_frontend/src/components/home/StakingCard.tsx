@@ -370,7 +370,7 @@ export const StakingCard = () => {
       </div>
 
       <div
-        className="absolute left-0 right-0 flex items-center justify-center z-40"
+        className="absolute left-0 right-0 flex items-center justify-center z-40 pointer-events-none"
         style={{ top: "112px", height: "6px" }}
       >
         <div className="flex-1 h-[2px] bg-[#2A2A2A]" />
@@ -384,7 +384,12 @@ export const StakingCard = () => {
         style={{ top: "100px" }}
       >
         <div className="w-[30px] h-[30px] bg-[#000000] border-[2px] border-[#2A2A2A] flex items-center justify-center staking-arrow">
-          <button onClick={handleSwap} className="staking-arrow-btn">
+          <button
+            type="button"
+            onClick={handleSwap}
+            className="staking-arrow-btn w-full h-full flex items-center justify-center"
+            aria-label="Swap tokens"
+          >
             <ArrowDown
               className={`w-5 h-5 text-[#303030] transition-transform ${
                 isSwapped ? "rotate-180" : ""

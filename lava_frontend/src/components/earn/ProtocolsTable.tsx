@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 type Market = {
   name: string;
@@ -25,31 +25,26 @@ type Market = {
 };
 
 export const ProtocolsTable = () => {
-  const [markets, setMarkets] = useState<Market[]>([]);
+  const { data: markets = [] } = useQuery<Market[]>({
+    queryKey: ["markets"],
+    queryFn: async () => {
+      const backendBaseUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
+        "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
 
-  useEffect(() => {
-    const fetchMarkets = async () => {
-      try {
-        const backendBaseUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-          "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
-
-        const response = await fetch(`${backendBaseUrl}/markets`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch markets: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const apiMarkets = Array.isArray(data?.markets) ? data.markets : [];
-        setMarkets(apiMarkets);
-      } catch (error) {
-        console.error("Failed to fetch markets:", error);
-        setMarkets([]);
+      const response = await fetch(`${backendBaseUrl}/markets`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch markets: ${response.status}`);
       }
-    };
 
-    fetchMarkets();
-  }, []);
+      const data = await response.json();
+      return (Array.isArray(data?.markets) ? data.markets : []) as Market[];
+    },
+    staleTime: 2 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
+  });
 
   return (
     <div className="space-y-6">
