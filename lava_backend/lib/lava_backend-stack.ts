@@ -117,6 +117,20 @@ export class LavaBackendStack extends cdk.Stack {
       },
     });
 
+    const autoBatchOrdersLambda = new lambda.Function(this, 'AutoBatchOrdersFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      code: lambda.Code.fromAsset('lambda/dist'),
+      handler: 'auto-batch-orders.handler',
+      timeout: cdk.Duration.seconds(120),
+      memorySize: 1024,
+      environment: {
+        MAESTRO_API_KEY: maestroApiKey,
+        TABLE_NAME: table.tableName,
+        BATCHER_WALLET_PASSPHRASE: batcherWalletPassphrase,
+        NEXT_PUBLIC_WALLET_PASSPHRASE_ONE: batcherWalletPassphrase,
+      },
+    });
+
     const buildUserOrderTxLambda = new lambda.Function(this, 'BuildUserOrderTxFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset('lambda/dist'),
@@ -169,11 +183,17 @@ export class LavaBackendStack extends cdk.Stack {
     table.grantReadWriteData(buildMintTestTokensTxLambda);
     table.grantReadWriteData(getUserOrdersLambda);
     table.grantReadWriteData(buildCancelOrderTxLambda);
+    table.grantReadWriteData(autoBatchOrdersLambda);
 
     const vaultSyncSchedule = new events.Rule(this, 'VaultSyncEveryFiveMinutes', {
       schedule: events.Schedule.rate(cdk.Duration.minutes(10)),
     });
     vaultSyncSchedule.addTarget(new targets.LambdaFunction(syncLavaVaultsLambda));
+
+    const autoBatchSchedule = new events.Rule(this, 'AutoBatchOrdersEveryFiveMinutes', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+    });
+    autoBatchSchedule.addTarget(new targets.LambdaFunction(autoBatchOrdersLambda));
 
     // ======================
     // API Gateway

@@ -106,7 +106,7 @@ export const batchingTx = async (
     return mintAmtDatum > 0 && isRightOrder;
   });
 
-  if (!filteredOrderUtxos) throw new Error("No order UTxOs to batch!");
+  if (filteredOrderUtxos.length === 0) throw new Error("No order UTxOs to batch!");
 
   const noOfUtxosToBatch = 10;
   const batchingOrderUtxos = filteredOrderUtxos.slice(0, noOfUtxosToBatch);

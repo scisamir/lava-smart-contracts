@@ -17,6 +17,7 @@ const Index = () => {
   const { walletAddress } = useCardanoWallet();
   const [orders, setOrders] = useState<UserOrderType[]>([]);
   const [totalOrder, setTotalOrder] = useState({});
+  const showBatchButtons = false;
 
   useEffect(() => {
     const awaitFetchData = async () => {
@@ -117,7 +118,7 @@ const Index = () => {
                   </div>
 
                   <OrderList orders={orders} />
-                  <BatchOrders totalOrder={totalOrder} />
+                  {showBatchButtons && <BatchOrders totalOrder={totalOrder} />}
                 </div>
         </section>
 
