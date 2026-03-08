@@ -33,7 +33,7 @@ export class LavaBackendStack extends cdk.Stack {
     // Temporarily removed due to size limits - dependencies included in Lambda code
     // const backendLayer = new lambda.LayerVersion(this, 'BackendLayer', {
     //   code: lambda.Code.fromAsset('lambda-layer'),
-    //   compatibleRuntimes: [lambda.Runtime.NODEJS_18_X],
+    //   compatibleRuntimes: [lambda.Runtime.NODEJS_22_X],
     //   description: 'Shared dependencies (Mesh SDK, AWS SDK)',
     // });
 
@@ -42,7 +42,7 @@ export class LavaBackendStack extends cdk.Stack {
     // ======================
 
     const getUserBalanceLambda = new lambda.Function(this, 'GetUserBalanceFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'get-user-st-balance.handler',
       // layers: [backendLayer],
@@ -53,7 +53,7 @@ export class LavaBackendStack extends cdk.Stack {
     });
 
     const getMarketsLambda = new lambda.Function(this, 'GetMarketsFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'get-markets.handler',
       // layers: [backendLayer],
@@ -63,7 +63,7 @@ export class LavaBackendStack extends cdk.Stack {
     });
 
     const getLavaVaultsLambda = new lambda.Function(this, 'GetLavaVaultsFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'get-lava-vaults.handler',
       // layers: [backendLayer],
@@ -73,7 +73,7 @@ export class LavaBackendStack extends cdk.Stack {
     });
 
     const syncLavaVaultsLambda = new lambda.Function(this, 'SyncLavaVaultsFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'sync-lava-vaults.handler',
       timeout: cdk.Duration.seconds(60),
@@ -85,7 +85,7 @@ export class LavaBackendStack extends cdk.Stack {
     });
 
     const upsertTokenMetadataLambda = new lambda.Function(this, 'UpsertTokenMetadataFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'upsert-token-metadata.handler',
       environment: {
@@ -94,7 +94,7 @@ export class LavaBackendStack extends cdk.Stack {
     });
 
     const getBatchStatsLambda = new lambda.Function(this, 'GetBatchStatsFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'get-batch-stats.handler',
       environment: {
@@ -104,7 +104,7 @@ export class LavaBackendStack extends cdk.Stack {
     });
 
     const postBatchOrdersLambda = new lambda.Function(this, 'PostBatchOrdersFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'post-batch-orders.handler',
       timeout: cdk.Duration.seconds(60),
@@ -118,7 +118,7 @@ export class LavaBackendStack extends cdk.Stack {
     });
 
     const autoBatchOrdersLambda = new lambda.Function(this, 'AutoBatchOrdersFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'auto-batch-orders.handler',
       timeout: cdk.Duration.seconds(120),
@@ -132,7 +132,7 @@ export class LavaBackendStack extends cdk.Stack {
     });
 
     const buildUserOrderTxLambda = new lambda.Function(this, 'BuildUserOrderTxFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'build-user-order-tx.handler',
       environment: {
@@ -142,7 +142,7 @@ export class LavaBackendStack extends cdk.Stack {
     });
 
     const buildMintTestTokensTxLambda = new lambda.Function(this, 'BuildMintTestTokensTxFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'build-mint-test-tokens-tx.handler',
       environment: {
@@ -152,7 +152,7 @@ export class LavaBackendStack extends cdk.Stack {
     });
 
     const getUserOrdersLambda = new lambda.Function(this, 'GetUserOrdersFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'get-user-orders.handler',
       environment: {
@@ -162,7 +162,7 @@ export class LavaBackendStack extends cdk.Stack {
     });
 
     const buildCancelOrderTxLambda = new lambda.Function(this, 'BuildCancelOrderTxFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'build-cancel-order-tx.handler',
       environment: {
@@ -195,10 +195,9 @@ export class LavaBackendStack extends cdk.Stack {
     });
     autoBatchSchedule.addTarget(new targets.LambdaFunction(autoBatchOrdersLambda));
 
-    // ======================
-    // API Gateway
-    // ======================
-
+        // ======================
+        // API Gateway
+        // ======================
     const api = new apigateway.RestApi(this, 'LavaApi', {
       restApiName: 'lava-api',
       description: 'API for Lava DeFi app',
