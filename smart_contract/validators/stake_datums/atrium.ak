@@ -1,15 +1,19 @@
 use aiken/collection/dict
 use aiken/collection/list
 use aiken/crypto.{ScriptHash}
-use cardano/address.{Credential}
-use cardano/assets.{PolicyId}
-use cardano/transaction.{Transaction}
+use cardano/address.{Address, Credential}
+use cardano/assets.{PolicyId, quantity_of}
+use cardano/transaction.{NoDatum, Transaction}
 use external/constants_e.{atrium_diffusion}
 use external/stake_types.{ExternalStakeRedeemer}
 use lava/types.{GlobalSettingsDatum, StakeType}
 use lava/utils.{get_global_settings}
 
-validator atrium(gs_validator_hash: ScriptHash, atrium_minting_pid: PolicyId) {
+validator atrium(
+  gs_validator_hash: ScriptHash,
+  atrium_minting_pid: PolicyId,
+  reward_address: Address,
+) {
   withdraw(
     redeemer: ExternalStakeRedeemer,
     _account: Credential,
@@ -40,9 +44,16 @@ validator atrium(gs_validator_hash: ScriptHash, atrium_minting_pid: PolicyId) {
     expect [Pair(mint_name, mint_amount)] =
       mint |> assets.tokens(atrium_minting_pid) |> dict.to_pairs
 
+    // Atrium diffusion tokens must go to the reward address
+    expect [reward_output] =
+      list.filter(outputs, fn(output) { output.address == reward_address })
+
+    expect NoDatum = reward_output.datum
+
     and {
       (mint_amount > 0)?,
       (mint_name == atrium_diffusion)?,
+      (quantity_of(reward_output.value, atrium_minting_pid, atrium_diffusion) == mint_amount)?,
     }
   }
 
