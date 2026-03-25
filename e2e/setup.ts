@@ -52,14 +52,19 @@ const wallet1Address = await wallet1.getChangeAddress();
 
 const wallet1Utxos = await wallet1.getUtxos();
 
-const wallet1Collateral: UTxO = wallet1Utxos.filter(
+const wallet1Collateral = wallet1Utxos.filter(
   (utxo) =>
     Number(utxo.output.amount[0].quantity) >= 12000000 &&
-    utxo.output.amount.length <= 4,
+    utxo.output.amount.length == 1,
 )[0];
-if (!wallet1Collateral) {
-  throw new Error("No collateral utxo found");
-}
+
+const requireWallet1Collateral = (): UTxO => {
+  if (!wallet1Collateral) {
+    throw new Error("No collateral utxo found");
+  }
+
+  return wallet1Collateral;
+};
 
 const { pubKeyHash: wallet1VK, stakeCredentialHash: wallet1SK } =
   deserializeAddress(wallet1Address);
@@ -160,10 +165,10 @@ const tPulsePoolStakeAssetName = stringToHex("LPulse");
 
 // Reference scripts
 const batchingScriptTxHash =
-  "8fdab4023d695d356810bb8ddbadb0afb2043692d68f306ad51e6e0141622a29";
+  "a1fa2cb60679a0e907d5362caea3b8903384cdcd5dac1c64fd36155c9533c1c4";
 const batchingScriptTxIdx = 0;
 const poolScriptTxHash =
-  "20bd8c588dca842f8a4248f67344d5bba175ea5f7ce82e2531837ec2000dbc4b";
+  "cbec2dc228ed1a9e9effae1a7469e1d7781383ceb8ef332f60d28aff65c824c8";
 const poolScriptTxIdx = 0;
 
 export {
@@ -176,6 +181,7 @@ export {
   wallet1SK,
   wallet1Utxos,
   wallet1Collateral,
+  requireWallet1Collateral,
   wallet2,
   wallet2Address,
   wallet2VK,

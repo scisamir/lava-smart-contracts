@@ -1,6 +1,7 @@
 import { applyParamsToScript, builtinByteString, resolveScriptHash, serializePlutusScript } from "@meshsdk/core";
 import { blueprint } from "../setup.js";
 import { GlobalSettingsHash } from "../global_settings/validator.js";
+import { serializeSelfStakedValidatorAddress } from "../data.js";
 
 const PoolValidator = blueprint.validators.filter(v => 
     v.title.includes("pool.pool_validator.mint")
@@ -20,8 +21,13 @@ const PoolValidatorAddr = serializePlutusScript(
     { code: PoolValidatorScript, version: "V3" },
 ).address;
 
+const PoolValidatorAddrWithStake = serializeSelfStakedValidatorAddress(
+  PoolValidatorScript,
+  PoolValidatorHash,
+);
+
 export {
     PoolValidatorScript,
     PoolValidatorHash,
-    PoolValidatorAddr,
+    PoolValidatorAddrWithStake as PoolValidatorAddr,
 }

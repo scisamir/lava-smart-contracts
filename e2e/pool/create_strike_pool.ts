@@ -1,4 +1,4 @@
-import { mConStr0, mConStr1 } from "@meshsdk/core";
+import { mConStr0 } from "@meshsdk/core";
 import {
   alwaysSuccessMintValidatorHash,
   multiSigAddress,
@@ -7,45 +7,57 @@ import {
   txBuilder,
   wallet1,
   wallet1Address,
-  wallet1Collateral,
   wallet1Utxos,
   wallet2,
   PrecisionFactor,
-  LavaPoolNftName,
   MinPoolLovelace,
   blockchainProvider,
   tStrikeAssetName,
   tStrikePoolStakeAssetName,
+  requireWallet1Collateral,
 } from "../setup.js";
 import {
   PoolValidatorAddr,
   PoolValidatorHash,
   PoolValidatorScript,
 } from "./validator.js";
+import { assetType, computePoolNftName, outputReferenceData, poolDatum, scriptCredential } from "../data.js";
 import { BatchingHash } from "../batching/validator.js";
 import { GlobalSettingsAddr } from "../global_settings/validator.js";
 
-const poolAsset = mConStr0([
-  mConStr0([]),
+const poolAsset = assetType(
   alwaysSuccessMintValidatorHash,
   tStrikeAssetName,
   1_000_000,
-]);
-
-const PoolDatum = mConStr0([
-  mConStr1([BatchingHash]), // pool batching cred
+);
+const PoolDatum = poolDatum(
+  scriptCredential(BatchingHash),
   0, // total_st_assets_minted
   0, // total_underlying
   1 * PrecisionFactor, // exchange_rate
   0, // total_rewards_accrued
   poolAsset,
   tStrikePoolStakeAssetName,
-  mConStr1([]),
-]);
+  true,
+);
 
 if (!multiSigCbor) {
   throw new Error("multisig cbor doesn't exist");
 }
+
+const wallet1Collateral = requireWallet1Collateral();
+const seedUtxo = multiSigUtxos[0];
+if (!seedUtxo) {
+  throw new Error("No multisig UTxO available to create the pool");
+}
+
+const poolNftName = computePoolNftName(
+  seedUtxo.input.txHash,
+  seedUtxo.input.outputIndex,
+);
+const createPoolRedeemer = mConStr0([
+  outputReferenceData(seedUtxo.input.txHash, seedUtxo.input.outputIndex),
+]);
 
 const gsUtxo = (
   await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr)
@@ -53,23 +65,22 @@ const gsUtxo = (
 
 const unsignedTx = await txBuilder
   .txIn(
-    multiSigUtxos[0].input.txHash,
-    multiSigUtxos[0].input.outputIndex,
-    multiSigUtxos[0].output.amount,
-    multiSigUtxos[0].output.address,
+    seedUtxo.input.txHash,
+    seedUtxo.input.outputIndex,
+    seedUtxo.output.amount,
+    seedUtxo.output.address,
   )
   .txInScript(multiSigCbor)
   .mintPlutusScriptV3()
-  .mint("1", PoolValidatorHash, LavaPoolNftName)
+  .mint("1", PoolValidatorHash, poolNftName)
   .mintingScript(PoolValidatorScript)
-  .mintRedeemerValue("")
+  .mintRedeemerValue(createPoolRedeemer)
   .txOut(PoolValidatorAddr, [
     { unit: "lovelace", quantity: String(MinPoolLovelace) },
-    { unit: PoolValidatorHash + LavaPoolNftName, quantity: "1" },
+    { unit: PoolValidatorHash + poolNftName, quantity: "1" },
   ])
   .txOutInlineDatumValue(PoolDatum)
-  // send back multisig value to multisig
-  .txOut(multiSigAddress, multiSigUtxos[0].output.amount)
+  .txOut(multiSigAddress, seedUtxo.output.amount)
   .txInCollateral(
     wallet1Collateral.input.txHash,
     wallet1Collateral.input.outputIndex,

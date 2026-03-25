@@ -1,5 +1,7 @@
 import { stringToHex } from "@meshsdk/core";
-import { alwaysSuccessMintValidatorHash, alwaysSuccessValidatorMintScript, testAssetName, tPulseAssetName, tStrikeAssetName, txBuilder, wallet1, wallet1Address, wallet1Collateral, wallet1Utxos } from "../setup.js";
+import { alwaysSuccessMintValidatorHash, alwaysSuccessValidatorMintScript, testAssetName, tPulseAssetName, tStrikeAssetName, txBuilder, wallet1, wallet1Address, wallet1Utxos, requireWallet1Collateral } from "../setup.js";
+
+const wallet1Collateral = requireWallet1Collateral();
 
 const unsignedTx = await txBuilder
     .mintPlutusScriptV3()

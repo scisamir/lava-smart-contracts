@@ -1,3 +1,36 @@
+GUIDE
+----------------
+- Create global settings
+- Create pool
+- Create and cancel order, or create and batch orders
+
+
+
+
+
+
+----------------------------------LATEST SMART CONTRACTS (Preprod)------------------------------------------
+Create global settings tx hash: c06c0ba690518e200ddf3c712b993039b25876ca76a0260e8352eefddbc50490
+
+Create test pool tx hash: de57eedb9a48ecdd09b15aede7b3bf78ca95882d42c8fc6e57c76a8debc42528
+
+Create optin order tx hash: a19d51e836177f8db4a800e94b020d4396c9e3c629b2c404a4afa5db2ebdac70
+Cancel order tx hash: 88cae356927d88962c4347aae2276a127cecc34c4094405c6bdcb5aa561218f2
+
+Create optin order tx hash: fac1130ac4e8ed275082b492644090a83316b0d48bfc1dd29c495fad49367962
+batching tx hash: a1406ce7c854e2eda87ac147e11517c18b76f6ca05255cb9e64220a34780d407
+
+Create redeem order tx hash: 819f09c7491beceba075dd40a74e768b477fcdfc17ab17f07d7718960ce24201
+Cancel order tx hash: a482bba7f00c833913a05b5cd2f45f4cb8a5486c8c3fab844f8eeec490c14f95
+
+
+
+
+
+
+
+
+
 Create global settings tx hash: e790f226781a90b5556218f944a07ed7a0b5d01f8e4c59a3a28fe2f9917c3d72
 Update global settings tx hash: 87ba6f248539249d6f866b3fa825fa11d4602b59ed3e5cb5c8b9e1a7c4f205b7
 
