@@ -6,7 +6,7 @@ import {
   serializePlutusScript,
   serializeRewardAddress,
 } from "@meshsdk/core";
-import { blueprint } from "../setup.js";
+import { blueprint, NETWORK_ID } from "../setup.js";
 import { BatchingHash } from "../batching/validator.js";
 import { GlobalSettingsHash } from "../global_settings/validator.js";
 import { serializeSelfStakedValidatorAddress } from "../data.js";
@@ -26,14 +26,20 @@ const OrderValidatorScript = applyParamsToScript(
 
 const OrderValidatorHash = resolveScriptHash(OrderValidatorScript, "V3");
 
-const OrderValidatorAddr = serializePlutusScript({
-  code: OrderValidatorScript,
-  version: "V3",
-}).address;
+const OrderValidatorAddr = serializePlutusScript(
+  {
+    code: OrderValidatorScript,
+    version: "V3",
+  },
+  undefined,
+  NETWORK_ID,
+  undefined,
+).address;
 
 const OrderValidatorAddrWithStake = serializeSelfStakedValidatorAddress(
   OrderValidatorScript,
   OrderValidatorHash,
+  NETWORK_ID,
 );
 
 export {

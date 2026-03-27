@@ -4,11 +4,11 @@ import {
   resolveScriptHash,
   serializePlutusScript,
 } from "@meshsdk/core";
-import { blueprint } from "../setup.js";
+import { blueprint, NETWORK_ID } from "../setup.js";
 
 const gsParamTxHash =
-  "dcba2c8882e6b5f4980f871ec8af4b18abf8ba07f6387c7478625fdefd4d33da";
-const gsParamTxIdx = 1;
+  "9d225cd31ee8b47b9782a2b1a9308a02d129f919e562dd492d4accb5b25311ab";
+const gsParamTxIdx = 4;
 
 const GlobalSettingsValidator = blueprint.validators.filter((v) =>
   v.title.includes("global_settings.global_settings.spend"),
@@ -25,10 +25,15 @@ const GlobalSettingsHash = resolveScriptHash(
   "V3",
 );
 
-const GlobalSettingsAddr = serializePlutusScript({
-  code: GlobalSettingsValidatorScript,
-  version: "V3",
-}).address;
+const GlobalSettingsAddr = serializePlutusScript(
+  {
+    code: GlobalSettingsValidatorScript,
+    version: "V3",
+  },
+  undefined,
+  NETWORK_ID,
+  undefined,
+).address;
 
 export {
   GlobalSettingsValidatorScript,

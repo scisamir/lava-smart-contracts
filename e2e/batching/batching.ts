@@ -9,13 +9,11 @@ import {
   batchingScriptTxHash,
   batchingScriptTxIdx,
   blockchainProvider,
+  ATRIUM_POOL_STAKE_ASSET_NAME,
   MinPoolLovelace,
   PrecisionFactor,
   poolScriptTxHash,
   poolScriptTxIdx,
-  poolStakeAssetName,
-  tPulsePoolStakeAssetName,
-  tStrikePoolStakeAssetName,
   txBuilder,
   wallet1,
   wallet1Address,
@@ -42,13 +40,12 @@ import { GlobalSettingsAddr } from "../global_settings/validator.js";
 import { OrderDatumType, PoolDatumType } from "../types.js";
 import { MintingHash, MintingValidatorScript } from "../mint/validator.js";
 
-const poolSAN = poolStakeAssetName;
-// const poolSAN = tStrikePoolStakeAssetName;
-// const poolSAN = tPulsePoolStakeAssetName;
+const poolSAN = ATRIUM_POOL_STAKE_ASSET_NAME;
 
 const noOfUtxosToBatch = 10;
 const precisionFactor = BigInt(PrecisionFactor);
 const wallet1Collateral = requireWallet1Collateral();
+const MIN_RECEIVER_LOVELACE = 2_000_000n;
 
 const getQuantity = (assets: Asset[], unit: string) =>
   BigInt(assets.find((asset) => asset.unit === unit)?.quantity ?? "0");
@@ -106,20 +103,47 @@ if (!poolNft) {
   throw new Error("Pool NFT not found");
 }
 
-const selectedOrderUtxos = orderUtxos
-  .filter((utxo) => {
-    const orderPlutusData = utxo.output.plutusData;
-    if (!orderPlutusData) {
-      return false;
+const matchingOrders = orderUtxos.flatMap((utxo) => {
+  const orderPlutusData = utxo.output.plutusData;
+  if (!orderPlutusData) {
+    return [];
+  }
+
+  const orderData = deserializeDatum<OrderDatumType>(orderPlutusData);
+  if (orderData.fields[3].bytes !== poolSAN) {
+    return [];
+  }
+
+  return [{ utxo, orderData }];
+});
+
+const selectedOrders = matchingOrders
+  .filter(({ utxo, orderData }) => {
+    if (poolAssetUnit !== "lovelace") {
+      return true;
     }
 
-    const orderData = deserializeDatum<OrderDatumType>(orderPlutusData);
-    return orderData.fields[3].bytes === poolSAN;
+    const orderType = orderData.fields[0];
+    const isRedeemOrder = Number(orderType.constructor) === 1;
+    if (isRedeemOrder) {
+      return true;
+    }
+
+    const depositAmount = BigInt(orderType.fields[0].int);
+    const orderLovelace = getQuantity(utxo.output.amount, "lovelace");
+
+    return orderLovelace - depositAmount >= MIN_RECEIVER_LOVELACE;
   })
   .slice(0, noOfUtxosToBatch);
 
-if (selectedOrderUtxos.length === 0) {
-  throw new Error("No order UTxOs to batch");
+if (selectedOrders.length === 0) {
+  if (matchingOrders.length > 0 && poolAssetUnit === "lovelace") {
+    throw new Error(
+      "No batchable Atrium orders found. Atrium opt-in orders currently need extra lovelace left over after the deposit so the receiver output can stay valid.",
+    );
+  }
+
+  throw new Error("No Atrium order UTxOs to batch");
 }
 
 const poolAssetData = assetType(
@@ -136,13 +160,7 @@ let totalUnderlyingDelta = 0n;
 let totalStAssetsDelta = 0n;
 const userOutputs: Array<{ address: string; amount: Asset[] }> = [];
 
-for (const orderUtxo of selectedOrderUtxos) {
-  const orderPlutusData = orderUtxo.output.plutusData;
-  if (!orderPlutusData) {
-    throw new Error("Order datum not found");
-  }
-
-  const orderData = deserializeDatum<OrderDatumType>(orderPlutusData);
+for (const { utxo: orderUtxo, orderData } of selectedOrders) {
   const orderType = orderData.fields[0];
   const receiverAddress = serializeAddressObj(orderData.fields[1]);
   const orderLovelace = getQuantity(orderUtxo.output.amount, "lovelace");
@@ -262,7 +280,7 @@ builder = builder
   )
   .withdrawalRedeemerValue(batchingRedeemer)
   .mintPlutusScriptV3()
-  .mint(String(-selectedOrderUtxos.length), OrderValidatorHash, "")
+  .mint(String(-selectedOrders.length), OrderValidatorHash, "")
   .mintingScript(OrderValidatorScript)
   .mintRedeemerValue(mConStr1([]));
 
@@ -297,7 +315,7 @@ const unsignedTx = await builder
 const signedTx = await wallet1.signTx(unsignedTx);
 const txHash = await wallet1.submitTx(signedTx);
 
-console.log("batched orders:", selectedOrderUtxos.length);
+console.log("batched orders:", selectedOrders.length);
 console.log("pool stake asset name:", poolSAN);
 console.log("total st delta:", totalStAssetsDelta.toString());
 console.log("total underlying delta:", totalUnderlyingDelta.toString());

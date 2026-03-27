@@ -1,6 +1,15 @@
-import { mConStr0, mScriptAddress } from "@meshsdk/core";
 import {
-  alwaysSuccessMintValidatorHash,
+  applyParamsToScript,
+  builtinByteString,
+  deserializeAddress,
+  mConStr0,
+  mScriptAddress,
+  resolveScriptHash,
+  scriptAddress,
+  stringToHex,
+} from "@meshsdk/core";
+import {
+  blueprint,
   blockchainProvider,
   GlobalSettingsNft,
   MinPoolLovelace,
@@ -8,8 +17,6 @@ import {
   multiSigCbor,
   multisigHash,
   multiSigUtxos,
-  poolStakeAssetName,
-  testAssetName,
   txBuilder,
   wallet1,
   wallet1Address,
@@ -20,6 +27,7 @@ import {
 } from "../setup.js";
 import {
   assetType,
+  computePoolNftName,
   globalSettingsDatum,
   spendScriptSigner,
   stakeType,
@@ -32,32 +40,104 @@ import {
   gsParamTxHash,
   gsParamTxIdx,
 } from "./validator.js";
+import { CONFIG as ATRIUM_CONFIG } from "../atrium_mainnet/src/config.js";
 import { MintingHash } from "../mint/validator.js";
+import { PoolValidatorHash } from "../pool/validator.js";
 
-const testAsset = assetType(
-  alwaysSuccessMintValidatorHash,
-  testAssetName,
-  1_000_000,
+const ATRIUM_POOL_STAKE_ASSET_NAME = stringToHex("LADA");
+
+const requireValidator = (title: string) => {
+  const validator = blueprint.validators.find((item) => item.title === title);
+
+  if (!validator) {
+    throw new Error(`Validator not found in blueprint: ${title}`);
+  }
+
+  return validator;
+};
+
+const atriumAsset = assetType("", "", 1_000_000);
+
+const predictedAtriumPoolSeedUtxo = multiSigUtxos[0];
+if (!predictedAtriumPoolSeedUtxo) {
+  throw new Error("No multisig UTxO available to derive the Atrium pool NFT");
+}
+
+const predictedAtriumPoolNftName = computePoolNftName(
+  predictedAtriumPoolSeedUtxo.input.txHash,
+  predictedAtriumPoolSeedUtxo.input.outputIndex,
 );
 
-const testStakeDetail = stakeType(
-  testAsset,
-  poolStakeAssetName,
-  mScriptAddress(alwaysSuccessMintValidatorHash),
-  alwaysSuccessMintValidatorHash,
+const StakeValidatorScript = applyParamsToScript(
+  requireValidator("stake.stake_validator.withdraw").compiledCode,
+  [builtinByteString(GlobalSettingsHash), builtinByteString(PoolValidatorHash)],
+  "JSON",
+);
+const StakeValidatorHash = resolveScriptHash(StakeValidatorScript, "V3");
+
+const RewardsValidatorScript = applyParamsToScript(
+  requireValidator("rewards.rewards_validator.spend").compiledCode,
+  [
+    builtinByteString(GlobalSettingsHash),
+    builtinByteString(PoolValidatorHash),
+    builtinByteString(predictedAtriumPoolNftName),
+  ],
+  "JSON",
+);
+const RewardsValidatorHash = resolveScriptHash(RewardsValidatorScript, "V3");
+
+const AtriumStakeValidatorScript = applyParamsToScript(
+  requireValidator("stake_datums/atrium.atrium.withdraw").compiledCode,
+  [
+    builtinByteString(GlobalSettingsHash),
+    builtinByteString(MintingHash),
+    scriptAddress(RewardsValidatorHash),
+  ],
+  "JSON",
+);
+const AtriumStakeValidatorHash = resolveScriptHash(AtriumStakeValidatorScript, "V3");
+
+const AtriumSwapValidatorScript = applyParamsToScript(
+  requireValidator("swap_validators/atrium_swap.atrium_swap.withdraw").compiledCode,
+  [builtinByteString(MintingHash), scriptAddress(RewardsValidatorHash)],
+  "JSON",
+);
+const AtriumSwapValidatorHash = resolveScriptHash(AtriumSwapValidatorScript, "V3");
+
+const {
+  scriptHash: atriumStakePoolPaymentHash,
+  stakeCredentialHash: atriumStakePoolStakeKeyHash,
+  stakeScriptCredentialHash: atriumStakePoolStakeScriptHash,
+} = deserializeAddress(ATRIUM_CONFIG.stakePoolAddress);
+
+if (!atriumStakePoolPaymentHash) {
+  throw new Error("Atrium stakePoolAddress must be a script address");
+}
+
+const atriumStakePoolAddress = mScriptAddress(
+  atriumStakePoolPaymentHash,
+  atriumStakePoolStakeScriptHash || atriumStakePoolStakeKeyHash || undefined,
+  Boolean(atriumStakePoolStakeScriptHash),
+);
+
+const atriumStakeDetail = stakeType(
+  atriumAsset,
+  ATRIUM_POOL_STAKE_ASSET_NAME,
+  atriumStakePoolAddress,
+  AtriumStakeValidatorHash,
 );
 
 const GlobalSettingsDatum = globalSettingsDatum(
-  spendScriptSigner(multisigHash),
-  [verificationKeySigner(wallet1VK)],
-  [testAsset],
-  MintingHash,
-  [testStakeDetail],
-  mScriptAddress(alwaysSuccessMintValidatorHash),
-  [alwaysSuccessMintValidatorHash],
-  alwaysSuccessMintValidatorHash,
-  alwaysSuccessMintValidatorHash,
-  MinPoolLovelace,
+  spendScriptSigner(multisigHash), // admin
+  [verificationKeySigner(wallet1VK)], // authorized_batchers
+  [atriumAsset], // allowed_assets
+  MintingHash, // mint_validator_hash
+  [atriumStakeDetail], // stake_details
+  mScriptAddress(RewardsValidatorHash), // frost_address
+  [AtriumSwapValidatorHash], // authorized_swap_scripts
+  StakeValidatorHash, // stake_validator_hash
+  RewardsValidatorHash, // rewards_validator_hash
+  MinPoolLovelace, // min_pool_lovelace
 );
 
 if (!multiSigCbor) {
@@ -65,9 +145,23 @@ if (!multiSigCbor) {
 }
 
 const wallet1Collateral = requireWallet1Collateral();
+const adminUtxo = multiSigUtxos[0];
+if (!adminUtxo) {
+  throw new Error("No multisig UTxO available to authorize global settings creation");
+}
+
 const gsParamUtxo = (
   await blockchainProvider.fetchUTxOs(gsParamTxHash, gsParamTxIdx)
 )[0];
+if (!gsParamUtxo) {
+  throw new Error("Global settings parameter UTxO not found");
+}
+
+console.log("Predicted Atrium pool NFT:", predictedAtriumPoolNftName);
+console.log("Atrium stake validator hash:", AtriumStakeValidatorHash);
+console.log("Atrium swap validator hash:", AtriumSwapValidatorHash);
+console.log("Stake validator hash:", StakeValidatorHash);
+console.log("Rewards validator hash:", RewardsValidatorHash);
 
 const unsignedTx = await txBuilder
   .txIn(
@@ -77,10 +171,10 @@ const unsignedTx = await txBuilder
     gsParamUtxo.output.address,
   )
   .txIn(
-    multiSigUtxos[0].input.txHash,
-    multiSigUtxos[0].input.outputIndex,
-    multiSigUtxos[0].output.amount,
-    multiSigUtxos[0].output.address,
+    adminUtxo.input.txHash,
+    adminUtxo.input.outputIndex,
+    adminUtxo.output.amount,
+    adminUtxo.output.address,
   )
   .txInScript(multiSigCbor)
   .mintPlutusScriptV3()
@@ -91,7 +185,7 @@ const unsignedTx = await txBuilder
     { unit: GlobalSettingsHash + GlobalSettingsNft, quantity: "1" },
   ])
   .txOutInlineDatumValue(GlobalSettingsDatum)
-  .txOut(multiSigAddress, multiSigUtxos[0].output.amount)
+  .txOut(multiSigAddress, adminUtxo.output.amount)
   .txInCollateral(
     wallet1Collateral.input.txHash,
     wallet1Collateral.input.outputIndex,
