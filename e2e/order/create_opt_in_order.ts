@@ -1,8 +1,6 @@
 import { mConStr0, mPubKeyAddress } from "@meshsdk/core";
 import {
   blockchainProvider,
-  poolStakeAssetName,
-  testUnit,
   txBuilder,
   wallet1,
   wallet1Address,
@@ -10,21 +8,29 @@ import {
   wallet1Utxos,
   wallet1VK,
   requireWallet1Collateral,
+  ATRIUM_POOL_STAKE_ASSET_NAME,
 } from "../setup.js";
 import { optInOrderType, orderDatum, verificationKeySigner } from "../data.js";
 import { GlobalSettingsAddr } from "../global_settings/validator.js";
-import { OrderValidatorAddr, OrderValidatorHash, OrderValidatorScript } from "./validator.js";
+import {
+  OrderValidatorAddr,
+  OrderValidatorHash,
+  OrderValidatorScript,
+} from "./validator.js";
 
-const depositAmount = 200;
+const DEPOSIT_LOVELACE = 10_000_000n;
+
 const orderData = orderDatum(
-  optInOrderType(depositAmount),
+  optInOrderType(DEPOSIT_LOVELACE),
   mPubKeyAddress(wallet1VK, wallet1SK),
   verificationKeySigner(wallet1VK),
-  poolStakeAssetName,
+  ATRIUM_POOL_STAKE_ASSET_NAME,
 );
 
 const wallet1Collateral = requireWallet1Collateral();
-const gsUtxo = (await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr))[0];
+const gsUtxo = (
+  await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr)
+)[0];
 
 const unsignedTx = await txBuilder
   .readOnlyTxInReference(gsUtxo.input.txHash, gsUtxo.input.outputIndex)
@@ -33,9 +39,8 @@ const unsignedTx = await txBuilder
   .mintingScript(OrderValidatorScript)
   .mintRedeemerValue(mConStr0([]))
   .txOut(OrderValidatorAddr, [
-    { unit: "lovelace", quantity: "2000000" },
+    { unit: "lovelace", quantity: (DEPOSIT_LOVELACE + 2_000_000n).toString() },
     { unit: OrderValidatorHash, quantity: "1" },
-    { unit: testUnit, quantity: String(depositAmount) },
   ])
   .txOutInlineDatumValue(orderData)
   .txInCollateral(
@@ -50,4 +55,4 @@ const unsignedTx = await txBuilder
 const signedTx = await wallet1.signTx(unsignedTx);
 const txHash = await wallet1.submitTx(signedTx);
 
-console.log("Create optin order tx hash:", txHash);
+console.log("Create Atrium opt-in order tx hash:", txHash);

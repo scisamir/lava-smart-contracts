@@ -1,7 +1,6 @@
-import { mConStr0, mConStr1, mPubKeyAddress } from "@meshsdk/core";
+import { mConStr0, mPubKeyAddress } from "@meshsdk/core";
 import {
   blockchainProvider,
-  poolStakeAssetName,
   txBuilder,
   wallet1,
   wallet1Address,
@@ -9,22 +8,30 @@ import {
   wallet1Utxos,
   wallet1VK,
   requireWallet1Collateral,
+  ATRIUM_POOL_STAKE_ASSET_NAME,
 } from "../setup.js";
 import { orderDatum, redeemOrderType, verificationKeySigner } from "../data.js";
 import { GlobalSettingsAddr } from "../global_settings/validator.js";
-import { OrderValidatorAddr, OrderValidatorHash, OrderValidatorScript } from "./validator.js";
+import {
+  OrderValidatorAddr,
+  OrderValidatorHash,
+  OrderValidatorScript,
+} from "./validator.js";
 import { MintingHash } from "../mint/validator.js";
 
-const stAmount = 200;
+const STAKE_ASSET_TO_REDEEM = 10_000_000n;
+
 const orderData = orderDatum(
-  redeemOrderType(stAmount),
+  redeemOrderType(STAKE_ASSET_TO_REDEEM),
   mPubKeyAddress(wallet1VK, wallet1SK),
   verificationKeySigner(wallet1VK),
-  poolStakeAssetName,
+  ATRIUM_POOL_STAKE_ASSET_NAME,
 );
 
 const wallet1Collateral = requireWallet1Collateral();
-const gsUtxo = (await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr))[0];
+const gsUtxo = (
+  await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr)
+)[0];
 
 const unsignedTx = await txBuilder
   .readOnlyTxInReference(gsUtxo.input.txHash, gsUtxo.input.outputIndex)
@@ -33,9 +40,12 @@ const unsignedTx = await txBuilder
   .mintingScript(OrderValidatorScript)
   .mintRedeemerValue(mConStr0([]))
   .txOut(OrderValidatorAddr, [
-    { unit: "lovelace", quantity: "2000000" },
+    { unit: "lovelace", quantity: "2500000" },
     { unit: OrderValidatorHash, quantity: "1" },
-    { unit: MintingHash + poolStakeAssetName, quantity: String(stAmount) },
+    {
+      unit: MintingHash + ATRIUM_POOL_STAKE_ASSET_NAME,
+      quantity: STAKE_ASSET_TO_REDEEM.toString(),
+    },
   ])
   .txOutInlineDatumValue(orderData)
   .txInCollateral(
@@ -50,4 +60,4 @@ const unsignedTx = await txBuilder
 const signedTx = await wallet1.signTx(unsignedTx);
 const txHash = await wallet1.submitTx(signedTx);
 
-console.log("Create redeem order tx hash:", txHash);
+console.log("Create Atrium redeem order tx hash:", txHash);

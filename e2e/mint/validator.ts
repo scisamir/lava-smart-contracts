@@ -1,29 +1,34 @@
-import { applyParamsToScript, builtinByteString, conStr, resolveScriptHash, serializePlutusScript } from "@meshsdk/core";
-import { blueprint } from "../setup.js";
+import {
+  applyParamsToScript,
+  builtinByteString,
+  conStr,
+  resolveScriptHash,
+  serializePlutusScript,
+} from "@meshsdk/core";
+import { blueprint, NETWORK_ID } from "../setup.js";
 import { GlobalSettingsHash } from "../global_settings/validator.js";
 import { BatchingHash } from "../batching/validator.js";
 
-const MintingValidator = blueprint.validators.filter(v => 
-    v.title.includes("minting.minting.mint")
+const MintingValidator = blueprint.validators.filter((v) =>
+  v.title.includes("minting.minting.mint"),
 );
 
 const MintingValidatorScript = applyParamsToScript(
-    MintingValidator[0].compiledCode,
-    [
-      conStr(1, [builtinByteString(BatchingHash)]),
-      builtinByteString(GlobalSettingsHash),
-    ],
-    "JSON"
+  MintingValidator[0].compiledCode,
+  [
+    conStr(1, [builtinByteString(BatchingHash)]),
+    builtinByteString(GlobalSettingsHash),
+  ],
+  "JSON",
 );
 
 const MintingHash = resolveScriptHash(MintingValidatorScript, "V3");
 
 const MintingAddr = serializePlutusScript(
-    { code: MintingValidatorScript, version: "V3" },
+  { code: MintingValidatorScript, version: "V3" },
+  undefined,
+  NETWORK_ID,
+  undefined,
 ).address;
 
-export {
-    MintingValidatorScript,
-    MintingHash,
-    MintingAddr,
-}
+export { MintingValidatorScript, MintingHash, MintingAddr };

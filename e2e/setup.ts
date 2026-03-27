@@ -16,22 +16,24 @@ import dotenv from "dotenv";
 dotenv.config();
 import blueprint from "../smart_contract/plutus.json" with { type: "json" };
 
+const NETWORK_ID = 1;
+
 // Setup blockhain provider as Maestro
 const maestroKey = process.env.MAESTRO_KEY;
 if (!maestroKey) {
   throw new Error("MAESTRO_KEY does not exist");
 }
-const blockchainProvider = new MaestroProvider({
-  network: "Preprod",
-  apiKey: maestroKey,
-});
+// const blockchainProvider = new MaestroProvider({
+//   network: "Mainnet",
+//   apiKey: maestroKey,
+// });
 
 // Setup blockhain provider as Blockfrost
-// const blockfrostId = process.env.BLOCKFROST_ID;
-// if (!blockfrostId) {
-//     throw new Error("BLOCKFROST_ID does not exist");
-// }
-// const blockfrostProvider = new BlockfrostProvider(blockfrostId);
+const blockfrostId = process.env.BLOCKFROST_ID;
+if (!blockfrostId) {
+  throw new Error("BLOCKFROST_ID does not exist");
+}
+const blockchainProvider = new BlockfrostProvider(blockfrostId);
 
 // import admin's wallet passphrase and initialize the wallet
 const wallet1Passphrase = process.env.WALLET_PASSPHRASE_ONE;
@@ -39,7 +41,7 @@ if (!wallet1Passphrase) {
   throw new Error("WALLET_PASSPHRASE_ONE does not exist");
 }
 const wallet1 = new MeshWallet({
-  networkId: 0,
+  networkId: NETWORK_ID,
   fetcher: blockchainProvider,
   submitter: blockchainProvider,
   key: {
@@ -75,7 +77,7 @@ if (!wallet2Passphrase) {
   throw new Error("WALLET_PASSPHRASE_TWO does not exist");
 }
 const wallet2 = new MeshWallet({
-  networkId: 0,
+  networkId: NETWORK_ID,
   fetcher: blockchainProvider,
   submitter: blockchainProvider,
   key: {
@@ -102,7 +104,7 @@ const nativeScript: NativeScript = {
   ],
 };
 const { address: multiSigAddress, scriptCbor: multiSigCbor } =
-  serializeNativeScript(nativeScript);
+  serializeNativeScript(nativeScript, undefined, NETWORK_ID);
 const multisigHash = resolveNativeScriptHash(nativeScript);
 const multiSigUtxos =
   await blockchainProvider.fetchAddressUTxOs(multiSigAddress);
@@ -127,7 +129,7 @@ const txBuilder = new MeshTxBuilder({
   // evaluator: blockfrostProvider,
   verbose: false,
 });
-txBuilder.setNetwork("preprod");
+txBuilder.setNetwork("mainnet");
 // txBuilder.txEvaluationMultiplier = 1.6
 
 // test mint
@@ -163,6 +165,8 @@ const tPulseAssetName = stringToHex("tPulse");
 const tPulseUnit = alwaysSuccessMintValidatorHash + tPulseAssetName;
 const tPulsePoolStakeAssetName = stringToHex("LPulse");
 
+const ATRIUM_POOL_STAKE_ASSET_NAME = stringToHex("LADA"); // LADA
+
 // Reference scripts
 const batchingScriptTxHash =
   "a1fa2cb60679a0e907d5362caea3b8903384cdcd5dac1c64fd36155c9533c1c4";
@@ -193,6 +197,7 @@ export {
   alwaysSuccessValidatorMintScript,
   alwaysSuccessMintValidatorHash,
   // Constants
+  NETWORK_ID,
   GlobalSettingsNft,
   LavaPoolNftName,
   MinPoolLovelace,
@@ -206,6 +211,7 @@ export {
   tPulseAssetName,
   tPulseUnit,
   tPulsePoolStakeAssetName,
+  ATRIUM_POOL_STAKE_ASSET_NAME,
   // Ref scripts
   batchingScriptTxHash,
   batchingScriptTxIdx,

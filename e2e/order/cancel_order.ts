@@ -1,4 +1,9 @@
-import { deserializeDatum, mConStr0, mConStr1, serializeAddressObj } from "@meshsdk/core";
+import {
+  deserializeDatum,
+  mConStr0,
+  mConStr1,
+  serializeAddressObj,
+} from "@meshsdk/core";
 import {
   blockchainProvider,
   txBuilder,
@@ -7,13 +12,19 @@ import {
   wallet1Utxos,
   wallet1VK,
   requireWallet1Collateral,
+  NETWORK_ID,
 } from "../setup.js";
 import { OrderDatumType } from "../types.js";
-import { OrderValidatorAddr, OrderValidatorHash, OrderValidatorScript } from "./validator.js";
+import {
+  OrderValidatorAddr,
+  OrderValidatorHash,
+  OrderValidatorScript,
+} from "./validator.js";
 
 const wallet1Collateral = requireWallet1Collateral();
 
-const orderUtxos = await blockchainProvider.fetchAddressUTxOs(OrderValidatorAddr);
+const orderUtxos =
+  await blockchainProvider.fetchAddressUTxOs(OrderValidatorAddr);
 const orderUtxo = [...orderUtxos].reverse().find((utxo) => {
   const orderPlutusData = utxo.output.plutusData;
   if (!orderPlutusData) {
@@ -21,7 +32,9 @@ const orderUtxo = [...orderUtxos].reverse().find((utxo) => {
   }
 
   const orderData = deserializeDatum<OrderDatumType>(orderPlutusData);
-  return serializeAddressObj(orderData.fields[1]) === wallet1Address;
+  return (
+    serializeAddressObj(orderData.fields[1], NETWORK_ID) === wallet1Address
+  );
 });
 if (!orderUtxo) {
   throw new Error("order utxo not found!");
@@ -32,7 +45,7 @@ if (!orderPlutusData) {
   throw new Error("order datum not found!");
 }
 const orderData = deserializeDatum<OrderDatumType>(orderPlutusData);
-const receiverAddress = serializeAddressObj(orderData.fields[1]);
+const receiverAddress = serializeAddressObj(orderData.fields[1], NETWORK_ID);
 const receiverAmount = orderUtxo.output.amount.filter(
   (asset) => asset.unit !== OrderValidatorHash,
 );

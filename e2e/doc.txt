@@ -6,6 +6,22 @@ GUIDE
 
 
 
+----------------------------------LATEST SMART CONTRACTS (Mainnet)------------------------------------------
+Create global settings tx hash: c7b4b43b751f46e185aa56bc98af4a442400b895dc74a8ef17b595b371ca642d
+Update global settings tx hash: 333ffb43d832e32dca82d0c07df172603d247154865d47ce75c4bd8f10695583
+
+Create atrium pool tx hash: ca7a929e866c524edb5559dee8b41ff509f56bcffc395077d1696a1b99a1d0f4
+
+Create Atrium opt-in order tx hash: 02a59a8ca6973ef345cb972f6e49c91a38c529eb5e596186c7d6025d5e957d4e
+Cancel order tx hash: 2a8ca618b4af5cf46723dadae35b282bad9c104c705c3bf89e2eabda01b01b39
+
+
+
+
+
+
+
+
 
 
 
