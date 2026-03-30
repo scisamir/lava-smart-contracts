@@ -15,10 +15,21 @@ Create atrium pool tx hash: ca7a929e866c524edb5559dee8b41ff509f56bcffc395077d169
 Create Atrium opt-in order tx hash: 02a59a8ca6973ef345cb972f6e49c91a38c529eb5e596186c7d6025d5e957d4e
 Cancel order tx hash: 2a8ca618b4af5cf46723dadae35b282bad9c104c705c3bf89e2eabda01b01b39
 
+Create Atrium opt-in order tx hash: 9e7b136ca65528d8c777a778ea8e8debf04a9e925e9825283d214631d73bae97
+batching tx hash: 235af61218587fd34c381d58ef0412ffdb46356f40c762b1ae5387203709d43a
 
+Create Atrium redeem order tx hash: cc0355cf08ac2e6cdc7894d62392ba94173eeb09dda7a8f62616d84d273b967a
+Cancel order tx hash: 1a1b1b5eb91e5d1ec5dcd611d793e62caabe2c596fc6b11efcbf1dde9883a40e
 
+Create Atrium redeem order tx hash: c4ab3b1f6977446656ebb5d73989f0d325590155fb26c6c686193465c324b53d
+Create Atrium opt-in order tx hash: 265ed2545b2aaa8835355148437a22b99e292c5b138e152ffd3a55914a3ebceb
+batching tx hash: 2189e6e0a717101ed936b007447a99b2d36b4dfc85505886d50039f370ac2b52
 
+Update global settings tx hash: 5e7dc67bb13195934e3464c82d00901861c4ae88fd619245d985e9d4cb45eb95
+Update global settings tx hash: db134cb2c38edb5677745d2073cbd7530f3db8eec1844e8950d009d79188517e
 
+Stake to atrium tx hash: 50a166d4d662bc248ae2aee740fd300e7ec373c8dd127aa64fab4c8384c6adba
+Withdraw from atrium tx hash: 187cef68fbbef5e471f7726728656af03f79d2cc0c7410a0ff826a53dcdacb5e
 
 
 

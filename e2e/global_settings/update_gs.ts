@@ -1,15 +1,10 @@
 import {
-  applyParamsToScript,
-  builtinByteString,
-  scriptAddress,
   deserializeAddress,
   mConStr1,
   mScriptAddress,
-  resolveScriptHash,
   stringToHex,
 } from "@meshsdk/core";
 import {
-  blueprint,
   blockchainProvider,
   GlobalSettingsNft,
   MinPoolLovelace,
@@ -27,7 +22,6 @@ import {
 } from "../setup.js";
 import {
   assetType,
-  computePoolNftName,
   globalSettingsDatum,
   spendScriptSigner,
   stakeType,
@@ -40,70 +34,19 @@ import {
 } from "./validator.js";
 import { CONFIG as ATRIUM_CONFIG } from "../atrium_mainnet/src/config.js";
 import { MintingHash } from "../mint/validator.js";
-import { PoolValidatorHash } from "../pool/validator.js";
+import {
+  AtriumPoolNftName,
+  AtriumPoolNftNameSource,
+  PredictedAtriumPoolNftName,
+  RewardsValidatorHash,
+} from "../rewards/validator.js";
+import { StakeValidatorHash } from "../stake/validator.js";
+import { AtriumStakeValidatorHash } from "../stake_datums/atrium/validator.js";
+import { AtriumSwapValidatorHash } from "../swap_validators/atrium/validator.js";
 
 const ATRIUM_POOL_STAKE_ASSET_NAME = stringToHex("LADA");
 
-const requireValidator = (title: string) => {
-  const validator = blueprint.validators.find((item) => item.title === title);
-
-  if (!validator) {
-    throw new Error(`Validator not found in blueprint: ${title}`);
-  }
-
-  return validator;
-};
-
 const atriumAsset = assetType("", "", 1_000_000);
-
-const predictedAtriumPoolSeedUtxo = multiSigUtxos[0];
-if (!predictedAtriumPoolSeedUtxo) {
-  throw new Error("No multisig UTxO available to derive the Atrium pool NFT");
-}
-
-// The rewards validator is parameterized by the pool NFT name, so before the
-// pool exists we derive the expected Atrium pool NFT from the seed UTxO this
-// flow is currently anchored to.
-const predictedAtriumPoolNftName = computePoolNftName(
-  predictedAtriumPoolSeedUtxo.input.txHash,
-  predictedAtriumPoolSeedUtxo.input.outputIndex,
-);
-
-const StakeValidatorScript = applyParamsToScript(
-  requireValidator("stake.stake_validator.withdraw").compiledCode,
-  [builtinByteString(GlobalSettingsHash), builtinByteString(PoolValidatorHash)],
-  "JSON",
-);
-const StakeValidatorHash = resolveScriptHash(StakeValidatorScript, "V3");
-
-const RewardsValidatorScript = applyParamsToScript(
-  requireValidator("rewards.rewards_validator.spend").compiledCode,
-  [
-    builtinByteString(GlobalSettingsHash),
-    builtinByteString(PoolValidatorHash),
-    builtinByteString(predictedAtriumPoolNftName),
-  ],
-  "JSON",
-);
-const RewardsValidatorHash = resolveScriptHash(RewardsValidatorScript, "V3");
-
-const AtriumStakeValidatorScript = applyParamsToScript(
-  requireValidator("stake_datums/atrium.atrium.withdraw").compiledCode,
-  [
-    builtinByteString(GlobalSettingsHash),
-    builtinByteString(MintingHash),
-    scriptAddress(RewardsValidatorHash),
-  ],
-  "JSON",
-);
-const AtriumStakeValidatorHash = resolveScriptHash(AtriumStakeValidatorScript, "V3");
-
-const AtriumSwapValidatorScript = applyParamsToScript(
-  requireValidator("swap_validators/atrium_swap.atrium_swap.withdraw").compiledCode,
-  [builtinByteString(MintingHash), scriptAddress(RewardsValidatorHash)],
-  "JSON",
-);
-const AtriumSwapValidatorHash = resolveScriptHash(AtriumSwapValidatorScript, "V3");
 
 const {
   scriptHash: atriumStakePoolPaymentHash,
@@ -156,7 +99,10 @@ if (!gsUtxo) {
   throw new Error("Global settings UTxO not found");
 }
 
-console.log("Predicted Atrium pool NFT:", predictedAtriumPoolNftName);
+console.log("Predicted Atrium pool NFT:", PredictedAtriumPoolNftName);
+console.log("Resolved Atrium pool NFT:", AtriumPoolNftName);
+console.log("Atrium pool NFT source:", AtriumPoolNftNameSource);
+console.log("Atrium minting policy:", ATRIUM_CONFIG.basketTokenCS);
 console.log("Atrium stake validator hash:", AtriumStakeValidatorHash);
 console.log("Atrium swap validator hash:", AtriumSwapValidatorHash);
 console.log("Stake validator hash:", StakeValidatorHash);

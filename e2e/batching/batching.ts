@@ -20,6 +20,7 @@ import {
   wallet1Utxos,
   wallet1VK,
   requireWallet1Collateral,
+  NETWORK_ID,
 } from "../setup.js";
 import {
   assetType,
@@ -32,10 +33,7 @@ import {
   OrderValidatorScript,
 } from "../order/validator.js";
 import { PoolValidatorAddr, PoolValidatorHash } from "../pool/validator.js";
-import {
-  BatchingHash,
-  BatchingRewardAddress,
-} from "./validator.js";
+import { BatchingHash, BatchingRewardAddress } from "./validator.js";
 import { GlobalSettingsAddr } from "../global_settings/validator.js";
 import { OrderDatumType, PoolDatumType } from "../types.js";
 import { MintingHash, MintingValidatorScript } from "../mint/validator.js";
@@ -56,7 +54,8 @@ const pushAsset = (assets: Asset[], unit: string, quantity: bigint) => {
   }
 };
 
-const orderUtxos = await blockchainProvider.fetchAddressUTxOs(OrderValidatorAddr);
+const orderUtxos =
+  await blockchainProvider.fetchAddressUTxOs(OrderValidatorAddr);
 const poolUtxos = await blockchainProvider.fetchAddressUTxOs(PoolValidatorAddr);
 
 const poolUtxo = poolUtxos.find((utxo) => {
@@ -96,7 +95,8 @@ const currentTotalStAssetsMinted = BigInt(poolData.fields[1].int);
 const currentTotalUnderlying = BigInt(poolData.fields[2].int);
 
 const poolNft = poolUtxo.output.amount.find(
-  (asset) => asset.unit.startsWith(PoolValidatorHash) && asset.unit !== poolAssetUnit,
+  (asset) =>
+    asset.unit.startsWith(PoolValidatorHash) && asset.unit !== poolAssetUnit,
 );
 
 if (!poolNft) {
@@ -162,7 +162,7 @@ const userOutputs: Array<{ address: string; amount: Asset[] }> = [];
 
 for (const { utxo: orderUtxo, orderData } of selectedOrders) {
   const orderType = orderData.fields[0];
-  const receiverAddress = serializeAddressObj(orderData.fields[1]);
+  const receiverAddress = serializeAddressObj(orderData.fields[1], NETWORK_ID);
   const orderLovelace = getQuantity(orderUtxo.output.amount, "lovelace");
   const orderUnderlying = getQuantity(orderUtxo.output.amount, poolAssetUnit);
   const orderStake = getQuantity(orderUtxo.output.amount, poolStakeUnit);
@@ -200,7 +200,11 @@ for (const { utxo: orderUtxo, orderData } of selectedOrders) {
         quantity: (orderLovelace - depositAmount).toString(),
       };
     } else {
-      pushAsset(userOutputAmount, poolAssetUnit, orderUnderlying - depositAmount);
+      pushAsset(
+        userOutputAmount,
+        poolAssetUnit,
+        orderUnderlying - depositAmount,
+      );
     }
 
     pushAsset(userOutputAmount, poolStakeUnit, stAssetsToMint);
@@ -296,7 +300,9 @@ for (const userOutput of userOutputs) {
   builder = builder.txOut(userOutput.address, userOutput.amount);
 }
 
-const gsUtxo = (await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr))[0];
+const gsUtxo = (
+  await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr)
+)[0];
 
 const unsignedTx = await builder
   .txOut(PoolValidatorAddr, poolOutputAmount)

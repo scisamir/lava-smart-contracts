@@ -169,10 +169,10 @@ const ATRIUM_POOL_STAKE_ASSET_NAME = stringToHex("LADA"); // LADA
 
 // Reference scripts
 const batchingScriptTxHash =
-  "a1fa2cb60679a0e907d5362caea3b8903384cdcd5dac1c64fd36155c9533c1c4";
+  "f268168603dc31abf523acabb72b8c47662a9e33efd5a44f7f1f6f4358ef247d";
 const batchingScriptTxIdx = 0;
 const poolScriptTxHash =
-  "cbec2dc228ed1a9e9effae1a7469e1d7781383ceb8ef332f60d28aff65c824c8";
+  "6dd8752d81233d08afe8193116c051eed24b83d5b3747f1eac3511dba4e1b3d8";
 const poolScriptTxIdx = 0;
 
 export {

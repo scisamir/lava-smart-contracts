@@ -78,18 +78,44 @@ validator stake_validator(
         quantity_of(pool_input.output.value, pool_asset_pid, pool_asset_an)
       }
 
-    // Must be an output going to the right stake address with value equivalent to the pool asset quantity
-    expect [_stake_output] =
-      list.filter(
-        outputs,
-        fn(output) {
-          and {
-            (output.address == stake_address)?,
+    let stake_input_amount =
+      list.foldl(
+        inputs,
+        0,
+        fn(input, total) {
+          if input.output.address == stake_address {
             if is_ada_asset {
-              (lovelace_of(output.value) == pool_asset_quantity)?
+              total + lovelace_of(input.output.value)
             } else {
-              (quantity_of(output.value, pool_asset_pid, pool_asset_an) == pool_asset_quantity)?
-            },
+              total + quantity_of(
+                input.output.value,
+                pool_asset_pid,
+                pool_asset_an,
+              )
+            }
+          } else {
+            total
+          }
+        },
+      )
+
+    let stake_output_amount =
+      list.foldl(
+        outputs,
+        0,
+        fn(output, total) {
+          if output.address == stake_address {
+            if is_ada_asset {
+              total + lovelace_of(output.value)
+            } else {
+              total + quantity_of(
+                output.value,
+                pool_asset_pid,
+                pool_asset_an,
+              )
+            }
+          } else {
+            total
           }
         },
       )
@@ -121,6 +147,8 @@ validator stake_validator(
       (stake_asset == pool_asset)?,
       // Pool datum remains the same
       (pool_input.output.datum == pool_output.datum)?,
+      // The net increase at the stake address must equal the amount removed from the pool
+      (stake_output_amount - stake_input_amount == pool_asset_quantity)?,
       // Stake datum is being verified
       pairs.has_key(withdrawals, Script(datum_verifier_hash))?,
       // batcher must sign transaction

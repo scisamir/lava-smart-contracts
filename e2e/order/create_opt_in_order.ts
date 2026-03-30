@@ -18,7 +18,7 @@ import {
   OrderValidatorScript,
 } from "./validator.js";
 
-const DEPOSIT_LOVELACE = 10_000_000n;
+const DEPOSIT_LOVELACE = 7_000_000n;
 
 const orderData = orderDatum(
   optInOrderType(DEPOSIT_LOVELACE),
