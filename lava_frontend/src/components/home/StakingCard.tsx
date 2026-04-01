@@ -239,7 +239,8 @@ export const StakingCard = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to build tx: ${response.status}`);
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody?.error || `Failed to build tx: ${response.status}`);
       }
 
       const data = await response.json();
@@ -285,7 +286,8 @@ export const StakingCard = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to build tx: ${response.status}`);
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody?.error || `Failed to build tx: ${response.status}`);
       }
 
       const data = await response.json();

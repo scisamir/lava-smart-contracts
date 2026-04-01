@@ -17,6 +17,20 @@ const getAssetBalanceByUnit = (utxos: UTxO[], unit: string): number => {
   return total;
 };
 
+const getAssetBalanceByNameSuffix = (utxos: UTxO[], assetNameHex: string): number => {
+  let total = 0;
+
+  utxos.forEach((utxo) => {
+    utxo.output.amount.forEach((asset) => {
+      if (asset.unit !== 'lovelace' && asset.unit.endsWith(assetNameHex)) {
+        total += Number(asset.quantity);
+      }
+    });
+  });
+
+  return total;
+};
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
@@ -51,7 +65,10 @@ export const handler = async (
 
     const { ATRIUM_POOL_STAKE_ASSET_NAME } = setupE2e();
     const atriumStakeUnit = MintingHash + ATRIUM_POOL_STAKE_ASSET_NAME;
-    const LADA = getAssetBalanceByUnit(utxos, atriumStakeUnit);
+    const LADA = Math.max(
+      getAssetBalanceByUnit(utxos, atriumStakeUnit),
+      getAssetBalanceByNameSuffix(utxos, ATRIUM_POOL_STAKE_ASSET_NAME)
+    );
 
     const tokenBalances = {
       ADA: adaBalance,

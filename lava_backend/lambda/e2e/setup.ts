@@ -6,7 +6,7 @@ import {
   serializeNativeScript,
   stringToHex,
 } from "@meshsdk/core";
-import blueprint from "../../plutus.json";
+import blueprint from "../../../smart_contract/plutus.json";
 
 export const setupE2e = () => {
   const NETWORK_ID = 1;

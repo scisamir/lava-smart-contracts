@@ -21,6 +21,13 @@ type PendingCounts = {
   atrium: number;
 };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isRateLimitError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('API rate limit exceeded') || message.includes('"status":429');
+};
+
 const getPendingCounts = async (maestro: MaestroProvider): Promise<PendingCounts> => {
   const orderUtxos = await maestro.fetchAddressUTxOs(OrderValidatorAddr);
   const {
@@ -115,22 +122,46 @@ export const handler = async (_event: ScheduledEvent) => {
   const results: Array<{ batchType: BatchType; txHash?: string; error?: string }> = [];
 
   for (const batchType of queue) {
-    try {
-      const txBuilder = new MeshTxBuilder({
-        fetcher: blockchainProvider,
-        submitter: blockchainProvider,
-        evaluator: blockchainProvider,
-        verbose: true,
-      });
-      txBuilder.setNetwork('mainnet');
+    const maxAttempts = 4;
+    let successTxHash: string | null = null;
+    let lastError: unknown;
 
-      const txHash = await runBatch(batchType, blockchainProvider, txBuilder);
-      results.push({ batchType, txHash });
-    } catch (error) {
-      console.error(`Auto batch failed for ${batchType}:`, error);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const txBuilder = new MeshTxBuilder({
+          fetcher: blockchainProvider,
+          submitter: blockchainProvider,
+          evaluator: blockchainProvider,
+          verbose: false,
+        });
+        txBuilder.setNetwork('mainnet');
+
+        successTxHash = await runBatch(batchType, blockchainProvider, txBuilder);
+        break;
+      } catch (error) {
+        lastError = error;
+
+        if (attempt < maxAttempts && isRateLimitError(error)) {
+          const waitMs = 1200 * attempt;
+          console.warn(
+            `Auto batch ${batchType} hit Maestro rate limit (attempt ${attempt}/${maxAttempts}), retrying in ${waitMs}ms`
+          );
+          await sleep(waitMs);
+          continue;
+        }
+
+        break;
+      }
+    }
+
+    if (successTxHash) {
+      results.push({ batchType, txHash: successTxHash });
+      await sleep(800);
+    } else {
+      console.error(`Auto batch failed for ${batchType}:`, lastError);
       results.push({
         batchType,
-        error: error instanceof Error ? error.message : String(error),
+        error: lastError instanceof Error ? lastError.message : String(lastError),
       });
     }
   }
