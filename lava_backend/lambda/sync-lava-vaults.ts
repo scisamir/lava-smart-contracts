@@ -18,7 +18,7 @@ import {
   PutCommand,
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
-import blueprint from '../plutus.json';
+import blueprint from '../../smart_contract/plutus.json';
 import { setupE2e } from './e2e/setup';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));

@@ -21,11 +21,31 @@ import {
   OrderValidatorScript,
 } from './e2e/order/validator';
 import { MintingHash } from './e2e/mint/validator';
-import { GlobalSettingsAddr } from './e2e/global_settings/validator';
+import {
+  GlobalSettingsAddr,
+  gsParamTxHash,
+  gsParamTxIdx,
+} from './e2e/global_settings/validator';
 import { PoolValidatorAddr } from './e2e/pool/validator';
 import { PoolDatumType } from './e2e/types';
 
 type OrderKind = 'opt-in' | 'redeem';
+
+const toLovelace = (amount: number): bigint => BigInt(Math.floor(amount * 1_000_000));
+
+const toIntegerAmount = (amount: number): bigint => BigInt(Math.floor(amount));
+
+const addOrMergeAsset = (assets: Asset[], unit: string, quantity: bigint) => {
+  if (quantity <= 0n) return;
+
+  const existing = assets.find((asset) => asset.unit === unit);
+  if (existing) {
+    existing.quantity = (BigInt(existing.quantity) + quantity).toString();
+    return;
+  }
+
+  assets.push({ unit, quantity: quantity.toString() });
+};
 
 const resolvePoolConfig = (tokenName: string) => {
   const {
@@ -67,9 +87,7 @@ const resolveUnderlyingUnitFromPool = async (
     const poolDatum = deserializeDatum<PoolDatumType>(plutusData);
     const datumPoolSan = String(poolDatum.fields[6].bytes ?? '');
 
-    if (datumPoolSan !== poolStakeAssetName) {
-      continue;
-    }
+    if (datumPoolSan !== poolStakeAssetName) continue;
 
     const assetField = poolDatum.fields[5];
     const policyId = String(assetField.fields[1].bytes ?? '');
@@ -159,31 +177,36 @@ export const handler = async (
       throw new Error('Unable to resolve pool configuration from tokenName');
     }
 
-    const orderValue: Asset[] = [{ unit: 'lovelace', quantity: '2500000' }];
-    if (orderType === 'opt-in') {
-      orderValue.push({
-        unit: underlyingUnit,
-        quantity: String(amount),
-      });
-    } else {
-      orderValue.push({
-        unit: MintingHash + poolStakeAssetName,
-        quantity: String(amount),
-      });
+    const normalizedAmount =
+      orderType === 'opt-in' && underlyingUnit === 'lovelace'
+        ? toLovelace(amount)
+        : toIntegerAmount(amount);
+
+    if (normalizedAmount <= 0n) {
+      throw new Error('Amount is too small after unit conversion');
     }
-    orderValue.push({ unit: OrderValidatorHash, quantity: '1' });
+
+    const orderValue: Asset[] = [];
+    addOrMergeAsset(orderValue, 'lovelace', 2_500_000n);
+
+    if (orderType === 'opt-in') {
+      addOrMergeAsset(orderValue, underlyingUnit, normalizedAmount);
+    } else {
+      addOrMergeAsset(orderValue, MintingHash + poolStakeAssetName, normalizedAmount);
+    }
+
+    addOrMergeAsset(orderValue, OrderValidatorHash, 1n);
 
     const datum = orderDatum(
-      orderType === 'opt-in' ? optInOrderType(amount) : redeemOrderType(amount),
+      orderType === 'opt-in'
+        ? optInOrderType(normalizedAmount)
+        : redeemOrderType(normalizedAmount),
       mPubKeyAddress(walletVK, walletSK),
       verificationKeySigner(walletVK),
       poolStakeAssetName
     );
 
     const gsUtxo = (await provider.fetchAddressUTxOs(GlobalSettingsAddr))[0];
-    if (!gsUtxo) {
-      throw new Error('Global settings UTxO not found');
-    }
 
     const fallbackCollateral = [...walletUtxos]
       .filter((utxo) =>
@@ -198,20 +221,29 @@ export const handler = async (
       throw new Error('No collateral UTxO found');
     }
 
-    const unsignedTx = await txBuilder
+    let builder = txBuilder
       .txOut(OrderValidatorAddr, orderValue)
       .txOutInlineDatumValue(datum)
       .mintPlutusScriptV3()
       .mint('1', OrderValidatorHash, '')
       .mintingScript(OrderValidatorScript)
       .mintRedeemerValue(mConStr0([]))
-      .readOnlyTxInReference(gsUtxo.input.txHash, gsUtxo.input.outputIndex)
       .txInCollateral(collateral.input.txHash, collateral.input.outputIndex)
       .setTotalCollateral('5000000')
       .requiredSignerHash(walletVK)
       .changeAddress(walletAddress)
-      .selectUtxosFrom(walletUtxos)
-      .complete();
+      .selectUtxosFrom(walletUtxos);
+
+    if (gsUtxo) {
+      builder = builder.readOnlyTxInReference(gsUtxo.input.txHash, gsUtxo.input.outputIndex);
+    } else {
+      console.warn(
+        'Global settings UTxO not found at derived address; falling back to configured output reference.'
+      );
+      builder = builder.readOnlyTxInReference(gsParamTxHash, gsParamTxIdx);
+    }
+
+    const unsignedTx = await builder.complete();
 
     return {
       statusCode: 200,
