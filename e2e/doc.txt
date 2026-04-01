@@ -30,6 +30,7 @@ Update global settings tx hash: db134cb2c38edb5677745d2073cbd7530f3db8eec1844e89
 
 Stake to atrium tx hash: 50a166d4d662bc248ae2aee740fd300e7ec373c8dd127aa64fab4c8384c6adba
 Withdraw from atrium tx hash: 187cef68fbbef5e471f7726728656af03f79d2cc0c7410a0ff826a53dcdacb5e
+Add rewards to pool tx hash: 5b2bfdcc9daa3ea90cd1037e1c83ef09f8e9865ed24bbf245c314cc57291cf82
 
 
 

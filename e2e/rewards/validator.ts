@@ -22,20 +22,18 @@ const RewardsValidator = blueprint.validators.filter((v) =>
 );
 
 const predictedAtriumPoolSeedUtxo = multiSigUtxos[0];
-if (!predictedAtriumPoolSeedUtxo) {
-  throw new Error("No multisig UTxO available to derive the Atrium pool NFT");
-}
-
-const PredictedAtriumPoolNftName = computePoolNftName(
-  predictedAtriumPoolSeedUtxo.input.txHash,
-  predictedAtriumPoolSeedUtxo.input.outputIndex,
-);
+const PredictedAtriumPoolNftName = predictedAtriumPoolSeedUtxo
+  ? computePoolNftName(
+      predictedAtriumPoolSeedUtxo.input.txHash,
+      predictedAtriumPoolSeedUtxo.input.outputIndex,
+    )
+  : null;
 
 const liveAtriumPoolUtxos = await blockchainProvider.fetchAddressUTxOs(
   PoolValidatorAddr,
 );
 
-const liveAtriumPool = liveAtriumPoolUtxos.flatMap((utxo) => {
+const liveAtriumPools = liveAtriumPoolUtxos.flatMap((utxo) => {
   const poolPlutusData = utxo.output.plutusData;
   if (!poolPlutusData) {
     return [];
@@ -56,10 +54,23 @@ const liveAtriumPool = liveAtriumPoolUtxos.flatMap((utxo) => {
   }
 
   return [{ poolNftName: poolNft.unit.slice(PoolValidatorHash.length) }];
-})[0];
+});
 
-const AtriumPoolNftName = liveAtriumPool?.poolNftName ?? PredictedAtriumPoolNftName;
-const AtriumPoolNftNameSource = liveAtriumPool ? "live" : "predicted";
+if (liveAtriumPools.length === 0) {
+  throw new Error(
+    "No live Atrium pool UTxO found. rewards/validator.ts now derives the rewards validator from the live pool only.",
+  );
+}
+
+if (liveAtriumPools.length > 1) {
+  throw new Error(
+    "Multiple live Atrium pools found. rewards/validator.ts cannot derive a single rewards validator unambiguously.",
+  );
+}
+
+const [liveAtriumPool] = liveAtriumPools;
+const AtriumPoolNftName = liveAtriumPool.poolNftName;
+const AtriumPoolNftNameSource = "live";
 
 const RewardsValidatorScript = applyParamsToScript(
   RewardsValidator[0].compiledCode,
