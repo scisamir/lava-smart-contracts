@@ -32,7 +32,7 @@ export const handler = async (
     }
 
     const provider = new MaestroProvider({
-      network: 'Preprod',
+      network: 'Mainnet',
       apiKey: maestroKey,
     });
 
@@ -42,7 +42,7 @@ export const handler = async (
       evaluator: provider,
       verbose: true,
     });
-    txBuilder.setNetwork('preprod');
+    txBuilder.setNetwork('mainnet');
 
     const {
       alwaysSuccessMintValidatorHash,

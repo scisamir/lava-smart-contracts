@@ -11,7 +11,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ConnectedWalletModal } from "./wallet/ConnectedWalletModal";
 import { LAVA_LOGO } from "@/lib/images";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
-import { MintTestTokens } from "./stake/MinTestTokens";
 
 type DetectedWallet = {
   key: string;
@@ -141,10 +140,6 @@ const Navigation = () => {
               ))}
             </div>
 
-            <div className="hidden md:inline-block">
-              <MintTestTokens />
-            </div>
-
             <div className="flex items-center gap-2">
               <div className="relative">
                 <button
@@ -250,12 +245,6 @@ const Navigation = () => {
                       </button>
                     ))}
 
-                    <div className="pt-2">
-                      <MintTestTokens
-                        variant="mobile"
-                        className={`mobile-nav-item px-3 py-2 text-white text-[16px] leading-[100%] tracking-[-0.02em] hover:opacity-80 transition-opacity w-full text-left px-4 py-3 rounded-lg text-foreground hover:bg-muted transition-colors`}
-                      />
-                    </div>
                   </div>
                 </SheetContent>
               </Sheet>

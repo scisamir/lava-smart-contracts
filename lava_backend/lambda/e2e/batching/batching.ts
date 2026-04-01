@@ -6,13 +6,11 @@ import {
   MeshTxBuilder,
   MeshWallet,
   serializeAddressObj,
+  type Asset,
 } from "@meshsdk/core";
 import { setupE2e } from "../setup";
-import {
-  OrderValidatorAddr,
-  OrderValidatorRewardAddress,
-  OrderValidatorScript,
-} from "../order/validator";
+import { assetType, poolDatum as buildPoolDatum, scriptCredential } from "../data";
+import { OrderValidatorAddr, OrderValidatorHash, OrderValidatorScript } from "../order/validator";
 import { PoolValidatorAddr, PoolValidatorHash } from "../pool/validator";
 import { BatchingHash, BatchingRewardAddress } from "./validator";
 import { GlobalSettingsAddr } from "../global_settings/validator";
@@ -22,11 +20,14 @@ import { MintingHash, MintingValidatorScript } from "../mint/validator";
 export const batchingTx = async (
   blockchainProvider: BlockchainProviderType,
   txBuilder: MeshTxBuilder,
-  poolSAN: string,
-  orderAssetName: string,
-  orderOptInUnit: string,
-  orderOptOutUnit: string
+  poolSAN: string
 ) => {
+  const { MinPoolLovelace, PrecisionFactor, batchingScriptTxHash, batchingScriptTxIdx, poolScriptTxHash, poolScriptTxIdx, NETWORK_ID } = setupE2e();
+
+  const noOfUtxosToBatch = 10;
+  const precisionFactor = BigInt(PrecisionFactor);
+  const MIN_RECEIVER_LOVELACE = 2_000_000n;
+
   const walletPassphrase =
     process.env.BATCHER_WALLET_PASSPHRASE ||
     process.env.NEXT_PUBLIC_WALLET_PASSPHRASE_ONE;
@@ -36,7 +37,7 @@ export const batchingTx = async (
   }
 
   const wallet = new MeshWallet({
-    networkId: 0,
+    networkId: NETWORK_ID as 0 | 1,
     fetcher: blockchainProvider,
     submitter: blockchainProvider,
     key: {
@@ -47,26 +48,23 @@ export const batchingTx = async (
 
   const walletAddress = await wallet.getChangeAddress();
   const walletUtxos = await wallet.getUtxos();
-
-  const walletCollateral = walletUtxos.filter(
-    (utxo) =>
-      Number(utxo.output.amount[0].quantity) >= 12000000 &&
-      utxo.output.amount.length <= 4
-  )[0];
-  if (!walletCollateral) throw new Error("No collateral utxo found");
-
   const { pubKeyHash: walletVK } = deserializeAddress(walletAddress);
 
-  const {
-    alwaysSuccessMintValidatorHash,
-    batchingScriptTxHash,
-    batchingScriptTxIdx,
-    LavaPoolNftName,
-    MinPoolLovelace,
-    multiSigCbor,
-    poolScriptTxHash,
-    poolScriptTxIdx,
-  } = setupE2e();
+  const walletCollateral = [...walletUtxos]
+    .filter((utxo) => {
+      if (utxo.output.amount.length !== 1) {
+        return false;
+      }
+      const [ada] = utxo.output.amount;
+      return ada?.unit === "lovelace" && BigInt(ada.quantity) >= 7_000_000n;
+    })
+    .sort((left, right) => {
+      const leftLovelace = BigInt(left.output.amount[0]?.quantity ?? "0");
+      const rightLovelace = BigInt(right.output.amount[0]?.quantity ?? "0");
+      return leftLovelace === rightLovelace ? 0 : leftLovelace > rightLovelace ? -1 : 1;
+    })[0];
+
+  if (!walletCollateral) throw new Error("No collateral utxo found");
 
   const orderUtxos = await blockchainProvider.fetchAddressUTxOs(OrderValidatorAddr);
   const poolUtxos = await blockchainProvider.fetchAddressUTxOs(PoolValidatorAddr);
@@ -80,43 +78,110 @@ export const batchingTx = async (
   });
   if (!poolUtxo) throw new Error("Pool UTxO not found!");
 
-  let totalMintAmount = 0;
-  const filteredOrderUtxos = orderUtxos.filter((utxo) => {
+  const poolPlutusData = poolUtxo.output.plutusData;
+  if (!poolPlutusData) {
+    throw new Error("Pool datum not found");
+  }
+
+  const poolData = deserializeDatum<PoolDatumType>(poolPlutusData);
+  const poolAssetField = poolData.fields[5];
+  const poolAssetIsStable = Number(poolAssetField.fields[0].constructor) === 1;
+  const poolAssetPolicyId = poolAssetField.fields[1].bytes;
+  const poolAssetName = poolAssetField.fields[2].bytes;
+  const poolAssetMultiplier = BigInt(poolAssetField.fields[3].int);
+  const poolAssetUnit =
+    poolAssetPolicyId === "" && poolAssetName === ""
+      ? "lovelace"
+      : poolAssetPolicyId + poolAssetName;
+  const poolStakeUnit = MintingHash + poolSAN;
+  const exchangeRate = BigInt(poolData.fields[3].int);
+  const totalRewardsAccrued = BigInt(poolData.fields[4].int);
+  const isProcessingOpen = Number(poolData.fields[7].constructor) === 1;
+  const currentTotalStAssetsMinted = BigInt(poolData.fields[1].int);
+  const currentTotalUnderlying = BigInt(poolData.fields[2].int);
+
+  const poolNft = poolUtxo.output.amount.find(
+    (asset) => asset.unit.startsWith(PoolValidatorHash) && asset.unit !== poolAssetUnit
+  );
+
+  if (!poolNft) {
+    throw new Error("Pool NFT not found");
+  }
+
+  const matchingOrders = orderUtxos.flatMap((utxo) => {
     const orderPlutusData = utxo.output.plutusData;
-    if (!orderPlutusData) throw new Error("No plutus data");
-    const orderDatum = deserializeDatum<OrderDatumType>(orderPlutusData);
-
-    let isOptIn = false;
-    if (Number(orderDatum.fields[0].constructor) === 0) isOptIn = true;
-
-    const mintAmtDatum = Number(orderDatum.fields[0].fields[0].int);
-    const mintAmount = isOptIn ? mintAmtDatum : -1 * mintAmtDatum;
-
-    let isRightOrder = false;
-    const utxoAmount = utxo.output.amount;
-    for (let i = 0; i < utxoAmount.length; i++) {
-      const utxoAsset = utxoAmount[i];
-      if (utxoAsset.unit === orderOptInUnit || utxoAsset.unit === orderOptOutUnit) {
-        isRightOrder = true;
-        totalMintAmount += mintAmount;
-        break;
-      }
+    if (!orderPlutusData) {
+      return [];
     }
 
-    return mintAmtDatum > 0 && isRightOrder;
+    const orderData = deserializeDatum<OrderDatumType>(orderPlutusData);
+    if (orderData.fields[3].bytes !== poolSAN) {
+      return [];
+    }
+
+    return [{ utxo, orderData }];
   });
 
-  if (filteredOrderUtxos.length === 0) throw new Error("No order UTxOs to batch!");
+  const getQuantity = (assets: Asset[], unit: string) =>
+    BigInt(assets.find((asset) => asset.unit === unit)?.quantity ?? "0");
 
-  const noOfUtxosToBatch = 10;
-  const batchingOrderUtxos = filteredOrderUtxos.slice(0, noOfUtxosToBatch);
+  const pushAsset = (assets: Asset[], unit: string, quantity: bigint) => {
+    if (quantity > 0n) {
+      assets.push({ unit, quantity: quantity.toString() });
+    }
+  };
 
-  let orderInputs = txBuilder;
+  const selectedOrders = matchingOrders
+    .filter(({ utxo, orderData }) => {
+      if (poolAssetUnit !== "lovelace") {
+        return true;
+      }
 
-  for (let i = 0; i < batchingOrderUtxos.length; i++) {
-    const orderUtxo = batchingOrderUtxos[i];
+      const orderType = orderData.fields[0];
+      const isRedeemOrder = Number(orderType.constructor) === 1;
+      if (isRedeemOrder) {
+        return true;
+      }
 
-    orderInputs = orderInputs
+      const depositAmount = BigInt(orderType.fields[0].int);
+      const orderLovelace = getQuantity(utxo.output.amount, "lovelace");
+
+      return orderLovelace - depositAmount >= MIN_RECEIVER_LOVELACE;
+    })
+    .slice(0, noOfUtxosToBatch);
+
+  if (selectedOrders.length === 0) {
+    if (matchingOrders.length > 0 && poolAssetUnit === "lovelace") {
+      throw new Error(
+        "No batchable orders found for this pool. Opt-in orders need enough extra lovelace for receiver outputs."
+      );
+    }
+
+    throw new Error("No order UTxOs to batch");
+  }
+
+  const poolAssetData = assetType(
+    poolAssetPolicyId,
+    poolAssetName,
+    poolAssetMultiplier,
+    poolAssetIsStable
+  );
+
+  const batchingRedeemer = mConStr0([0, poolAssetData, poolSAN]);
+
+  let builder = txBuilder;
+  let totalUnderlyingDelta = 0n;
+  let totalStAssetsDelta = 0n;
+  const userOutputs: Array<{ address: string; amount: Asset[] }> = [];
+
+  for (const { utxo: orderUtxo, orderData } of selectedOrders) {
+    const orderType = orderData.fields[0];
+    const receiverAddress = serializeAddressObj(orderData.fields[1], NETWORK_ID as 0 | 1);
+    const orderLovelace = getQuantity(orderUtxo.output.amount, "lovelace");
+    const orderUnderlying = getQuantity(orderUtxo.output.amount, poolAssetUnit);
+    const orderStake = getQuantity(orderUtxo.output.amount, poolStakeUnit);
+
+    builder = builder
       .spendingPlutusScriptV3()
       .txIn(
         orderUtxo.input.txHash,
@@ -125,52 +190,79 @@ export const batchingTx = async (
         orderUtxo.output.address
       )
       .txInScript(OrderValidatorScript)
-      .spendingReferenceTxInInlineDatumPresent()
-      .spendingReferenceTxInRedeemerValue("");
+      .txInInlineDatumPresent()
+      .txInRedeemerValue(mConStr1([]));
+
+    const userOutputAmount: Asset[] = [];
+    pushAsset(userOutputAmount, "lovelace", orderLovelace);
+
+    if (Number(orderType.constructor) === 0) {
+      const depositAmount = BigInt(orderType.fields[0].int);
+      const stAssetsToMint = (depositAmount * precisionFactor) / exchangeRate;
+
+      totalUnderlyingDelta += depositAmount;
+      totalStAssetsDelta += stAssetsToMint;
+
+      if (poolAssetUnit === "lovelace") {
+        userOutputAmount[0] = {
+          unit: "lovelace",
+          quantity: (orderLovelace - depositAmount).toString(),
+        };
+      } else {
+        pushAsset(userOutputAmount, poolAssetUnit, orderUnderlying - depositAmount);
+      }
+
+      pushAsset(userOutputAmount, poolStakeUnit, stAssetsToMint);
+    } else {
+      const stAmount = BigInt(orderType.fields[0].int);
+      const underlyingToReturn = (stAmount * exchangeRate) / precisionFactor;
+
+      totalUnderlyingDelta -= underlyingToReturn;
+      totalStAssetsDelta -= stAmount;
+
+      if (poolAssetUnit === "lovelace") {
+        userOutputAmount[0] = {
+          unit: "lovelace",
+          quantity: (orderLovelace + underlyingToReturn).toString(),
+        };
+      } else {
+        pushAsset(userOutputAmount, poolAssetUnit, underlyingToReturn);
+      }
+
+      pushAsset(userOutputAmount, poolStakeUnit, orderStake - stAmount);
+    }
+
+    userOutputs.push({ address: receiverAddress, amount: userOutputAmount });
   }
 
-  const BatchingRedeemer = mConStr0([
-    1,
-    mConStr0([mConStr0([]), alwaysSuccessMintValidatorHash, orderAssetName, 1_000_000]),
-  ]);
+  const updatedTotalStAssetsMinted = currentTotalStAssetsMinted + totalStAssetsDelta;
+  const updatedTotalUnderlying = currentTotalUnderlying + totalUnderlyingDelta;
 
-  const gsUtxo = (await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr))[0];
-
-  const poolAssetAmount = poolUtxo.output.amount.find((amt) => amt.unit === orderOptInUnit)
-    ?.quantity;
-  const updatedPoolAssetAmount = Number(poolAssetAmount ?? "0") + totalMintAmount;
-
-  const poolPlutusData = poolUtxo.output.plutusData;
-  if (!poolPlutusData) throw new Error("No plutus data");
-  const poolDatum = deserializeDatum<PoolDatumType>(poolPlutusData);
-  const updatedTotalStMinted = Number(poolDatum.fields[1].int) + totalMintAmount;
-  const updatedTotalUnderlying = Number(poolDatum.fields[2].int) + totalMintAmount;
-
-  const poolAsset = mConStr0([
-    mConStr0([]),
-    alwaysSuccessMintValidatorHash,
-    orderAssetName,
-    1_000_000,
-  ]);
-
-  const upatedPoolDatum = mConStr0([
-    mConStr1([BatchingHash]),
-    updatedTotalStMinted,
+  const updatedPoolDatum = buildPoolDatum(
+    scriptCredential(BatchingHash),
+    updatedTotalStAssetsMinted,
     updatedTotalUnderlying,
-    poolDatum.fields[3].int,
-    poolDatum.fields[4].int,
-    poolAsset,
+    exchangeRate,
+    totalRewardsAccrued,
+    poolAssetData,
     poolSAN,
-    mConStr1([]),
-  ]);
+    isProcessingOpen
+  );
 
-  if (!multiSigCbor) throw new Error("Multisig cbor undefined!");
+  const poolOutputAmount: Asset[] = [];
+  pushAsset(
+    poolOutputAmount,
+    "lovelace",
+    poolAssetUnit === "lovelace"
+      ? BigInt(MinPoolLovelace) + updatedTotalUnderlying
+      : BigInt(MinPoolLovelace)
+  );
+  pushAsset(poolOutputAmount, poolNft.unit, 1n);
+  if (poolAssetUnit !== "lovelace") {
+    pushAsset(poolOutputAmount, poolAssetUnit, updatedTotalUnderlying);
+  }
 
-  const unsignedTx1 = orderInputs
-    .withdrawalPlutusScriptV3()
-    .withdrawal(OrderValidatorRewardAddress, "0")
-    .withdrawalScript(OrderValidatorScript)
-    .withdrawalRedeemerValue(mConStr1([]))
+  builder = builder
     .spendingPlutusScriptV3()
     .txIn(
       poolUtxo.input.txHash,
@@ -184,72 +276,38 @@ export const batchingTx = async (
     .withdrawalPlutusScriptV3()
     .withdrawal(BatchingRewardAddress, "0")
     .withdrawalTxInReference(batchingScriptTxHash, batchingScriptTxIdx, undefined, BatchingHash)
-    .withdrawalRedeemerValue(BatchingRedeemer);
+    .withdrawalRedeemerValue(batchingRedeemer)
+    .mintPlutusScriptV3()
+    .mint(String(-selectedOrders.length), OrderValidatorHash, "")
+    .mintingScript(OrderValidatorScript)
+    .mintRedeemerValue(mConStr1([]));
 
-  const mintTx = unsignedTx1;
-
-  if (totalMintAmount !== 0) {
-    mintTx
+  if (totalStAssetsDelta !== 0n) {
+    builder = builder
       .mintPlutusScriptV3()
-      .mint(String(totalMintAmount), MintingHash, poolSAN)
+      .mint(totalStAssetsDelta.toString(), MintingHash, poolSAN)
       .mintingScript(MintingValidatorScript)
-      .mintRedeemerValue("");
+      .mintRedeemerValue(mConStr0([]));
   }
 
-  let orderOutputs = mintTx;
-  for (let i = 0; i < batchingOrderUtxos.length; i++) {
-    const orderUtxo = batchingOrderUtxos[i];
-
-    const orderLovelace = orderUtxo.output.amount.find((amt) => amt.unit === "lovelace");
-    const orderLovelaceAmount = orderLovelace!.quantity;
-
-    const orderPlutusData = orderUtxo.output.plutusData;
-    if (!orderPlutusData) throw new Error("No plutus data");
-    const orderDatum = deserializeDatum<OrderDatumType>(orderPlutusData);
-
-    let isOptIn = false;
-    if (Number(orderDatum.fields[0].constructor) === 0) isOptIn = true;
-
-    const orderReceiverAddr = serializeAddressObj(orderDatum.fields[1]);
-    const mintAmtDatum = Number(orderDatum.fields[0].fields[0].int);
-    const mintAmount = isOptIn ? mintAmtDatum : -1 * mintAmtDatum;
-
-    orderOutputs = orderOutputs.txOut(
-      orderReceiverAddr,
-      mintAmount > 0
-        ? [
-            { unit: "lovelace", quantity: orderLovelaceAmount },
-            { unit: orderOptOutUnit, quantity: String(mintAmount) },
-          ]
-        : [
-            { unit: "lovelace", quantity: orderLovelaceAmount },
-            { unit: orderOptInUnit, quantity: String(-1 * mintAmount) },
-          ]
-    );
+  for (const userOutput of userOutputs) {
+    builder = builder.txOut(userOutput.address, userOutput.amount);
   }
 
-  const unsignedTx = await unsignedTx1
+  const gsUtxo = (await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr))[0];
+
+  const unsignedTx = await builder
     .txOut(
       PoolValidatorAddr,
-      updatedPoolAssetAmount > 0
-        ? [
-            { unit: "lovelace", quantity: String(MinPoolLovelace) },
-            { unit: PoolValidatorHash + LavaPoolNftName, quantity: "1" },
-            { unit: orderOptInUnit, quantity: String(updatedPoolAssetAmount) },
-          ]
-        : [
-            { unit: "lovelace", quantity: String(MinPoolLovelace) },
-            { unit: PoolValidatorHash + LavaPoolNftName, quantity: "1" },
-          ]
+      poolOutputAmount
     )
-    .txOutInlineDatumValue(upatedPoolDatum)
+    .txOutInlineDatumValue(updatedPoolDatum)
     .readOnlyTxInReference(gsUtxo.input.txHash, gsUtxo.input.outputIndex)
     .txInCollateral(walletCollateral.input.txHash, walletCollateral.input.outputIndex)
     .setTotalCollateral("10000000")
     .requiredSignerHash(walletVK)
     .changeAddress(walletAddress)
     .selectUtxosFrom(walletUtxos)
-    .setFee(String(3766409 + 500000 * batchingOrderUtxos.length))
     .complete();
 
   const signedTx = await wallet.signTx(unsignedTx);

@@ -1,17 +1,17 @@
 import {
   applyParamsToScript,
-  builtinByteString,
   outputReference,
   resolveScriptHash,
   serializePlutusScript,
 } from "@meshsdk/core";
 import { setupE2e } from "../setup";
 
-const { blueprint, multisigHash } = setupE2e();
+const { blueprint, NETWORK_ID } = setupE2e();
+const networkId = NETWORK_ID as 0 | 1;
 
 const gsParamTxHash =
-  "eacb3b737d595e749e50b5d5e5aa5059dd60eb4c4403d46c1af203819be88913";
-const gsParamTxIdx = 0;
+  "9d225cd31ee8b47b9782a2b1a9308a02d129f919e562dd492d4accb5b25311ab";
+const gsParamTxIdx = 4;
 
 const GlobalSettingsValidator = blueprint.validators.filter((v: any) =>
   v.title.includes("global_settings.global_settings.spend")
@@ -19,14 +19,20 @@ const GlobalSettingsValidator = blueprint.validators.filter((v: any) =>
 
 const GlobalSettingsValidatorScript = applyParamsToScript(
   GlobalSettingsValidator[0].compiledCode,
-  [builtinByteString(multisigHash), outputReference(gsParamTxHash, gsParamTxIdx)],
+  [outputReference(gsParamTxHash, gsParamTxIdx)],
   "JSON"
 );
 
 const GlobalSettingsHash = resolveScriptHash(GlobalSettingsValidatorScript, "V3");
 
 const GlobalSettingsAddr = serializePlutusScript(
-  { code: GlobalSettingsValidatorScript, version: "V3" }
+  {
+    code: GlobalSettingsValidatorScript,
+    version: "V3",
+  },
+  undefined,
+  networkId,
+  undefined,
 ).address;
 
 export {

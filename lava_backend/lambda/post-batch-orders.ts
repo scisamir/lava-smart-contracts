@@ -3,8 +3,10 @@ import { MaestroProvider, MeshTxBuilder } from '@meshsdk/core';
 import { batchingTxTest } from './e2e/batching/batchingTest';
 import { batchingTxStrike } from './e2e/batching/batchingStrike';
 import { batchingTxPulse } from './e2e/batching/batchingPulse';
+import { batchingTx } from './e2e/batching/batching';
+import { setupE2e } from './e2e/setup';
 
-type BatchType = 'test' | 'tStrike' | 'tPulse';
+type BatchType = 'test' | 'tStrike' | 'tPulse' | 'atrium';
 
 export const handler = async (
   event: APIGatewayProxyEvent
@@ -13,7 +15,7 @@ export const handler = async (
     const body = event.body ? JSON.parse(event.body) : {};
     const batchType = body?.batchType as BatchType;
 
-    if (!batchType || !['test', 'tStrike', 'tPulse'].includes(batchType)) {
+    if (!batchType || !['test', 'tStrike', 'tPulse', 'atrium'].includes(batchType)) {
       return {
         statusCode: 400,
         headers: {
@@ -42,7 +44,7 @@ export const handler = async (
     process.env.NEXT_PUBLIC_WALLET_PASSPHRASE_ONE = batcherWalletPassphrase;
 
     const blockchainProvider = new MaestroProvider({
-      network: 'Preprod',
+      network: 'Mainnet',
       apiKey: maestroKey,
     });
 
@@ -52,14 +54,18 @@ export const handler = async (
       evaluator: blockchainProvider,
       verbose: true,
     });
-    txBuilder.setNetwork('preprod');
+    txBuilder.setNetwork('mainnet');
+
+    const { ATRIUM_POOL_STAKE_ASSET_NAME } = setupE2e();
 
     const txHash =
       batchType === 'test'
         ? await batchingTxTest(blockchainProvider, txBuilder)
         : batchType === 'tStrike'
         ? await batchingTxStrike(blockchainProvider, txBuilder)
-        : await batchingTxPulse(blockchainProvider, txBuilder);
+        : batchType === 'tPulse'
+        ? await batchingTxPulse(blockchainProvider, txBuilder)
+        : await batchingTx(blockchainProvider, txBuilder, ATRIUM_POOL_STAKE_ASSET_NAME);
 
     return {
       statusCode: 200,

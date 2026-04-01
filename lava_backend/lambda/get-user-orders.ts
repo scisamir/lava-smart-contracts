@@ -2,19 +2,11 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import {
   deserializeDatum,
   serializeAddressObj,
-  stringToHex,
 } from '@meshsdk/core';
 import { MaestroProvider } from '@meshsdk/core';
 import { setupE2e } from './e2e/setup';
 import { OrderDatumType } from './e2e/types';
 import { OrderValidatorAddr } from './e2e/order/validator';
-import { MintingHash } from './e2e/mint/validator';
-
-const TOKEN_PAIRS = [
-  { base: 'test', derivative: 'stTest' },
-  { base: 'tStrike', derivative: 'LStrike' },
-  { base: 'tPulse', derivative: 'LPulse' },
-];
 
 type UserOrder = {
   amount: number;
@@ -47,11 +39,17 @@ export const handler = async (
     }
 
     const provider = new MaestroProvider({
-      network: 'Preprod',
+      network: 'Mainnet',
       apiKey: maestroKey,
     });
 
-    const { alwaysSuccessMintValidatorHash } = setupE2e();
+    const {
+      NETWORK_ID,
+      poolStakeAssetName,
+      tStrikePoolStakeAssetName,
+      tPulsePoolStakeAssetName,
+      ATRIUM_POOL_STAKE_ASSET_NAME,
+    } = setupE2e();
     const orderUtxos = await provider.fetchAddressUTxOs(OrderValidatorAddr);
 
     const userOrders: UserOrder[] = [];
@@ -63,7 +61,7 @@ export const handler = async (
       }
 
       const orderDatum = deserializeDatum<OrderDatumType>(orderPlutusData);
-      const orderReceiverAddr = serializeAddressObj(orderDatum.fields[1]);
+      const orderReceiverAddr = serializeAddressObj(orderDatum.fields[1], NETWORK_ID as 0 | 1);
 
       if (orderReceiverAddr !== address) {
         return;
@@ -71,40 +69,16 @@ export const handler = async (
 
       const isOptIn = Number(orderDatum.fields[0].constructor) === 0;
 
+      const poolSAN = orderDatum.fields[3].bytes;
       let tokenName = '';
-      const utxoAmount = utxo.output.amount;
-
-      for (let i = 0; i < utxoAmount.length; i++) {
-        const utxoAsset = utxoAmount[i];
-
-        if (
-          utxoAsset.unit ===
-          alwaysSuccessMintValidatorHash + stringToHex(TOKEN_PAIRS[0].base)
-        ) {
-          tokenName = TOKEN_PAIRS[0].base;
-        } else if (
-          utxoAsset.unit === MintingHash + stringToHex(TOKEN_PAIRS[0].derivative)
-        ) {
-          tokenName = TOKEN_PAIRS[0].derivative;
-        } else if (
-          utxoAsset.unit ===
-          alwaysSuccessMintValidatorHash + stringToHex(TOKEN_PAIRS[1].base)
-        ) {
-          tokenName = TOKEN_PAIRS[1].base;
-        } else if (
-          utxoAsset.unit === MintingHash + stringToHex(TOKEN_PAIRS[1].derivative)
-        ) {
-          tokenName = TOKEN_PAIRS[1].derivative;
-        } else if (
-          utxoAsset.unit ===
-          alwaysSuccessMintValidatorHash + stringToHex(TOKEN_PAIRS[2].base)
-        ) {
-          tokenName = TOKEN_PAIRS[2].base;
-        } else if (
-          utxoAsset.unit === MintingHash + stringToHex(TOKEN_PAIRS[2].derivative)
-        ) {
-          tokenName = TOKEN_PAIRS[2].derivative;
-        }
+      if (poolSAN === poolStakeAssetName) {
+        tokenName = isOptIn ? 'test' : 'stTest';
+      } else if (poolSAN === tStrikePoolStakeAssetName) {
+        tokenName = isOptIn ? 'tStrike' : 'LStrike';
+      } else if (poolSAN === tPulsePoolStakeAssetName) {
+        tokenName = isOptIn ? 'tPulse' : 'LPulse';
+      } else if (poolSAN === ATRIUM_POOL_STAKE_ASSET_NAME) {
+        tokenName = isOptIn ? 'ADA' : 'LADA';
       }
 
       userOrders.push({

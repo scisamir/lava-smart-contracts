@@ -11,7 +11,7 @@ export const BatchOrders = ({ totalOrder }: any) => {
       Success!  
       <br />
       <a
-        href={`https://preprod.cardanoscan.io/transaction/${txHash}`} 
+        href={`https://cardanoscan.io/transaction/${txHash}`} 
         target="_blank"
         rel="noopener noreferrer"
         style={{ color: "#61dafb", textDecoration: "underline" }}

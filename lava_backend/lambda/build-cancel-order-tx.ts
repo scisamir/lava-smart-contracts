@@ -1,9 +1,19 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { MaestroProvider, mConStr0, MeshTxBuilder, UTxO } from '@meshsdk/core';
 import {
-  OrderValidatorRewardAddress,
+  deserializeDatum,
+  MaestroProvider,
+  mConStr0,
+  mConStr1,
+  MeshTxBuilder,
+  serializeAddressObj,
+  UTxO,
+} from '@meshsdk/core';
+import {
+  OrderValidatorHash,
   OrderValidatorScript,
 } from './e2e/order/validator';
+import { OrderDatumType } from './e2e/types';
+import { setupE2e } from './e2e/setup';
 
 export const handler = async (
   event: APIGatewayProxyEvent
@@ -38,7 +48,7 @@ export const handler = async (
     }
 
     const provider = new MaestroProvider({
-      network: 'Preprod',
+      network: 'Mainnet',
       apiKey: maestroKey,
     });
 
@@ -48,7 +58,9 @@ export const handler = async (
       evaluator: provider,
       verbose: true,
     });
-    txBuilder.setNetwork('preprod');
+    txBuilder.setNetwork('mainnet');
+
+    const { NETWORK_ID } = setupE2e();
 
     const orderUtxos = await provider.fetchUTxOs(orderTxHash, 0);
     const orderUtxo = orderUtxos[0];
@@ -64,6 +76,17 @@ export const handler = async (
       };
     }
 
+    const orderPlutusData = orderUtxo.output.plutusData;
+    if (!orderPlutusData) {
+      throw new Error('Order datum not found');
+    }
+
+    const orderDatum = deserializeDatum<OrderDatumType>(orderPlutusData);
+    const receiverAddress = serializeAddressObj(orderDatum.fields[1], NETWORK_ID as 0 | 1);
+    const outputAmount = orderUtxo.output.amount.filter(
+      (asset) => asset.unit !== OrderValidatorHash
+    );
+
     const unsignedTx = await txBuilder
       .spendingPlutusScriptV3()
       .txIn(
@@ -73,13 +96,13 @@ export const handler = async (
         orderUtxo.output.address
       )
       .txInScript(OrderValidatorScript)
-      .spendingReferenceTxInInlineDatumPresent()
-      .spendingReferenceTxInRedeemerValue('')
-      .withdrawalPlutusScriptV3()
-      .withdrawal(OrderValidatorRewardAddress, '0')
-      .withdrawalScript(OrderValidatorScript)
-      .withdrawalRedeemerValue(mConStr0([]))
-      .txOut(walletAddress, orderUtxo.output.amount)
+      .txInInlineDatumPresent()
+      .txInRedeemerValue(mConStr0([]))
+      .mintPlutusScriptV3()
+      .mint('-1', OrderValidatorHash, '')
+      .mintingScript(OrderValidatorScript)
+      .mintRedeemerValue(mConStr1([]))
+      .txOut(receiverAddress, outputAmount)
       .txInCollateral(
         walletCollateral.input.txHash,
         walletCollateral.input.outputIndex

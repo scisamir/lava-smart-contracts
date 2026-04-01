@@ -35,10 +35,15 @@ const Cluster = ({ left, right, top, bottom, rotate = 0 }: { left?: number; righ
 };
 
 export const StakingCard = () => {
+  const DEFAULT_TOKEN_PAIR: TokenPair = TOKEN_PAIRS[0] ?? {
+    base: "ADA",
+    derivative: "LADA",
+  };
+
   const [amount, setAmount] = useState<string>("0.00");
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isSwapped, setIsSwapped] = useState<boolean>(false);
-  const [selectedToken, setSelectedToken] = useState<TokenPair>(TOKEN_PAIRS[1]);
+  const [selectedToken, setSelectedToken] = useState<TokenPair>(DEFAULT_TOKEN_PAIR);
   const [isTokenMenuOpen, setIsTokenMenuOpen] = useState<boolean>(false);
   const [tokenMenuStyle, setTokenMenuStyle] = useState<{
     top: number;
@@ -81,6 +86,26 @@ export const StakingCard = () => {
     });
 
     return uniquePairs;
+  })();
+
+  const selectedVault = (poolInfo ?? []).find(
+    (vault) =>
+      vault?.tokenPair?.base === selectedToken.base &&
+      vault?.tokenPair?.derivative === selectedToken.derivative
+  );
+
+  const selectedPoolStakeAssetNameHex =
+    selectedVault?.poolStakeAssetNameHex ||
+    selectedVault?.tokenDetails?.derivative?.assetNameHex ||
+    "";
+
+  const selectedUnderlyingUnit = (() => {
+    const policyId = selectedVault?.tokenDetails?.base?.policyId ?? "";
+    const assetNameHex = selectedVault?.tokenDetails?.base?.assetNameHex ?? "";
+    if (!policyId && !assetNameHex) {
+      return "lovelace";
+    }
+    return `${policyId}${assetNameHex}`;
   })();
 
   useEffect(() => {
@@ -175,7 +200,7 @@ export const StakingCard = () => {
         Success!
         <br />
         <a
-          href={`https://preprod.cardanoscan.io/transaction/${txHash}`}
+          href={`https://cardanoscan.io/transaction/${txHash}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#61dafb", textDecoration: "underline" }}
@@ -204,6 +229,8 @@ export const StakingCard = () => {
           orderType: "opt-in",
           amount,
           tokenName,
+          poolStakeAssetName: selectedPoolStakeAssetNameHex,
+          underlyingUnit: selectedUnderlyingUnit,
           walletAddress,
           walletVK,
           walletSK,
@@ -248,6 +275,8 @@ export const StakingCard = () => {
           orderType: "redeem",
           amount,
           tokenName,
+          poolStakeAssetName: selectedPoolStakeAssetNameHex,
+          underlyingUnit: selectedUnderlyingUnit,
           walletAddress,
           walletVK,
           walletSK,

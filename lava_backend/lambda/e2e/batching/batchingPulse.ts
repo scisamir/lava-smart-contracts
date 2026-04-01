@@ -2,25 +2,11 @@ import { MeshTxBuilder } from "@meshsdk/core";
 import { BlockchainProviderType } from "../types";
 import { batchingTx } from "./batching";
 import { setupE2e } from "../setup";
-import { MintingHash } from "../mint/validator";
 
 export const batchingTxPulse = async (
   blockchainProvider: BlockchainProviderType,
   txBuilder: MeshTxBuilder
 ) => {
-  const { tPulseUnit, tPulsePoolStakeAssetName, tPulseAssetName } = setupE2e();
-
-  const poolSAN = tPulsePoolStakeAssetName;
-  const orderOptInUnit = tPulseUnit;
-  const orderOptOutUnit = MintingHash + poolSAN;
-  const orderAssetName = tPulseAssetName;
-
-  return batchingTx(
-    blockchainProvider,
-    txBuilder,
-    poolSAN,
-    orderAssetName,
-    orderOptInUnit,
-    orderOptOutUnit
-  );
+  const { tPulsePoolStakeAssetName } = setupE2e();
+  return batchingTx(blockchainProvider, txBuilder, tPulsePoolStakeAssetName);
 };

@@ -3,65 +3,50 @@ import {
   MaestroProvider,
   MeshTxBuilder,
   deserializeDatum,
-  stringToHex,
 } from '@meshsdk/core';
 import { batchingTxTest } from './e2e/batching/batchingTest';
 import { batchingTxStrike } from './e2e/batching/batchingStrike';
 import { batchingTxPulse } from './e2e/batching/batchingPulse';
+import { batchingTx } from './e2e/batching/batching';
 import { OrderValidatorAddr } from './e2e/order/validator';
 import { setupE2e } from './e2e/setup';
-import { MintingHash } from './e2e/mint/validator';
 import { OrderDatumType } from './e2e/types';
 
-type BatchType = 'test' | 'tStrike' | 'tPulse';
+type BatchType = 'test' | 'tStrike' | 'tPulse' | 'atrium';
 
 type PendingCounts = {
   test: number;
   tStrike: number;
   tPulse: number;
+  atrium: number;
 };
 
 const getPendingCounts = async (maestro: MaestroProvider): Promise<PendingCounts> => {
   const orderUtxos = await maestro.fetchAddressUTxOs(OrderValidatorAddr);
-  const { alwaysSuccessMintValidatorHash } = setupE2e();
+  const {
+    poolStakeAssetName,
+    tStrikePoolStakeAssetName,
+    tPulsePoolStakeAssetName,
+    ATRIUM_POOL_STAKE_ASSET_NAME,
+  } = setupE2e();
 
-  const totalOrders: PendingCounts = { test: 0, tStrike: 0, tPulse: 0 };
+  const totalOrders: PendingCounts = { test: 0, tStrike: 0, tPulse: 0, atrium: 0 };
 
   orderUtxos.forEach((utxo) => {
     const orderPlutusData = utxo.output.plutusData;
     if (!orderPlutusData) return;
 
     const orderDatum = deserializeDatum<OrderDatumType>(orderPlutusData);
-    const mintAmtDatum = Number(orderDatum.fields[0].fields[0].int);
-    if (mintAmtDatum <= 0) return;
+    const poolSAN = orderDatum.fields[3].bytes;
 
-    const utxoAmount = utxo.output.amount;
-    for (let i = 0; i < utxoAmount.length; i++) {
-      const utxoAsset = utxoAmount[i];
-
-      if (
-        utxoAsset.unit === alwaysSuccessMintValidatorHash + stringToHex('test') ||
-        utxoAsset.unit === MintingHash + stringToHex('stTest')
-      ) {
-        totalOrders.test += 1;
-        break;
-      }
-
-      if (
-        utxoAsset.unit === alwaysSuccessMintValidatorHash + stringToHex('tStrike') ||
-        utxoAsset.unit === MintingHash + stringToHex('LStrike')
-      ) {
-        totalOrders.tStrike += 1;
-        break;
-      }
-
-      if (
-        utxoAsset.unit === alwaysSuccessMintValidatorHash + stringToHex('tPulse') ||
-        utxoAsset.unit === MintingHash + stringToHex('LPulse')
-      ) {
-        totalOrders.tPulse += 1;
-        break;
-      }
+    if (poolSAN === poolStakeAssetName) {
+      totalOrders.test += 1;
+    } else if (poolSAN === tStrikePoolStakeAssetName) {
+      totalOrders.tStrike += 1;
+    } else if (poolSAN === tPulsePoolStakeAssetName) {
+      totalOrders.tPulse += 1;
+    } else if (poolSAN === ATRIUM_POOL_STAKE_ASSET_NAME) {
+      totalOrders.atrium += 1;
     }
   });
 
@@ -73,6 +58,8 @@ const runBatch = async (
   blockchainProvider: MaestroProvider,
   txBuilder: MeshTxBuilder
 ): Promise<string> => {
+  const { ATRIUM_POOL_STAKE_ASSET_NAME } = setupE2e();
+
   if (batchType === 'test') {
     return batchingTxTest(blockchainProvider, txBuilder);
   }
@@ -81,7 +68,11 @@ const runBatch = async (
     return batchingTxStrike(blockchainProvider, txBuilder);
   }
 
-  return batchingTxPulse(blockchainProvider, txBuilder);
+  if (batchType === 'tPulse') {
+    return batchingTxPulse(blockchainProvider, txBuilder);
+  }
+
+  return batchingTx(blockchainProvider, txBuilder, ATRIUM_POOL_STAKE_ASSET_NAME);
 };
 
 export const handler = async (_event: ScheduledEvent) => {
@@ -100,7 +91,7 @@ export const handler = async (_event: ScheduledEvent) => {
   process.env.NEXT_PUBLIC_WALLET_PASSPHRASE_ONE = batcherWalletPassphrase;
 
   const blockchainProvider = new MaestroProvider({
-    network: 'Preprod',
+    network: 'Mainnet',
     apiKey: maestroKey,
   });
 
@@ -110,6 +101,7 @@ export const handler = async (_event: ScheduledEvent) => {
   if (pending.test > 0) queue.push('test');
   if (pending.tStrike > 0) queue.push('tStrike');
   if (pending.tPulse > 0) queue.push('tPulse');
+  if (pending.atrium > 0) queue.push('atrium');
 
   if (queue.length === 0) {
     console.log('Auto batch skipped: no pending orders', pending);
@@ -130,7 +122,7 @@ export const handler = async (_event: ScheduledEvent) => {
         evaluator: blockchainProvider,
         verbose: true,
       });
-      txBuilder.setNetwork('preprod');
+      txBuilder.setNetwork('mainnet');
 
       const txHash = await runBatch(batchType, blockchainProvider, txBuilder);
       results.push({ batchType, txHash });

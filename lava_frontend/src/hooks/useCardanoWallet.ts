@@ -67,6 +67,8 @@ const fetchVaults = async (): Promise<BackendVault[]> => {
     stStake: String(vault.stStake ?? "0"),
     staked: String(vault.staked ?? "0"),
     tokenPair: vault.tokenPair ?? { base: "", derivative: "" },
+    tokenDetails: vault.tokenDetails ?? null,
+    poolStakeAssetNameHex: String(vault.poolStakeAssetNameHex ?? ""),
   }));
 };
 
@@ -177,7 +179,7 @@ function useCardanoWalletState() {
     }
 
     const bp = new MaestroProvider({
-      network: "Preprod",
+      network: "Mainnet",
       apiKey: maestroKey,
     });
 
@@ -187,7 +189,7 @@ function useCardanoWalletState() {
       evaluator: bp,
       verbose: true,
     });
-    tb.setNetwork("preprod");
+    tb.setNetwork("mainnet");
 
     setTxBuilder(tb);
     setBlockchainProvider(bp);
