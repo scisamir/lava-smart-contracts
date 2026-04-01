@@ -1,0 +1,49 @@
+{
+  "name": "lava-e2e-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "predev": "node scripts/sync-latest-e2e-assets.cjs",
+    "dev": "next dev",
+    "prebuild": "node scripts/sync-latest-e2e-assets.cjs",
+    "build": "next build",
+    "postbuild": "node scripts/sync-next-vendor-chunks.cjs",
+    "prestart": "node scripts/sync-latest-e2e-assets.cjs && node scripts/sync-next-vendor-chunks.cjs",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "browserslist": {
+    "production": [
+      "chrome >= 111",
+      "edge >= 111",
+      "firefox >= 115",
+      "safari >= 16.4"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "dependencies": {
+    "@meshsdk/core": "^1.9.0-beta.87",
+    "@meshsdk/core-csl": "^1.9.0-beta.87",
+    "@meshsdk/react": "^1.9.0-beta.87",
+    "@meshsdk/wallet": "^1.9.0-beta.87",
+    "dotenv": "^17.2.3",
+    "next": "^14.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.0.0",
+    "typescript": "^5.8.3"
+  }
+}

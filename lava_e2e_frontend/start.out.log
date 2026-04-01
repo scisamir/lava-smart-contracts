@@ -1,0 +1,8 @@
+
+> lava-e2e-frontend@0.1.0 prestart
+> node scripts/sync-next-vendor-chunks.cjs
+
+
+> lava-e2e-frontend@0.1.0 start
+> next start -p 3010 -H 127.0.0.1
+

@@ -1,0 +1,16 @@
+.env
+.env.local
+.env.development
+.env.production
+.env.preview
+.env.test
+edge-profile
+dev-live.err.log
+dev-live.out.log
+dev-live.pid
+dev.err.log
+dev.out.log
+start.err.log
+start.out.log
+edge-dom.err.txt
+edge-dom.txt
