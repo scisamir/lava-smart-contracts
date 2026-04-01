@@ -12,8 +12,14 @@ import {
   outputReference,
 } from '@meshsdk/core';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  DeleteCommand,
+  DynamoDBDocumentClient,
+  PutCommand,
+  ScanCommand,
+} from '@aws-sdk/lib-dynamodb';
 import blueprint from '../plutus.json';
+import { setupE2e } from './e2e/setup';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -119,6 +125,8 @@ const loadTokenRegistry = async (tableName: string) => {
 
 export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: number; body: string }> => {
   try {
+    const { ATRIUM_POOL_STAKE_ASSET_NAME } = setupE2e();
+
     const maestroApiKey = process.env.MAESTRO_API_KEY;
     const tableName = process.env.TABLE_NAME;
 
@@ -130,7 +138,7 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
     }
 
     const maestro = new MaestroProvider({
-      network: 'Preprod',
+      network: 'Mainnet',
       apiKey: maestroApiKey,
     });
 
@@ -139,6 +147,7 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
 
     const nowIso = new Date().toISOString();
     let syncedCount = 0;
+    const seenVaultPks = new Set<string>();
 
     for (const utxo of utxos) {
       if (!utxo.output.plutusData) {
@@ -148,15 +157,27 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
       const poolDatum = deserializeDatum<PoolDatumType>(utxo.output.plutusData);
 
       const derivativeSymbol = hexToString(poolDatum.fields[6].bytes);
+      const poolStakeAssetNameHex = String(poolDatum.fields[6].bytes ?? '');
+
+      if (poolStakeAssetNameHex !== ATRIUM_POOL_STAKE_ASSET_NAME) {
+        continue;
+      }
+
       const isPoolOpen = poolDatum.fields[7].constructor === 1;
       const totalUnderlying = Number(poolDatum.fields[2].int);
       const totalStAssetsMinted = Number(poolDatum.fields[1].int);
+      const underlyingPolicyId = String(poolDatum.fields[5].fields[1].bytes ?? '');
+      const underlyingAssetNameHex = String(poolDatum.fields[5].fields[2].bytes ?? '');
+      const isUnderlyingAda = underlyingPolicyId === '' && underlyingAssetNameHex === '';
 
       const tokenMeta = tokenRegistry.get(derivativeSymbol);
-      const baseSymbol = tokenMeta?.underlyingSymbol ?? '';
+      const baseSymbol = tokenMeta?.underlyingSymbol ?? (isUnderlyingAda ? 'ADA' : '');
+
+      const vaultPk = `VAULT#${derivativeSymbol}`;
+      seenVaultPks.add(vaultPk);
 
       const vaultItem = {
-        pk: `VAULT#${derivativeSymbol}`,
+        pk: vaultPk,
         sk: 'SNAPSHOT',
         entityType: 'VAULT_SNAPSHOT',
         name: derivativeSymbol,
@@ -170,6 +191,7 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
           base: baseSymbol,
           derivative: derivativeSymbol,
         },
+        poolStakeAssetNameHex,
         tokenDetails: {
           derivative: {
             symbol: derivativeSymbol,
@@ -205,6 +227,33 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
       );
 
       syncedCount++;
+    }
+
+    const existingSnapshots = await ddb.send(
+      new ScanCommand({
+        TableName: tableName,
+        FilterExpression: '#entityType = :entityType',
+        ExpressionAttributeNames: { '#entityType': 'entityType' },
+        ExpressionAttributeValues: { ':entityType': 'VAULT_SNAPSHOT' },
+      })
+    );
+
+    const staleItems = (existingSnapshots.Items ?? []).filter((item) => {
+      const pk = String(item.pk ?? '');
+      const sk = String(item.sk ?? '');
+      return pk.startsWith('VAULT#') && sk === 'SNAPSHOT' && !seenVaultPks.has(pk);
+    });
+
+    for (const staleItem of staleItems) {
+      await ddb.send(
+        new DeleteCommand({
+          TableName: tableName,
+          Key: {
+            pk: staleItem.pk,
+            sk: staleItem.sk,
+          },
+        })
+      );
     }
 
     return {

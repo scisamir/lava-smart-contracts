@@ -1,6 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { setupE2e } from './e2e/setup';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -19,6 +20,25 @@ type VaultSnapshotItem = {
     base?: string;
     derivative?: string;
   };
+  tokenDetails?: {
+    derivative?: {
+      symbol?: string;
+      displayName?: string;
+      policyId?: string;
+      assetNameHex?: string;
+      decimals?: number;
+      logo?: string;
+    };
+    base?: {
+      symbol?: string;
+      displayName?: string;
+      policyId?: string;
+      assetNameHex?: string;
+      decimals?: number;
+      logo?: string;
+    };
+  };
+  poolStakeAssetNameHex?: string;
   updatedAt?: string;
 };
 
@@ -26,6 +46,8 @@ export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
+    const { ATRIUM_POOL_STAKE_ASSET_NAME } = setupE2e();
+
     const tableName = process.env.TABLE_NAME;
     if (!tableName) {
       throw new Error('TABLE_NAME is not configured');
@@ -45,6 +67,11 @@ export const handler = async (
     );
 
     const vaults = ((scanResult.Items ?? []) as VaultSnapshotItem[])
+      .filter((item) => {
+        const poolStakeAssetNameHex =
+          item.poolStakeAssetNameHex ?? item.tokenDetails?.derivative?.assetNameHex ?? '';
+        return poolStakeAssetNameHex === ATRIUM_POOL_STAKE_ASSET_NAME;
+      })
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((item) => ({
         name: item.name,
@@ -58,6 +85,11 @@ export const handler = async (
           base: item.tokenPair?.base ?? '',
           derivative: item.tokenPair?.derivative ?? item.name,
         },
+        tokenDetails: item.tokenDetails ?? null,
+        poolStakeAssetNameHex:
+          item.poolStakeAssetNameHex ??
+          item.tokenDetails?.derivative?.assetNameHex ??
+          '',
         updatedAt: item.updatedAt ?? null,
       }));
 

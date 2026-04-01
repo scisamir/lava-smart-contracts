@@ -1,14 +1,9 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { MaestroProvider, UTxO, stringToHex } from '@meshsdk/core';
+import { MaestroProvider, UTxO } from '@meshsdk/core';
+import { setupE2e } from './e2e/setup';
+import { MintingHash } from './e2e/mint/validator';
 
-const getTokenBalance = (
-  utxos: UTxO[],
-  policyId: string,
-  assetName: string
-): number => {
-  const assetHex = stringToHex(assetName);
-  const unit = policyId + assetHex;
-
+const getAssetBalanceByUnit = (utxos: UTxO[], unit: string): number => {
   let total = 0;
 
   utxos.forEach((utxo) => {
@@ -36,7 +31,7 @@ export const handler = async (
     }
 
     const maestro = new MaestroProvider({
-      network: 'Preprod',
+      network: 'Mainnet',
       apiKey: process.env.MAESTRO_API_KEY!,
     });
 
@@ -54,49 +49,13 @@ export const handler = async (
 
     adaBalance /= 1_000_000;
 
-    const test = getTokenBalance(
-      utxos,
-      "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea",
-      "test"
-    );
-
-    const stTest = getTokenBalance(
-      utxos,
-      "9c1dd9791eba86728634ec4d1531ff3f7ace179c3f8b1e75bfbf1906",
-      "stTest"
-    );
-
-    const tStrike = getTokenBalance(
-      utxos,
-      "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea",
-      "tStrike"
-    );
-
-    const LStrike = getTokenBalance(
-      utxos,
-      "9c1dd9791eba86728634ec4d1531ff3f7ace179c3f8b1e75bfbf1906",
-      "LStrike"
-    );
-
-    const tPulse = getTokenBalance(
-      utxos,
-      "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea",
-      "tPulse"
-    );
-
-    const LPulse = getTokenBalance(
-      utxos,
-      "9c1dd9791eba86728634ec4d1531ff3f7ace179c3f8b1e75bfbf1906",
-      "LPulse"
-    );
+    const { ATRIUM_POOL_STAKE_ASSET_NAME } = setupE2e();
+    const atriumStakeUnit = MintingHash + ATRIUM_POOL_STAKE_ASSET_NAME;
+    const LADA = getAssetBalanceByUnit(utxos, atriumStakeUnit);
 
     const tokenBalances = {
-      test,
-      stTest,
-      tStrike,
-      LStrike,
-      tPulse,
-      LPulse,
+      ADA: adaBalance,
+      LADA,
     };
 
     const collateral =

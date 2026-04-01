@@ -1,18 +1,89 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import {
+  Asset,
+  deserializeDatum,
   mConStr0,
-  mConStr1,
   mPubKeyAddress,
   MaestroProvider,
   MeshTxBuilder,
-  stringToHex,
   UTxO,
 } from '@meshsdk/core';
 import { setupE2e } from './e2e/setup';
-import { OrderValidatorAddr } from './e2e/order/validator';
+import {
+  optInOrderType,
+  orderDatum,
+  redeemOrderType,
+  verificationKeySigner,
+} from './e2e/data';
+import {
+  OrderValidatorAddr,
+  OrderValidatorHash,
+  OrderValidatorScript,
+} from './e2e/order/validator';
 import { MintingHash } from './e2e/mint/validator';
+import { GlobalSettingsAddr } from './e2e/global_settings/validator';
+import { PoolValidatorAddr } from './e2e/pool/validator';
+import { PoolDatumType } from './e2e/types';
 
 type OrderKind = 'opt-in' | 'redeem';
+
+const resolvePoolConfig = (tokenName: string) => {
+  const {
+    testUnit,
+    poolStakeAssetName,
+    tStrikeUnit,
+    tStrikePoolStakeAssetName,
+    tPulseUnit,
+    tPulsePoolStakeAssetName,
+    ATRIUM_POOL_STAKE_ASSET_NAME,
+  } = setupE2e();
+
+  if (['test', 'stTest'].includes(tokenName)) {
+    return { poolStakeAssetName, underlyingUnit: testUnit };
+  }
+  if (['tStrike', 'LStrike'].includes(tokenName)) {
+    return { poolStakeAssetName: tStrikePoolStakeAssetName, underlyingUnit: tStrikeUnit };
+  }
+  if (['tPulse', 'LPulse'].includes(tokenName)) {
+    return { poolStakeAssetName: tPulsePoolStakeAssetName, underlyingUnit: tPulseUnit };
+  }
+  if (['ADA', 'LADA', 'atrium'].includes(tokenName)) {
+    return { poolStakeAssetName: ATRIUM_POOL_STAKE_ASSET_NAME, underlyingUnit: 'lovelace' };
+  }
+
+  return null;
+};
+
+const resolveUnderlyingUnitFromPool = async (
+  provider: MaestroProvider,
+  poolStakeAssetName: string
+) => {
+  const poolUtxos = await provider.fetchAddressUTxOs(PoolValidatorAddr);
+
+  for (const utxo of poolUtxos) {
+    const plutusData = utxo.output.plutusData;
+    if (!plutusData) continue;
+
+    const poolDatum = deserializeDatum<PoolDatumType>(plutusData);
+    const datumPoolSan = String(poolDatum.fields[6].bytes ?? '');
+
+    if (datumPoolSan !== poolStakeAssetName) {
+      continue;
+    }
+
+    const assetField = poolDatum.fields[5];
+    const policyId = String(assetField.fields[1].bytes ?? '');
+    const assetName = String(assetField.fields[2].bytes ?? '');
+
+    if (!policyId && !assetName) {
+      return 'lovelace';
+    }
+
+    return `${policyId}${assetName}`;
+  }
+
+  throw new Error(`Pool config not found for pool SAN ${poolStakeAssetName}`);
+};
 
 export const handler = async (
   event: APIGatewayProxyEvent
@@ -27,6 +98,9 @@ export const handler = async (
     const walletVK = String(body?.walletVK ?? '');
     const walletSK = String(body?.walletSK ?? '');
     const walletUtxos = (body?.walletUtxos ?? []) as UTxO[];
+    const requestedPoolStakeAssetName = String(body?.poolStakeAssetName ?? '');
+    const requestedUnderlyingUnit = String(body?.underlyingUnit ?? '');
+    const walletCollateral = (body?.walletCollateral ?? null) as UTxO | null;
 
     if (!orderType || !['opt-in', 'redeem'].includes(orderType)) {
       return {
@@ -61,7 +135,7 @@ export const handler = async (
     }
 
     const provider = new MaestroProvider({
-      network: 'Preprod',
+      network: 'Mainnet',
       apiKey: maestroKey,
     });
 
@@ -71,27 +145,70 @@ export const handler = async (
       evaluator: provider,
       verbose: true,
     });
-    txBuilder.setNetwork('preprod');
+    txBuilder.setNetwork('mainnet');
 
-    const { alwaysSuccessMintValidatorHash } = setupE2e();
+    const defaultConfig = resolvePoolConfig(tokenName);
+    const poolStakeAssetName = requestedPoolStakeAssetName || defaultConfig?.poolStakeAssetName;
 
-    const tokenUnit =
-      orderType === 'opt-in'
-        ? alwaysSuccessMintValidatorHash + stringToHex(tokenName)
-        : MintingHash + stringToHex(tokenName);
+    let underlyingUnit = requestedUnderlyingUnit || defaultConfig?.underlyingUnit;
+    if (!underlyingUnit && poolStakeAssetName) {
+      underlyingUnit = await resolveUnderlyingUnitFromPool(provider, poolStakeAssetName);
+    }
 
-    const orderDatum = mConStr0([
-      orderType === 'opt-in' ? mConStr0([amount]) : mConStr1([amount]),
+    if (!poolStakeAssetName || !underlyingUnit) {
+      throw new Error('Unable to resolve pool configuration from tokenName');
+    }
+
+    const orderValue: Asset[] = [{ unit: 'lovelace', quantity: '2500000' }];
+    if (orderType === 'opt-in') {
+      orderValue.push({
+        unit: underlyingUnit,
+        quantity: String(amount),
+      });
+    } else {
+      orderValue.push({
+        unit: MintingHash + poolStakeAssetName,
+        quantity: String(amount),
+      });
+    }
+    orderValue.push({ unit: OrderValidatorHash, quantity: '1' });
+
+    const datum = orderDatum(
+      orderType === 'opt-in' ? optInOrderType(amount) : redeemOrderType(amount),
       mPubKeyAddress(walletVK, walletSK),
-      walletVK,
-    ]);
+      verificationKeySigner(walletVK),
+      poolStakeAssetName
+    );
+
+    const gsUtxo = (await provider.fetchAddressUTxOs(GlobalSettingsAddr))[0];
+    if (!gsUtxo) {
+      throw new Error('Global settings UTxO not found');
+    }
+
+    const fallbackCollateral = [...walletUtxos]
+      .filter((utxo) =>
+        utxo.output.amount.length === 1 &&
+        utxo.output.amount[0].unit === 'lovelace' &&
+        BigInt(utxo.output.amount[0].quantity) >= 7_000_000n
+      )
+      .sort((a, b) => Number(BigInt(b.output.amount[0].quantity) - BigInt(a.output.amount[0].quantity)))[0];
+
+    const collateral = walletCollateral ?? fallbackCollateral;
+    if (!collateral) {
+      throw new Error('No collateral UTxO found');
+    }
 
     const unsignedTx = await txBuilder
-      .txOut(OrderValidatorAddr, [
-        { unit: 'lovelace', quantity: String(2_000_000) },
-        { unit: tokenUnit, quantity: String(amount) },
-      ])
-      .txOutInlineDatumValue(orderDatum)
+      .txOut(OrderValidatorAddr, orderValue)
+      .txOutInlineDatumValue(datum)
+      .mintPlutusScriptV3()
+      .mint('1', OrderValidatorHash, '')
+      .mintingScript(OrderValidatorScript)
+      .mintRedeemerValue(mConStr0([]))
+      .readOnlyTxInReference(gsUtxo.input.txHash, gsUtxo.input.outputIndex)
+      .txInCollateral(collateral.input.txHash, collateral.input.outputIndex)
+      .setTotalCollateral('5000000')
+      .requiredSignerHash(walletVK)
       .changeAddress(walletAddress)
       .selectUtxosFrom(walletUtxos)
       .complete();

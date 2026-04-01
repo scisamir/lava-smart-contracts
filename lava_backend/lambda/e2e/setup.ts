@@ -9,6 +9,8 @@ import {
 import blueprint from "../../plutus.json";
 
 export const setupE2e = () => {
+  const NETWORK_ID = 1;
+
   const wallet1VK = "1cf3f4f03d7246a72f07b23d3300378f8f2e159716b11ed6f95f73f3";
   const wallet2VK = "f7dd4a3c0dd50061eaa9b83b9ee1a9ddcd2cf4dc17357940db5a231e";
 
@@ -21,7 +23,7 @@ export const setupE2e = () => {
   };
 
   const { address: multiSigAddress, scriptCbor: multiSigCbor } =
-    serializeNativeScript(nativeScript);
+    serializeNativeScript(nativeScript, undefined, NETWORK_ID);
   const multisigHash = resolveNativeScriptHash(nativeScript);
 
   const alwaysSuccessMintValidator =
@@ -55,15 +57,18 @@ export const setupE2e = () => {
   const tPulseUnit = alwaysSuccessMintValidatorHash + tPulseAssetName;
   const tPulsePoolStakeAssetName = stringToHex("LPulse");
 
+  const ATRIUM_POOL_STAKE_ASSET_NAME = stringToHex("LADA");
+
   const batchingScriptTxHash =
-    "8fdab4023d695d356810bb8ddbadb0afb2043692d68f306ad51e6e0141622a29";
+    "f268168603dc31abf523acabb72b8c47662a9e33efd5a44f7f1f6f4358ef247d";
   const batchingScriptTxIdx = 0;
   const poolScriptTxHash =
-    "20bd8c588dca842f8a4248f67344d5bba175ea5f7ce82e2531837ec2000dbc4b";
+    "6dd8752d81233d08afe8193116c051eed24b83d5b3747f1eac3511dba4e1b3d8";
   const poolScriptTxIdx = 0;
 
   return {
     blueprint,
+    NETWORK_ID,
     wallet1VK,
     wallet2VK,
     multisigHash,
@@ -84,6 +89,7 @@ export const setupE2e = () => {
     tPulseAssetName,
     tPulseUnit,
     tPulsePoolStakeAssetName,
+    ATRIUM_POOL_STAKE_ASSET_NAME,
     batchingScriptTxHash,
     batchingScriptTxIdx,
     poolScriptTxHash,

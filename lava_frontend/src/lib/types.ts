@@ -15,9 +15,7 @@ export type TokenPair = {
 };
 
 export const TOKEN_PAIRS: TokenPair[] = [
-  { base: "test", derivative: "stTest" },
-  { base: "tStrike", derivative: "LStrike" },
-  { base: "tPulse", derivative: "LPulse" },
+  { base: "ADA", derivative: "LADA" },
 ];
 
 export type PoolInfo = {
@@ -36,4 +34,23 @@ export type BackendVault = {
   stStake: string;
   staked: string;
   tokenPair: TokenPair;
+  tokenDetails?: {
+    derivative?: {
+      symbol?: string;
+      displayName?: string;
+      policyId?: string;
+      assetNameHex?: string;
+      decimals?: number;
+      logo?: string;
+    };
+    base?: {
+      symbol?: string;
+      displayName?: string;
+      policyId?: string;
+      assetNameHex?: string;
+      decimals?: number;
+      logo?: string;
+    };
+  } | null;
+  poolStakeAssetNameHex?: string;
 };
