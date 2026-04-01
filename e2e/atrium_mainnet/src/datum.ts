@@ -6,6 +6,7 @@
 import { deserializeDatum } from "@meshsdk/core";
 import type { UTxO } from "@meshsdk/core";
 import type { BasketState, ExRate, BasketLock, StakePoolDatum, PlutusData } from "./types.js";
+import { safeJsonStringify, toSafeIntegerNumber } from "./safe.js";
 
 /** Parse a raw datum value: JSON string, CBOR hex string, or already-parsed object */
 export function parseDatum(raw: string | object): PlutusData {
@@ -26,13 +27,7 @@ function constr(n: number, fields: PlutusData[]): PlutusData {
 }
 
 function normalizeConstructorValue(value: string | number | bigint): number {
-  const normalized = Number(value);
-
-  if (!Number.isSafeInteger(normalized)) {
-    throw new Error(`Invalid constructor value: ${String(value)}`);
-  }
-
-  return normalized;
+  return toSafeIntegerNumber(value, "Constructor value");
 }
 
 /** Plutus integer */
@@ -115,7 +110,7 @@ function decodeConstr(
   expectedAlternative?: number
 ): { constructor: number; fields: PlutusData[] } {
   if (!Object.prototype.hasOwnProperty.call(data, "constructor")) {
-    throw new Error(`Expected constructor, got: ${JSON.stringify(data)}`);
+    throw new Error(`Expected constructor, got: ${safeJsonStringify(data)}`);
   }
   const constrData = data as {
     constructor: string | number | bigint;
@@ -138,13 +133,19 @@ function decodeConstr(
 
 /** Extract integer value */
 function decodeInt(data: PlutusData): bigint {
-  if (!("int" in data)) throw new Error(`Expected int, got: ${JSON.stringify(data)}`);
+  if (!("int" in data)) {
+    throw new Error(`Expected int, got: ${safeJsonStringify(data)}`);
+  }
+
   return BigInt(data.int);
 }
 
 /** Extract bytes value */
 function decodeBytes(data: PlutusData): string {
-  if (!("bytes" in data)) throw new Error(`Expected bytes, got: ${JSON.stringify(data)}`);
+  if (!("bytes" in data)) {
+    throw new Error(`Expected bytes, got: ${safeJsonStringify(data)}`);
+  }
+
   return data.bytes;
 }
 
@@ -163,7 +164,7 @@ function decodeOptionBytes(data: PlutusData): string | null {
  */
 export function decodeExRate(data: PlutusData): ExRate {
   if (!("list" in data)) {
-    throw new Error(`Expected list for ExRate, got: ${JSON.stringify(data)}`);
+    throw new Error(`Expected list for ExRate, got: ${safeJsonStringify(data)}`);
   }
   return {
     numerator: decodeInt(data.list[0]),

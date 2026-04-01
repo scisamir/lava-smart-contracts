@@ -54,15 +54,39 @@ const wallet1Address = await wallet1.getChangeAddress();
 
 const wallet1Utxos = await wallet1.getUtxos();
 
-const wallet1Collateral = wallet1Utxos.filter(
-  (utxo) =>
-    Number(utxo.output.amount[0].quantity) >= 12000000 &&
-    utxo.output.amount.length == 1,
-)[0];
+const MIN_COLLATERAL_LOVELACE = 7_000_000n;
+
+const pickPureAdaCollateral = (utxos: UTxO[]): UTxO | undefined =>
+  [...utxos]
+    .filter((utxo) => {
+      if (utxo.output.amount.length !== 1) {
+        return false;
+      }
+
+      const [ada] = utxo.output.amount;
+      return (
+        ada?.unit === "lovelace" &&
+        BigInt(ada.quantity) >= MIN_COLLATERAL_LOVELACE
+      );
+    })
+    .sort((left, right) => {
+      const leftLovelace = BigInt(left.output.amount[0]?.quantity ?? "0");
+      const rightLovelace = BigInt(right.output.amount[0]?.quantity ?? "0");
+
+      return leftLovelace === rightLovelace
+        ? 0
+        : leftLovelace > rightLovelace
+          ? -1
+          : 1;
+    })[0];
+
+const wallet1Collateral = pickPureAdaCollateral(wallet1Utxos);
 
 const requireWallet1Collateral = (): UTxO => {
   if (!wallet1Collateral) {
-    throw new Error("No collateral utxo found");
+    throw new Error(
+      "No pure ADA collateral UTxO found with at least 5 ADA. Send 5-10 ADA to the wallet in a separate UTxO and retry.",
+    );
   }
 
   return wallet1Collateral;

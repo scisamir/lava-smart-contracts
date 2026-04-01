@@ -4,6 +4,7 @@
 // All arithmetic uses bigint to avoid floating-point precision errors.
 
 import type { ExRate } from "./types.js";
+import { formatScaledInteger } from "./safe.js";
 
 /**
  * Convert lovelace to basket tokens using the exchange rate.
@@ -44,14 +45,18 @@ export function exRateLessThan(a: ExRate, b: ExRate): boolean {
  * Format an exchange rate as a human-readable ADA/token ratio.
  */
 export function formatExRate(exRate: ExRate): string {
-  const adaPerToken =
-    Number(exRate.numerator) / Number(exRate.denominator) / 1_000_000;
-  return `${adaPerToken.toFixed(6)} ADA/token`;
+  if (exRate.denominator === 0n) {
+    return "0.000000 ADA/token";
+  }
+
+  const scaledAdaPerToken =
+    (exRate.numerator * 10n ** 6n) / (exRate.denominator * 1_000_000n);
+  return `${formatScaledInteger(scaledAdaPerToken, 6, false)} ADA/token`;
 }
 
 /**
  * Format lovelace as ADA for display.
  */
 export function formatLovelace(lovelace: bigint): string {
-  return `${(Number(lovelace) / 1_000_000).toFixed(6)} ADA`;
+  return `${formatScaledInteger(lovelace, 6, false)} ADA`;
 }
