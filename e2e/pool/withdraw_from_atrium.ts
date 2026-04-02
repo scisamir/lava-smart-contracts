@@ -239,7 +239,10 @@ const main = async (): Promise<void> => {
     await blockchainProvider.fetchAddressUTxOs(rewardsValidatorAddr);
   const pureRewardCandidates = rewardUtxos
     .flatMap((utxo) => {
-      const diffusionAmount = getQuantity(utxo.output.amount, BASKET_TOKEN_UNIT);
+      const diffusionAmount = getQuantity(
+        utxo.output.amount,
+        BASKET_TOKEN_UNIT,
+      );
       if (diffusionAmount <= 0n) {
         return [];
       }
@@ -333,7 +336,10 @@ const main = async (): Promise<void> => {
   console.log("Atrium pool NFT source: live");
   console.log("Rewards validator hash:", rewardsValidatorHash);
   console.log("Atrium swap validator hash:", atriumSwapValidatorHash);
-  console.log("Selected rewards UTxO:", `${rewardUtxo.input.txHash}#${rewardUtxo.input.outputIndex}`);
+  console.log(
+    "Selected rewards UTxO:",
+    `${rewardUtxo.input.txHash}#${rewardUtxo.input.outputIndex}`,
+  );
   console.log("Rewards UTxO lovelace wrapper:", formatLovelace(rewardLovelace));
   console.log("Current Atrium exchange rate:", formatExRate(state.exRate));
   console.log("Diffusion to burn:", diffusionAmount.toString());
@@ -394,6 +400,7 @@ const main = async (): Promise<void> => {
       wallet1Collateral.input.txHash,
       wallet1Collateral.input.outputIndex,
     )
+    .setTotalCollateral("5000000")
     .changeAddress(wallet1Address)
     .selectUtxosFrom(wallet1Utxos)
     .complete();

@@ -54,38 +54,44 @@ const wallet1Address = await wallet1.getChangeAddress();
 
 const wallet1Utxos = await wallet1.getUtxos();
 
-const MIN_COLLATERAL_LOVELACE = 7_000_000n;
+const MIN_COLLATERAL_LOVELACE = 8_000_000n;
 
-const pickPureAdaCollateral = (utxos: UTxO[]): UTxO | undefined =>
-  [...utxos]
-    .filter((utxo) => {
-      if (utxo.output.amount.length !== 1) {
-        return false;
-      }
+const getUtxoLovelace = (utxo: UTxO): bigint =>
+  BigInt(
+    utxo.output.amount.find((asset) => asset.unit === "lovelace")?.quantity ??
+      "0",
+  );
 
-      const [ada] = utxo.output.amount;
-      return (
-        ada?.unit === "lovelace" &&
-        BigInt(ada.quantity) >= MIN_COLLATERAL_LOVELACE
-      );
-    })
-    .sort((left, right) => {
-      const leftLovelace = BigInt(left.output.amount[0]?.quantity ?? "0");
-      const rightLovelace = BigInt(right.output.amount[0]?.quantity ?? "0");
+const isPureAdaUtxo = (utxo: UTxO): boolean =>
+  utxo.output.amount.length === 1 && utxo.output.amount[0]?.unit === "lovelace";
+
+const pickPreferredCollateral = (utxos: UTxO[]): UTxO | undefined =>
+  (() => {
+    const eligibleUtxos = utxos.filter(
+      (utxo) => getUtxoLovelace(utxo) >= MIN_COLLATERAL_LOVELACE,
+    );
+    const preferredUtxos = eligibleUtxos.some(isPureAdaUtxo)
+      ? eligibleUtxos.filter(isPureAdaUtxo)
+      : eligibleUtxos;
+
+    return [...preferredUtxos].sort((left, right) => {
+      const leftLovelace = getUtxoLovelace(left);
+      const rightLovelace = getUtxoLovelace(right);
 
       return leftLovelace === rightLovelace
         ? 0
-        : leftLovelace > rightLovelace
+        : leftLovelace < rightLovelace
           ? -1
           : 1;
     })[0];
+  })();
 
-const wallet1Collateral = pickPureAdaCollateral(wallet1Utxos);
+const wallet1Collateral = pickPreferredCollateral(wallet1Utxos);
 
 const requireWallet1Collateral = (): UTxO => {
   if (!wallet1Collateral) {
     throw new Error(
-      "No pure ADA collateral UTxO found with at least 5 ADA. Send 5-10 ADA to the wallet in a separate UTxO and retry.",
+      `No collateral UTxO found with at least ${MIN_COLLATERAL_LOVELACE} ADA. Pure ADA UTxOs are preferred, but any wallet UTxO with enough lovelace is eligible.,`,
     );
   }
 

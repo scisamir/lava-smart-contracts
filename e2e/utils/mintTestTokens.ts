@@ -1,23 +1,33 @@
 import { stringToHex } from "@meshsdk/core";
-import { alwaysSuccessMintValidatorHash, alwaysSuccessValidatorMintScript, testAssetName, tPulseAssetName, tStrikeAssetName, txBuilder, wallet1, wallet1Address, wallet1Utxos, requireWallet1Collateral } from "../setup.js";
+import {
+  alwaysSuccessMintValidatorHash,
+  alwaysSuccessValidatorMintScript,
+  testAssetName,
+  tPulseAssetName,
+  tStrikeAssetName,
+  txBuilder,
+  wallet1,
+  wallet1Address,
+  wallet1Utxos,
+  requireWallet1Collateral,
+} from "../setup.js";
 
 const wallet1Collateral = requireWallet1Collateral();
 
 const unsignedTx = await txBuilder
-    .mintPlutusScriptV3()
-    .mint("1000", alwaysSuccessMintValidatorHash, tStrikeAssetName)
-    .mint("1000", alwaysSuccessMintValidatorHash, tPulseAssetName)
-    .mintingScript(alwaysSuccessValidatorMintScript)
-    .mintRedeemerValue("")
-    .txInCollateral(
-        wallet1Collateral.input.txHash,
-        wallet1Collateral.input.outputIndex,
-        wallet1Collateral.output.amount,
-        wallet1Collateral.output.address,
-    )
-    .changeAddress(wallet1Address)
-    .selectUtxosFrom(wallet1Utxos)
-    .complete()
+  .mintPlutusScriptV3()
+  .mint("1000", alwaysSuccessMintValidatorHash, tStrikeAssetName)
+  .mint("1000", alwaysSuccessMintValidatorHash, tPulseAssetName)
+  .mintingScript(alwaysSuccessValidatorMintScript)
+  .mintRedeemerValue("")
+  .txInCollateral(
+    wallet1Collateral.input.txHash,
+    wallet1Collateral.input.outputIndex,
+  )
+  .setTotalCollateral("5000000")
+  .changeAddress(wallet1Address)
+  .selectUtxosFrom(wallet1Utxos)
+  .complete();
 
 const signedTx = await wallet1.signTx(unsignedTx);
 const txHash = await wallet1.submitTx(signedTx);
