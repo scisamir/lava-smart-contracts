@@ -9,7 +9,8 @@ import { GlobalSettingsHash } from "../global_settings/validator";
 import { PoolValidatorHash } from "../pool/validator";
 import { setupE2e } from "../setup";
 
-const { blueprint } = setupE2e();
+const { blueprint, NETWORK_ID } = setupE2e();
+const networkId = NETWORK_ID as 0 | 1;
 
 const BatchingValidator = blueprint.validators.filter((v: any) =>
   v.title.includes("pool_batching.pool_batching.withdraw")
@@ -27,6 +28,6 @@ const BatchingAddr = serializePlutusScript(
   { code: BatchingValidatorScript, version: "V3" }
 ).address;
 
-const BatchingRewardAddress = serializeRewardAddress(BatchingHash, true, 0);
+const BatchingRewardAddress = serializeRewardAddress(BatchingHash, true, networkId);
 
 export { BatchingValidatorScript, BatchingHash, BatchingAddr, BatchingRewardAddress };

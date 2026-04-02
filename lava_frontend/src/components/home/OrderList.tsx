@@ -92,6 +92,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
     setTxHash("");
     setIsProcessing(false);
     toastSuccess(txHash);
+    window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
     console.log("Cancel order tx hash:", txHash);
   };
 

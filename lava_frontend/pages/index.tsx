@@ -13,6 +13,8 @@ import { UserOrderType } from "@/lib/types";
 import { BatchOrders } from "@/components/stake/BatchOrders";
 import { BG_BEHIND } from "@/lib/images";
 
+const HOME_DATA_REFRESH_EVENT = "lava:refresh-home-data";
+
 const Index = () => {
   const { walletAddress } = useCardanoWallet();
   const [orders, setOrders] = useState<UserOrderType[]>([]);
@@ -41,13 +43,15 @@ const Index = () => {
           setOrders([]);
         }
 
-        const batchStatsRes = await fetch(`${backendBaseUrl}/batch-stats`);
-        if (!batchStatsRes.ok) {
-          throw new Error(`Failed to fetch batch stats: ${batchStatsRes.status}`);
-        }
+        if (showBatchButtons) {
+          const batchStatsRes = await fetch(`${backendBaseUrl}/batch-stats`);
+          if (!batchStatsRes.ok) {
+            throw new Error(`Failed to fetch batch stats: ${batchStatsRes.status}`);
+          }
 
-        const batchStatsData = await batchStatsRes.json();
-        setTotalOrder(batchStatsData?.totalOrders ?? {});
+          const batchStatsData = await batchStatsRes.json();
+          setTotalOrder(batchStatsData?.totalOrders ?? {});
+        }
       } catch (error) {
         console.error("Failed to fetch home page data:", error);
       }
@@ -55,10 +59,21 @@ const Index = () => {
 
     awaitFetchData();
 
-    const interval = setInterval(awaitFetchData, 10000);
+    const refreshHandler = () => {
+      void awaitFetchData();
+    };
 
-    return () => clearInterval(interval);
-  }, [walletAddress]);
+    window.addEventListener(HOME_DATA_REFRESH_EVENT, refreshHandler);
+
+    const interval = setInterval(() => {
+      void awaitFetchData();
+    }, 1_800_000);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener(HOME_DATA_REFRESH_EVENT, refreshHandler);
+    };
+  }, [walletAddress, showBatchButtons]);
 
   return (
     <div
