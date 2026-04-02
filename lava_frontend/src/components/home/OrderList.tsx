@@ -12,6 +12,15 @@ import { tokenName } from "@meshsdk/core";
 export const OrderList = ({ orders }: OrderListProps) => {
   if (orders.length === 0) return null;
 
+  const formatOrderAmount = (order: UserOrderType) => {
+    const token = String(order.tokenName ?? "").toUpperCase();
+    if (token === "ADA" || token === "LADA") {
+      return (order.amount / 1_000_000).toFixed(2);
+    }
+
+    return order.amount.toFixed(2);
+  };
+
   const {
     connected,
     walletCollateral,
@@ -107,7 +116,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
           >
             <div>
               <p className="font-semibold">
-                {order.amount.toFixed(2)} {order.tokenName}{" "}
+                {formatOrderAmount(order)} {order.tokenName}{" "}
                 <span className="text-gray-400">
                   ({order.isOptIn ? "OptIn Order" : "Redeem Order"})
                 </span>

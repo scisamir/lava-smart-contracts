@@ -264,6 +264,8 @@ export const StakingCard = () => {
   const handleCreateRedeemOrder = async (amount: number, tokenName: string) => {
     setIsProcessing(true);
 
+    const requestAmount = tokenName === "LADA" ? amount * 1_000_000 : amount;
+
     let txHash = "";
     try {
       const backendBaseUrl =
@@ -275,7 +277,7 @@ export const StakingCard = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderType: "redeem",
-          amount,
+          amount: requestAmount,
           tokenName,
           poolStakeAssetName: selectedPoolStakeAssetNameHex,
           underlyingUnit: selectedUnderlyingUnit,
@@ -314,6 +316,8 @@ export const StakingCard = () => {
     ? tokenBalances[selectedToken.derivative]
     : tokenBalances[selectedToken.base];
   const tokenLabel = isSwapped ? selectedToken.derivative : selectedToken.base;
+  const displayedTokenBalance =
+    tokenLabel === "LADA" ? (tokenBalance ?? 0) / 1_000_000 : tokenBalance ?? 0;
 
   return (
   <Card className="w-full max-w-[520px] h-[436px] bg-[#0D0D0D] p-6 flex flex-col gap-6 relative rounded-none">
@@ -337,14 +341,14 @@ export const StakingCard = () => {
 
           <div className="flex gap-1 staking-half-box">
             <button
-              onClick={() => setAmount(((tokenBalance ?? 0) / 2).toFixed(2))}
+              onClick={() => setAmount((displayedTokenBalance / 2).toFixed(2))}
               className="w-[40px] h-[24px] border border-[#D5463E80] text-[#D5463E] text-[12px] font-medium bg-white/[0.02] staking-half-btn"
             >
               Half
             </button>
 
             <button
-              onClick={() => setAmount((tokenBalance ?? 0).toFixed(2))}
+              onClick={() => setAmount(displayedTokenBalance.toFixed(2))}
               className="w-[41px] h-[24px] border border-[#D5463E80] text-[#D5463E] text-[12px] font-medium bg-white/[0.02] staking-max-btn"
             >
               Max
@@ -486,7 +490,7 @@ export const StakingCard = () => {
           Balance
         </span>
         <span className="no-pixelify flex items-center gap-2">
-          <span>{(tokenBalance ?? 0).toFixed(2)} {tokenLabel}</span>
+          <span>{displayedTokenBalance.toFixed(2)} {tokenLabel}</span>
           <Wallet className="w-4 h-4 text-[#666666]" style={{ color: '#666666' }} />
         </span>
       </div>
