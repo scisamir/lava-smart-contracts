@@ -17,9 +17,10 @@ const Portfolio = () => {
   const assets = Object.entries(tokenBalances)
     .filter(([, amount]) => amount > 0)
     .map(([symbol, amount]) => {
+      const normalizedAmount = symbol === "LADA" ? amount / 1_000_000 : amount;
       const priceUsd = 0.32; // mock price
 
-      const valueNumber = amount * priceUsd;
+      const valueNumber = normalizedAmount * priceUsd;
 
       const changeValue = Math.random() * 20;
       const changePercent = Math.random() * 6 - 3; // -3% → +3%
@@ -27,7 +28,7 @@ const Portfolio = () => {
 
       return {
         symbol,
-        amount,
+        amount: normalizedAmount,
         valueNumber,
         value: `$${valueNumber.toFixed(2)}`,
         changeNumber: isPositive ? changeValue : -changeValue,
@@ -157,7 +158,7 @@ const Portfolio = () => {
                             <div className="flex items-center gap-2">
                               <img src={LAVA_LOGO.src} alt={asset.symbol} className="w-6 h-6" />
                               <span className="font-medium">
-                                {asset.amount}{" "}
+                                {asset.amount.toFixed(2)}{" "}
                                 <span className="text-muted-foreground">{asset.symbol}</span>
                               </span>
                             </div>
@@ -190,7 +191,7 @@ const Portfolio = () => {
                           className="w-6 h-6"
                         />
                         <span className="font-medium">
-                          {asset.amount}{" "}
+                          {asset.amount.toFixed(2)}{" "}
                           <span className="text-muted-foreground">
                             {asset.symbol}
                           </span>
