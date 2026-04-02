@@ -4,10 +4,32 @@ import { OrderValidatorAddr } from './e2e/order/validator';
 import { setupE2e } from './e2e/setup';
 import { OrderDatumType } from './e2e/types';
 
+const BATCH_STATS_CACHE_TTL_MS = 60_000;
+let batchStatsCache:
+  | {
+      expiresAt: number;
+      totalOrders: { test: number; tStrike: number; tPulse: number; atrium: number };
+    }
+  | null = null;
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
+    const now = Date.now();
+    if (batchStatsCache && batchStatsCache.expiresAt > now) {
+      return {
+        statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Methods': 'GET',
+          'Cache-Control': 'public, max-age=30',
+        },
+        body: JSON.stringify({ totalOrders: batchStatsCache.totalOrders }),
+      };
+    }
+
     const maestro = new MaestroProvider({
       network: 'Mainnet',
       apiKey: process.env.MAESTRO_API_KEY!,
@@ -41,12 +63,18 @@ export const handler = async (
       }
     });
 
+    batchStatsCache = {
+      expiresAt: now + BATCH_STATS_CACHE_TTL_MS,
+      totalOrders,
+    };
+
     return {
       statusCode: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'GET',
+        'Cache-Control': 'public, max-age=30',
       },
       body: JSON.stringify({ totalOrders }),
     };

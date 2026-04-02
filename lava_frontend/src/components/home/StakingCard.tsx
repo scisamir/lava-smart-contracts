@@ -257,6 +257,7 @@ export const StakingCard = () => {
     setIsProcessing(false);
     toastSuccess(txHash);
     await reloadWalletState();
+    window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
     console.log("Create opt in order tx hash:", txHash);
   };
 
@@ -304,6 +305,7 @@ export const StakingCard = () => {
     setIsProcessing(false);
     toastSuccess(txHash);
     await reloadWalletState();
+    window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
     console.log("Create redeem order tx hash:", txHash);
   };
 
