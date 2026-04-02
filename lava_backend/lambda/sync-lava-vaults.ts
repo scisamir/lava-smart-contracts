@@ -3,13 +3,6 @@ import {
   MaestroProvider,
   deserializeDatum,
   hexToString,
-  applyParamsToScript,
-  builtinByteString,
-  resolveScriptHash,
-  serializePlutusScript,
-  NativeScript,
-  resolveNativeScriptHash,
-  outputReference,
 } from '@meshsdk/core';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
@@ -18,8 +11,8 @@ import {
   PutCommand,
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
-import blueprint from '../../smart_contract/plutus.json';
 import { setupE2e } from './e2e/setup';
+import { PoolValidatorAddr } from './e2e/pool/validator';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -43,50 +36,6 @@ type TokenMetadataItem = {
   underlyingLogo?: string;
   isActive?: boolean;
 };
-
-const wallet1VK = '96cbb27c96daf8cab890de6d7f87f5ffd025bf8ac80717cbc4fae7da';
-const wallet2VK = '331da30f7c8fea429e2bdc161efde817cbb06f78a53ef5ceee42c9a3';
-
-const nativeScript: NativeScript = {
-  type: 'all',
-  scripts: [
-    { type: 'sig', keyHash: wallet1VK },
-    { type: 'sig', keyHash: wallet2VK },
-  ],
-};
-const multisigHash = resolveNativeScriptHash(nativeScript);
-
-const gsParamTxHash = 'a65532a96c8c1ab316f4f6e9bfdf01f04d8b1750f3269ecf74a8e8fe04279bea';
-const gsParamTxIdx = 1;
-
-const GlobalSettingsValidator = blueprint.validators.filter(v =>
-  v.title.includes('global_settings.global_settings.spend')
-);
-
-const GlobalSettingsValidatorScript = applyParamsToScript(
-  GlobalSettingsValidator[0].compiledCode,
-  [
-    builtinByteString(multisigHash),
-    outputReference(gsParamTxHash, gsParamTxIdx),
-  ],
-  'JSON'
-);
-
-const GlobalSettingsHash = resolveScriptHash(GlobalSettingsValidatorScript, 'V3');
-
-const PoolValidator = blueprint.validators.filter(v =>
-  v.title.includes('pool.pool_validator.mint')
-);
-
-const PoolValidatorScript = applyParamsToScript(
-  PoolValidator[0].compiledCode,
-  [builtinByteString(GlobalSettingsHash)],
-  'JSON'
-);
-
-const PoolValidatorAddr = serializePlutusScript(
-  { code: PoolValidatorScript, version: 'V3' }
-).address;
 
 const LOGOS = [
   'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=128&q=80&auto=format&fit=crop',
