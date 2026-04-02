@@ -28,6 +28,8 @@ const getBackendBaseUrl = () =>
   process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
   "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
 
+let backendUrlLogged = false;
+
 type WalletBalanceResponse = {
   balance?: number;
   tokenBalances?: Record<string, number>;
@@ -75,6 +77,7 @@ const fetchVaults = async (): Promise<BackendVault[]> => {
 function useCardanoWalletState() {
   const { wallet, connected, connect, disconnect, name } = useWallet();
   const queryClient = useQueryClient();
+  const backendBaseUrl = getBackendBaseUrl();
 
   const [walletAddress, setWalletAddress] = useState("");
   const [txBuilder, setTxBuilder] = useState<MeshTxBuilder | null>(null);
@@ -170,6 +173,11 @@ function useCardanoWalletState() {
   }, [connected, wallet, name, hasTriedRestore]);
 
   useEffect(() => {
+    if (!backendUrlLogged) {
+      console.info("[Lava] Frontend backend base URL:", backendBaseUrl);
+      backendUrlLogged = true;
+    }
+
     const maestroKey = process.env.NEXT_PUBLIC_MAESTRO_KEY;
     if (!maestroKey) {
       setTxBuilder(null);
@@ -193,7 +201,7 @@ function useCardanoWalletState() {
 
     setTxBuilder(tb);
     setBlockchainProvider(bp);
-  }, []);
+  }, [backendBaseUrl]);
 
   const walletBalanceQuery = useQuery({
     queryKey: ["wallet-balance", walletAddress],
@@ -233,6 +241,15 @@ function useCardanoWalletState() {
   const poolInfo = useMemo(
     () => vaultsQuery.data ?? [],
     [vaultsQuery.data]
+  );
+  const vaultsError = useMemo(
+    () =>
+      vaultsQuery.error instanceof Error
+        ? vaultsQuery.error.message
+        : vaultsQuery.error
+        ? String(vaultsQuery.error)
+        : null,
+    [vaultsQuery.error]
   );
 
 
@@ -274,6 +291,9 @@ function useCardanoWalletState() {
     walletUtxos,
     getTokenBalance,
     poolInfo,
+    backendBaseUrl,
+    vaultsLoading: vaultsQuery.isLoading,
+    vaultsError,
   };
 }
 

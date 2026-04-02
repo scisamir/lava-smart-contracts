@@ -14,8 +14,19 @@ import {
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 
 export const VaultsTable = () => {
-  const { poolInfo } = useCardanoWallet();
+  const { poolInfo, vaultsLoading, vaultsError, backendBaseUrl } = useCardanoWallet();
   const poolInfoExtended = poolInfo;
+
+  const normalizeAmount = (value: string | number, symbol?: string) => {
+    const raw = Number(String(value ?? "0").replace(/,/g, ""));
+    if (!Number.isFinite(raw)) return String(value ?? "0");
+
+    const normalized = symbol === "ADA" || symbol === "LADA" ? raw / 1_000_000 : raw;
+    return normalized.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -31,6 +42,28 @@ export const VaultsTable = () => {
 
       {/* TABLE WRAPPER */}
       <div className="border border-border bg-card/50 backdrop-blur-lg overflow-hidden rounded-none">
+        {vaultsLoading && (
+          <div className="px-4 py-3 text-sm text-muted-foreground border-b border-border">
+            Loading vaults...
+          </div>
+        )}
+
+        {vaultsError && (
+          <div className="px-4 py-3 text-sm text-red-400 border-b border-border">
+            Failed to fetch vaults: {vaultsError}
+            <br />
+            Backend: {backendBaseUrl}/lava-vaults
+          </div>
+        )}
+
+        {!vaultsLoading && !vaultsError && poolInfoExtended.length === 0 && (
+          <div className="px-4 py-3 text-sm text-yellow-300 border-b border-border">
+            No vaults returned from backend.
+            <br />
+            Backend: {backendBaseUrl}/lava-vaults
+          </div>
+        )}
+
         <Table>
           {/* DESKTOP HEADER */}
           <TableHeader className="hidden md:table-header-group">
@@ -138,7 +171,7 @@ export const VaultsTable = () => {
                       />
                     </div>
                     <span>
-                      {vault.stStake}{" "}
+                      {normalizeAmount(vault.stStake, vault.tokenPair?.derivative)}{" "}
                       <span className="text-muted-foreground">
                         {vault.tokenPair?.derivative ?? ""}
                       </span>
@@ -156,7 +189,7 @@ export const VaultsTable = () => {
                       />
                     </div>
                     <span>
-                      {vault.staked}{" "}
+                      {normalizeAmount(vault.staked, vault.tokenPair?.base)}{" "}
                       <span className="text-muted-foreground">
                         {vault.tokenPair?.base ?? ""}
                       </span>
@@ -205,7 +238,7 @@ export const VaultsTable = () => {
                             />
                           </div>
                           <span>
-                            {vault.stStake} {vault.tokenPair?.derivative ?? ""}
+                            {normalizeAmount(vault.stStake, vault.tokenPair?.derivative)} {vault.tokenPair?.derivative ?? ""}
                           </span>
                         </div>
                       </div>
@@ -239,7 +272,7 @@ export const VaultsTable = () => {
                             />
                           </div>
                           <span>
-                            {vault.staked} {vault.tokenPair?.base ?? ""}
+                            {normalizeAmount(vault.staked, vault.tokenPair?.base)} {vault.tokenPair?.base ?? ""}
                           </span>
                         </div>
                       </div>
