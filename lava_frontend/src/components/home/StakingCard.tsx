@@ -62,7 +62,7 @@ export const StakingCard = () => {
     walletUtxos,
     tokenBalances,
     poolInfo,
-    reloadWalletState,
+    refreshWalletStateAfterTx,
   } = useCardanoWallet();
 
   const availableTokenPairs: TokenPair[] = (() => {
@@ -256,7 +256,7 @@ export const StakingCard = () => {
 
     setIsProcessing(false);
     toastSuccess(txHash);
-    await reloadWalletState();
+    await refreshWalletStateAfterTx();
     window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
     console.log("Create opt in order tx hash:", txHash);
   };
@@ -264,7 +264,7 @@ export const StakingCard = () => {
   const handleCreateRedeemOrder = async (amount: number, tokenName: string) => {
     setIsProcessing(true);
 
-    const requestAmount = tokenName === "LADA" ? amount * 1_000_000 : amount;
+    const requestAmount = tokenName === "LADA" ? Math.trunc(amount * 1_000_000) : amount;
 
     let txHash = "";
     try {
@@ -306,7 +306,7 @@ export const StakingCard = () => {
 
     setIsProcessing(false);
     toastSuccess(txHash);
-    await reloadWalletState();
+    await refreshWalletStateAfterTx();
     window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
     console.log("Create redeem order tx hash:", txHash);
   };
@@ -318,6 +318,27 @@ export const StakingCard = () => {
   const tokenLabel = isSwapped ? selectedToken.derivative : selectedToken.base;
   const displayedTokenBalance =
     tokenLabel === "LADA" ? (tokenBalance ?? 0) / 1_000_000 : tokenBalance ?? 0;
+
+  const setHalfAmount = () => {
+    if (tokenLabel === "LADA") {
+      const rawBalance = Math.trunc(tokenBalance ?? 0);
+      const halfRaw = Math.trunc(rawBalance / 2);
+      setAmount((halfRaw / 1_000_000).toFixed(6));
+      return;
+    }
+
+    setAmount((displayedTokenBalance / 2).toFixed(2));
+  };
+
+  const setMaxAmount = () => {
+    if (tokenLabel === "LADA") {
+      const rawBalance = Math.trunc(tokenBalance ?? 0);
+      setAmount((rawBalance / 1_000_000).toFixed(6));
+      return;
+    }
+
+    setAmount(displayedTokenBalance.toFixed(2));
+  };
 
   return (
   <Card className="w-full max-w-[520px] h-[436px] bg-[#0D0D0D] p-6 flex flex-col gap-6 relative rounded-none">
@@ -341,14 +362,14 @@ export const StakingCard = () => {
 
           <div className="flex gap-1 staking-half-box">
             <button
-              onClick={() => setAmount((displayedTokenBalance / 2).toFixed(2))}
+              onClick={setHalfAmount}
               className="w-[40px] h-[24px] border border-[#D5463E80] text-[#D5463E] text-[12px] font-medium bg-white/[0.02] staking-half-btn"
             >
               Half
             </button>
 
             <button
-              onClick={() => setAmount(displayedTokenBalance.toFixed(2))}
+              onClick={setMaxAmount}
               className="w-[41px] h-[24px] border border-[#D5463E80] text-[#D5463E] text-[12px] font-medium bg-white/[0.02] staking-max-btn"
             >
               Max
