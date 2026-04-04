@@ -29,6 +29,8 @@ const getBackendBaseUrl = () =>
   "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
 
 let backendUrlLogged = false;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const HOME_DATA_REFRESH_EVENT = "lava:refresh-home-data";
 
 type WalletBalanceResponse = {
   balance?: number;
@@ -86,6 +88,7 @@ function useCardanoWalletState() {
   const [walletVK, setWalletVK] = useState<string>("");
   const [walletSK, setWalletSK] = useState<string>("");
   const restoreStartedRef = useRef(false);
+  const lastWalletSnapshotRef = useRef<string | null>(null);
 
   //CRITICAL FLAG
   const [hasTriedRestore, setHasTriedRestore] = useState(false);
@@ -209,7 +212,10 @@ function useCardanoWalletState() {
     enabled: connected && !!walletAddress,
     staleTime: 30_000,
     gcTime: 30 * 60_000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: connected && !!walletAddress ? 30_000 : false,
+    refetchIntervalInBackground: false,
     placeholderData: (previousData) => previousData,
   });
 
@@ -218,7 +224,10 @@ function useCardanoWalletState() {
     queryFn: fetchVaults,
     staleTime: 60_000,
     gcTime: 30 * 60_000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 3_600_000,
+    refetchIntervalInBackground: false,
     placeholderData: (previousData) => previousData,
   });
 
@@ -252,6 +261,28 @@ function useCardanoWalletState() {
     [vaultsQuery.error]
   );
 
+  useEffect(() => {
+    if (!connected || !walletAddress) {
+      lastWalletSnapshotRef.current = null;
+      return;
+    }
+
+    const snapshot = JSON.stringify({
+      balance,
+      tokenBalances,
+    });
+
+    if (lastWalletSnapshotRef.current === null) {
+      lastWalletSnapshotRef.current = snapshot;
+      return;
+    }
+
+    if (lastWalletSnapshotRef.current !== snapshot) {
+      lastWalletSnapshotRef.current = snapshot;
+      window.dispatchEvent(new CustomEvent(HOME_DATA_REFRESH_EVENT));
+    }
+  }, [connected, walletAddress, balance, tokenBalances]);
+
 
   // Public API
 
@@ -273,6 +304,19 @@ function useCardanoWalletState() {
     ]);
   };
 
+  const refreshWalletStateAfterTx = async () => {
+    await reloadWalletState();
+
+    const attempts = 8;
+    for (let i = 0; i < attempts; i++) {
+      await sleep(2_500);
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["wallet-balance", walletAddress], type: "active" }),
+        queryClient.refetchQueries({ queryKey: ["lava-vaults"], type: "active" }),
+      ]);
+    }
+  };
+
   return {
     connected,
     wallet,
@@ -283,6 +327,7 @@ function useCardanoWalletState() {
     connect: connectWallet,
     disconnect: disconnectWallet,
     reloadWalletState,
+    refreshWalletStateAfterTx,
     blockchainProvider,
     txBuilder,
     walletVK,

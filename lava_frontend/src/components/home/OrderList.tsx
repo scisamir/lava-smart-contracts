@@ -7,7 +7,6 @@ import { toast } from "react-toastify";
 import { OrderListProps, UserOrderType } from "@/lib/types";
 import { useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
-import { tokenName } from "@meshsdk/core";
 
 export const OrderList = ({ orders }: OrderListProps) => {
   if (orders.length === 0) return null;
@@ -28,6 +27,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
     walletAddress,
     walletVK,
     walletUtxos,
+    refreshWalletStateAfterTx,
   } = useCardanoWallet();
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [txHash, setTxHash] = useState<string>("");
@@ -54,7 +54,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
   const toastFailure = (err: any) =>
     toast.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
 
-  const handleCancelOrder = async (orderTxHash: string) => {
+  const handleCancelOrder = async (orderTxHash: string, orderOutputIndex = 0) => {
     setIsProcessing(true);
     setTxHash(orderTxHash);
 
@@ -79,11 +79,24 @@ export const OrderList = ({ orders }: OrderListProps) => {
           walletCollateral,
           walletUtxos,
           orderTxHash,
+          orderOutputIndex,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to build cancel tx: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        const message = String(errorData?.error ?? `Failed to build cancel tx: ${response.status}`);
+
+        if (response.status === 409 || /already batched|already cancelled|not found/i.test(message)) {
+          toast.info("Order is already processed. Refreshing list...");
+          await refreshWalletStateAfterTx();
+          window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
+          setTxHash("");
+          setIsProcessing(false);
+          return;
+        }
+
+        throw new Error(message);
       }
 
       const data = await response.json();
@@ -101,6 +114,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
     setTxHash("");
     setIsProcessing(false);
     toastSuccess(txHash);
+    await refreshWalletStateAfterTx();
     window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
     console.log("Cancel order tx hash:", txHash);
   };
@@ -111,7 +125,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
       <div className="space-y-3">
         {orders.map((order) => (
           <div
-            key={order.txHash}
+            key={`${order.txHash}-${order.outputIndex ?? 0}`}
             className="flex items-center justify-between bg-muted/40 rounded-lg p-3"
           >
             <div>
@@ -134,7 +148,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
               variant="destructive"
               size="sm"
               className="bg-red-600 hover:bg-red-700"
-              onClick={async () => await handleCancelOrder(order.txHash)}
+              onClick={async () => await handleCancelOrder(order.txHash, order.outputIndex ?? 0)}
               disabled={isProcessing}
             >
               <XCircle className="w-4 h-4 mr-1" />{" "}

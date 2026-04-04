@@ -11,12 +11,10 @@ import { OrderValidatorAddr } from './e2e/order/validator';
 type UserOrder = {
   amount: number;
   txHash: string;
+  outputIndex: number;
   isOptIn: boolean;
   tokenName: string;
 };
-
-const USER_ORDERS_CACHE_TTL_MS = 60_000;
-const userOrdersCache = new Map<string, { expiresAt: number; orders: UserOrder[] }>();
 
 export const handler = async (
   event: APIGatewayProxyEvent
@@ -33,21 +31,6 @@ export const handler = async (
           'Access-Control-Allow-Methods': 'GET,OPTIONS',
         },
         body: JSON.stringify({ error: 'Missing required query param: address' }),
-      };
-    }
-
-    const now = Date.now();
-    const cached = userOrdersCache.get(address);
-    if (cached && cached.expiresAt > now) {
-      return {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'GET,OPTIONS',
-          'Cache-Control': 'public, max-age=30',
-        },
-        body: JSON.stringify({ orders: cached.orders }),
       };
     }
 
@@ -102,14 +85,10 @@ export const handler = async (
       userOrders.push({
         amount: Number(orderDatum.fields[0].fields[0].int),
         txHash: utxo.input.txHash,
+        outputIndex: Number(utxo.input.outputIndex),
         isOptIn,
         tokenName,
       });
-    });
-
-    userOrdersCache.set(address, {
-      expiresAt: now + USER_ORDERS_CACHE_TTL_MS,
-      orders: userOrders,
     });
 
     return {
@@ -118,7 +97,6 @@ export const handler = async (
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'GET,OPTIONS',
-        'Cache-Control': 'public, max-age=30',
       },
       body: JSON.stringify({ orders: userOrders }),
     };

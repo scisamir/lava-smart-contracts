@@ -1,6 +1,7 @@
 export type UserOrderType = {
   amount: number;
   txHash: string;
+  outputIndex?: number;
   isOptIn: boolean;
   tokenName: string;
 };

@@ -26,6 +26,7 @@ export const handler = async (
     const walletCollateral = (body?.walletCollateral ?? null) as UTxO | null;
     const walletUtxos = (body?.walletUtxos ?? []) as UTxO[];
     const orderTxHash = String(body?.orderTxHash ?? '');
+    const orderOutputIndex = Number(body?.orderOutputIndex ?? 0);
 
     if (!walletAddress || !walletVK || !walletCollateral || !orderTxHash) {
       return {
@@ -62,17 +63,17 @@ export const handler = async (
 
     const { NETWORK_ID } = setupE2e();
 
-    const orderUtxos = await provider.fetchUTxOs(orderTxHash, 0);
+    const orderUtxos = await provider.fetchUTxOs(orderTxHash, orderOutputIndex);
     const orderUtxo = orderUtxos[0];
     if (!orderUtxo) {
       return {
-        statusCode: 404,
+        statusCode: 409,
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Headers': 'Content-Type',
           'Access-Control-Allow-Methods': 'POST,OPTIONS',
         },
-        body: JSON.stringify({ error: 'Order UTxO not found' }),
+        body: JSON.stringify({ error: 'Order already batched or cancelled' }),
       };
     }
 

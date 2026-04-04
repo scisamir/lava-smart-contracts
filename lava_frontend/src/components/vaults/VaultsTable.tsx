@@ -14,7 +14,7 @@ import {
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 
 export const VaultsTable = () => {
-  const { poolInfo, vaultsLoading, vaultsError, backendBaseUrl } = useCardanoWallet();
+  const { poolInfo, vaultsLoading } = useCardanoWallet();
   const poolInfoExtended = poolInfo;
 
   const normalizeAmount = (value: string | number, symbol?: string) => {
@@ -45,22 +45,6 @@ export const VaultsTable = () => {
         {vaultsLoading && (
           <div className="px-4 py-3 text-sm text-muted-foreground border-b border-border">
             Loading vaults...
-          </div>
-        )}
-
-        {vaultsError && (
-          <div className="px-4 py-3 text-sm text-red-400 border-b border-border">
-            Failed to fetch vaults: {vaultsError}
-            <br />
-            Backend: {backendBaseUrl}/lava-vaults
-          </div>
-        )}
-
-        {!vaultsLoading && !vaultsError && poolInfoExtended.length === 0 && (
-          <div className="px-4 py-3 text-sm text-yellow-300 border-b border-border">
-            No vaults returned from backend.
-            <br />
-            Backend: {backendBaseUrl}/lava-vaults
           </div>
         )}
 
