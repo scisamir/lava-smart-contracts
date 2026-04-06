@@ -44,12 +44,12 @@ pub fn get_global_settings_input() {
           pool_stake_asset_name: "stTest",
           address: Some(mock_script_address(14, None)),
           datum_verifier_hash: Some(mock_script_hash(14)),
+          rewards_validator_hash: mock_script_hash(19),
         },
       ],
       frost_address: mock_pub_key_address(16, None),
       authorized_swap_scripts: [mock_script_hash(17)],
       stake_validator_hash: mock_script_hash(31),
-      rewards_validator_hash: mock_script_hash(19),
       min_pool_lovelace: 5_000_000,
     }
   let gs_input_utxo_ref = mock_utxo_ref(0, 11)

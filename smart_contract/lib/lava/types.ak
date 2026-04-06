@@ -16,6 +16,7 @@ pub type StakeType {
   pool_stake_asset_name: AssetName,
   address: Option<Address>,
   datum_verifier_hash: Option<ScriptHash>,
+  rewards_validator_hash: ScriptHash,
 }
 
 pub type SignerType {
@@ -34,7 +35,6 @@ pub type GlobalSettingsDatum {
   frost_address: Address,
   authorized_swap_scripts: List<ScriptHash>,
   stake_validator_hash: ScriptHash,
-  rewards_validator_hash: ScriptHash,
   min_pool_lovelace: Int,
 }
 

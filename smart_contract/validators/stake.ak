@@ -54,7 +54,6 @@ validator stake_validator(
       pool_asset
 
     expect Some(StakeType {
-      pool_stake_asset_name: ps_an,
       address: stake_address_opt,
       datum_verifier_hash: datum_verifier_hash_opt,
       ..
@@ -62,8 +61,9 @@ validator stake_validator(
       list.find(
         stake_details,
         fn(sd) {
-          let StakeType { asset_type: sd_asset_type, .. } = sd
-          sd_asset_type == stake_asset
+          let StakeType { pool_stake_asset_name: sd_pool_stake_asset_name, .. } =
+            sd
+          sd_pool_stake_asset_name == pool_stake_asset_name
         },
       )
     expect Some(stake_address) = stake_address_opt
@@ -108,11 +108,7 @@ validator stake_validator(
             if is_ada_asset {
               total + lovelace_of(output.value)
             } else {
-              total + quantity_of(
-                output.value,
-                pool_asset_pid,
-                pool_asset_an,
-              )
+              total + quantity_of(output.value, pool_asset_pid, pool_asset_an)
             }
           } else {
             total
@@ -153,8 +149,6 @@ validator stake_validator(
       pairs.has_key(withdrawals, Script(datum_verifier_hash))?,
       // batcher must sign transaction
       is_signed_by(extra_signatories, inputs, withdrawals, mint, batcher)?,
-      // pool stake asset name in pool datum should be same in stake details
-      (pool_stake_asset_name == ps_an)?,
     }
   }
 
@@ -249,6 +243,135 @@ test test_staking() {
     pool_validator_hash_t,
     StakeRedeemer { stake_asset: allowed_ast_one, batcher_index: 0 },
     mock_script_credential(17),
+    tx,
+  )
+}
+
+test test_staking_selects_stake_detail_by_pool_name() {
+  let pool_cred = Script(pool_validator_hash_t)
+  let mint = from_asset(pool_validator_hash_t, "poolnfttwo", 1)
+  let staking_asset_value =
+    from_asset(allowed_ast_one_pid, allowed_ast_one_an, 10_000_000)
+
+  let base_gs_input = get_global_settings_input()
+  expect InlineDatum(base_gs_datum) = base_gs_input.output.datum
+  expect GlobalSettingsDatum {
+    admin,
+    authorized_batchers,
+    allowed_assets,
+    mint_validator_hash,
+    frost_address,
+    authorized_swap_scripts,
+    stake_validator_hash,
+    min_pool_lovelace,
+    ..
+  } = base_gs_datum
+
+  let selected_stake_address = mock_script_address(24, None)
+  let selected_datum_verifier_hash = mock_script_hash(24)
+  let gs_input =
+    Input {
+      output_reference: base_gs_input.output_reference,
+      output: Output {
+        address: base_gs_input.output.address,
+        value: base_gs_input.output.value,
+        datum: InlineDatum(
+          GlobalSettingsDatum {
+            admin,
+            authorized_batchers,
+            allowed_assets,
+            mint_validator_hash,
+            stake_details: [
+              StakeType {
+                asset_type: allowed_ast_one,
+                pool_stake_asset_name: "stWrong",
+                address: Some(mock_script_address(23, None)),
+                datum_verifier_hash: Some(mock_script_hash(23)),
+                rewards_validator_hash: mock_script_hash(23),
+              },
+              StakeType {
+                asset_type: allowed_ast_one,
+                pool_stake_asset_name: "stPoolB",
+                address: Some(selected_stake_address),
+                datum_verifier_hash: Some(selected_datum_verifier_hash),
+                rewards_validator_hash: mock_script_hash(24),
+              },
+            ],
+            frost_address,
+            authorized_swap_scripts,
+            stake_validator_hash,
+            min_pool_lovelace,
+          },
+        ),
+        reference_script: None,
+      },
+    }
+
+  let pool_utxo_ref = mock_utxo_ref(0, 19)
+  let pool_datum_in =
+    PoolDatum {
+      pool_batching_cred: pool_batching_cred_t,
+      total_st_assets_minted: 0,
+      total_underlying: 0,
+      exchange_rate: 1 * precision_factor,
+      total_rewards_accrued: 0,
+      pool_asset: allowed_ast_one,
+      pool_stake_asset_name: "stPoolB",
+      is_processing_open: False,
+    }
+  let pool_input =
+    Input {
+      output_reference: pool_utxo_ref,
+      output: Output {
+        address: Address {
+          payment_credential: pool_cred,
+          stake_credential: Some(Inline(pool_cred)),
+        },
+        value: assets.merge(
+          from_lovelace(min_pool_lovelace),
+          assets.merge(mint, staking_asset_value),
+        ),
+        datum: InlineDatum(pool_datum_in),
+        reference_script: None,
+      },
+    }
+
+  let pool_output =
+    Output {
+      address: Address {
+        payment_credential: pool_cred,
+        stake_credential: Some(Inline(pool_cred)),
+      },
+      value: assets.merge(from_lovelace(min_pool_lovelace), mint),
+      datum: InlineDatum(pool_datum_in),
+      reference_script: None,
+    }
+
+  let stake_output =
+    Output {
+      address: selected_stake_address,
+      value: assets.merge(from_lovelace(10_000_000), staking_asset_value),
+      datum: NoDatum,
+      reference_script: None,
+    }
+
+  let tx =
+    Transaction {
+      ..placeholder,
+      inputs: [pool_input],
+      outputs: [pool_output, stake_output],
+      reference_inputs: [gs_input],
+      withdrawals: [
+        Pair(Script(selected_datum_verifier_hash), 0),
+        Pair(Script(admin_t), 0),
+      ],
+    }
+
+  stake_validator.withdraw(
+    gs_validator_hash_t,
+    pool_validator_hash_t,
+    StakeRedeemer { stake_asset: allowed_ast_one, batcher_index: 0 },
+    mock_script_credential(18),
     tx,
   )
 }
