@@ -119,12 +119,12 @@ fn get_atrium_global_settings_input(
           pool_stake_asset_name: "LADA",
           address: Some(stake_address),
           datum_verifier_hash: Some(datum_verifier_hash),
+          rewards_validator_hash: mock_script_hash(19),
         },
       ],
       frost_address: mock_script_address(16, None),
       authorized_swap_scripts: [mock_script_hash(17)],
       stake_validator_hash: mock_script_hash(31),
-      rewards_validator_hash: mock_script_hash(19),
       min_pool_lovelace: 5_000_000,
     }
 
