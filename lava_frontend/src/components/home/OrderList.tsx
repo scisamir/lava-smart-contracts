@@ -99,7 +99,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
         process.env.NEXT_PUBLIC_BACKEND_URL
           ?.replace(/\/lava-vaults\/?$/, "")
           .replace(/\/+$/, "") ||
-        "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
+        "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
 
       const response = await fetch(`${backendBaseUrl}/build-cancel-order-tx`, {
         method: "POST",
