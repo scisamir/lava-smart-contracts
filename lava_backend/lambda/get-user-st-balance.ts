@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { MaestroProvider, UTxO, stringToHex } from '@meshsdk/core';
+import { isLikelyCardanoAddress, jsonResponse, verifyRequest } from './security';
 
 const getTokenBalance = (
   utxos: UTxO[],
@@ -25,14 +26,20 @@ const getTokenBalance = (
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  const auth = await verifyRequest(event);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const address = event.queryStringParameters?.address;
 
     if (!address) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Address parameter is required' }),
-      };
+      return jsonResponse(400, { error: 'Address parameter is required' }, auth.origin);
+    }
+
+    if (!isLikelyCardanoAddress(address)) {
+      return jsonResponse(400, { error: 'Invalid address format' }, auth.origin);
     }
 
     const maestro = new MaestroProvider({
@@ -106,26 +113,19 @@ export const handler = async (
           utxo.output.amount.length <= 4
       ) ?? null;
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET',
-      },
-      body: JSON.stringify({
+    return jsonResponse(
+      200,
+      {
         balance: adaBalance,
         tokenBalances,
         walletUtxos: utxos,
         collateral,
-      }),
-    };
+      },
+      auth.origin
+    );
   } catch (error) {
     console.error(error);
 
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' }),
-    };
+    return jsonResponse(500, { error: 'Internal server error' }, auth.origin);
   }
 };

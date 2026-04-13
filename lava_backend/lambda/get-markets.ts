@@ -1,4 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { jsonResponse, verifyRequest } from './security';
 
 const protocols = [
   {
@@ -74,21 +75,15 @@ const protocols = [
 ];
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  const auth = await verifyRequest(event);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET',
-      },
-      body: JSON.stringify({ markets: protocols }),
-    };
+    return jsonResponse(200, { markets: protocols }, auth.origin);
   } catch (error) {
     console.error(error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' }),
-    };
+    return jsonResponse(500, { error: 'Internal server error' }, auth.origin);
   }
 };

@@ -9,22 +9,37 @@
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "build-lambda": "rm -rf lambda/dist && esbuild lambda/get-user-st-balance.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-markets.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-lava-vaults.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk"
+    "local:api": "tsx local/server.ts",
+    "local:markets": "tsx local/invoke-markets.ts",
+    "build-lambda": "node -e \"require('fs').rmSync('lambda/dist',{recursive:true,force:true});require('fs').mkdirSync('lambda/dist',{recursive:true});\" && esbuild lambda/get-user-st-balance.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-markets.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-lava-vaults.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk",
+    "synth": "npm run build-lambda && npx cdk synth",
+    "deploy": "npm run build-lambda && npx cdk deploy"
   },
   "devDependencies": {
-    "@meshsdk/core": "^1.9.0-beta.98",
+    "@meshsdk/core": "1.9.0-beta.102",
     "@types/aws-lambda": "^8.10.0",
     "@types/jest": "^30",
     "@types/node": "^24.10.1",
-    "aws-cdk": "2.1106.0",
+    "aws-cdk": "2.1118.0",
     "esbuild": "^0.27.3",
     "jest": "^30",
     "ts-jest": "^29",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "~5.9.3"
+  },
+  "overrides": {
+    "npm": "^11.8.2",
+    "undici": "^6.24.0",
+    "picomatch": "^4.0.4",
+    "brace-expansion": "^5.0.5",
+    "minimatch": "^9.0.7",
+    "@cardano-sdk/crypto": "0.4.5",
+    "@cardano-sdk/core": "0.46.12"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.238.0",
-    "constructs": "^10.0.0"
+    "constructs": "^10.0.0",
+    "jose": "^5.9.6"
   }
 }

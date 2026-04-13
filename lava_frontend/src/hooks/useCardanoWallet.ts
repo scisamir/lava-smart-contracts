@@ -6,7 +6,6 @@ import { BlockchainProviderType } from "@/e2e/types";
 import {
   AssetExtended,
   deserializeAddress,
-  MaestroProvider,
   MeshTxBuilder,
   stringToHex,
   UTxO,
@@ -91,15 +90,14 @@ export function useCardanoWallet() {
   const fetchWalletData = async () => {
     if (connected && wallet) {
       try {
-        const addr = await wallet.getChangeAddress();
+        const addr =
+          typeof (wallet as any).getChangeAddressBech32 === "function"
+            ? await (wallet as any).getChangeAddressBech32()
+            : await wallet.getChangeAddress();
         setWalletAddress(addr);
 
-        const backendBaseUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-          "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
-
         const balanceRes = await fetch(
-          `${backendBaseUrl}/user-balance?address=${encodeURIComponent(addr)}`
+          `/api/backend/user-balance?address=${encodeURIComponent(addr)}`
         );
 
         if (!balanceRes.ok) {
@@ -113,30 +111,11 @@ export function useCardanoWallet() {
         setWalletUtxos((balanceData.walletUtxos ?? []) as UTxO[]);
         setWalletCollateral((balanceData.collateral ?? null) as UTxO | null);
 
-        const { pubKeyHash, stakeCredentialHash } =
-          deserializeAddress(addr);
+        const { pubKeyHash, stakeCredentialHash } = deserializeAddress(addr);
 
         if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
 
-        const maestroKey = process.env.NEXT_PUBLIC_MAESTRO_KEY;
-        if (!maestroKey) {
-          throw new Error("MAESTRO_KEY missing for tx builder/provider");
-        }
-
-        const bp = new MaestroProvider({
-          network: "Preprod",
-          apiKey: maestroKey,
-        });
-
-        const tb = new MeshTxBuilder({
-          fetcher: bp,
-          submitter: bp,
-          evaluator: bp,
-          verbose: true,
-        });
-        tb.setNetwork("preprod");
-
-        const vaultsRes = await fetch(`${backendBaseUrl}/lava-vaults`);
+        const vaultsRes = await fetch(`/api/backend/lava-vaults`);
         if (!vaultsRes.ok) {
           throw new Error(`Failed to fetch lava vaults: ${vaultsRes.status}`);
         }
@@ -155,8 +134,8 @@ export function useCardanoWallet() {
           })
         );
 
-        setTxBuilder(tb);
-        setBlockchainProvider(bp);
+        setTxBuilder(null);
+        setBlockchainProvider(null);
         setWalletVK(pubKeyHash);
         setWalletSK(stakeCredentialHash ?? "");
         setPoolInfo(poolInfoData);

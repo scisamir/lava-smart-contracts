@@ -30,11 +30,7 @@ export const ProtocolsTable = () => {
   useEffect(() => {
     const fetchMarkets = async () => {
       try {
-        const backendBaseUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-          "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
-
-        const response = await fetch(`${backendBaseUrl}/markets`);
+        const response = await fetch(`/api/backend/markets`);
         if (!response.ok) {
           throw new Error(`Failed to fetch markets: ${response.status}`);
         }

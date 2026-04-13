@@ -9,6 +9,19 @@ export class LavaBackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000')
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean);
+
+    const jwtSharedSecret = ssm.StringParameter.valueForStringParameter(
+      this,
+      '/lava/backend-jwt-shared-secret'
+    );
+
+    const jwtIssuer = process.env.JWT_ISSUER ?? 'lava-frontend';
+    const jwtAudience = process.env.JWT_AUDIENCE ?? 'lava-backend';
+
     // Retrieve Maestro API key from SSM Parameter Store
     const maestroApiKey = ssm.StringParameter.valueForStringParameter(
       this,
@@ -42,6 +55,10 @@ export class LavaBackendStack extends cdk.Stack {
       environment: {
         MAESTRO_API_KEY: maestroApiKey,
         TABLE_NAME: table.tableName,
+        ALLOWED_ORIGINS: allowedOrigins.join(','),
+        JWT_SHARED_SECRET: jwtSharedSecret,
+        JWT_ISSUER: jwtIssuer,
+        JWT_AUDIENCE: jwtAudience,
       },
     });
 
@@ -52,6 +69,10 @@ export class LavaBackendStack extends cdk.Stack {
       // layers: [backendLayer],
       environment: {
         TABLE_NAME: table.tableName,
+        ALLOWED_ORIGINS: allowedOrigins.join(','),
+        JWT_SHARED_SECRET: jwtSharedSecret,
+        JWT_ISSUER: jwtIssuer,
+        JWT_AUDIENCE: jwtAudience,
       },
     });
 
@@ -63,6 +84,10 @@ export class LavaBackendStack extends cdk.Stack {
       environment: {
         MAESTRO_API_KEY: maestroApiKey,
         TABLE_NAME: table.tableName,
+        ALLOWED_ORIGINS: allowedOrigins.join(','),
+        JWT_SHARED_SECRET: jwtSharedSecret,
+        JWT_ISSUER: jwtIssuer,
+        JWT_AUDIENCE: jwtAudience,
       },
     });
 
@@ -79,8 +104,13 @@ export class LavaBackendStack extends cdk.Stack {
       restApiName: 'lava-api',
       description: 'API for Lava DeFi app',
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowOrigins: allowedOrigins,
+        allowMethods: ['GET', 'OPTIONS'],
+        allowHeaders: ['Content-Type', 'Authorization'],
+      },
+      deployOptions: {
+        throttlingRateLimit: 20,
+        throttlingBurstLimit: 40,
       },
     });
 
