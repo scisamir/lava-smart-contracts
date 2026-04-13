@@ -62,7 +62,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
     try {
       const backendBaseUrl =
         process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-        "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
+        "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
 
       const response = await fetch(`${backendBaseUrl}/build-mint-test-tokens-tx`, {
         method: "POST",

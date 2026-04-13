@@ -3,7 +3,17 @@ import * as cdk from 'aws-cdk-lib/core';
 import { LavaBackendStack } from '../lib/lava_backend-stack';
 
 const app = new cdk.App();
-new LavaBackendStack(app, 'LavaBackendStack', {
+const target =
+  (app.node.tryGetContext('target') as string | undefined) ??
+  process.env.LAVA_DEPLOY_TARGET ??
+  'default';
+
+if (target === 'company-mainnet') {
+  new LavaBackendStack(app, 'LavaBackendCompanyMainnetStack', {
+    stackName: 'LavaBackendCompanyMainnetStack',
+  });
+} else {
+  new LavaBackendStack(app, 'LavaBackendStack', {
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
    * but a single synthesized template can be deployed anywhere. */
@@ -17,4 +27,5 @@ new LavaBackendStack(app, 'LavaBackendStack', {
   // env: { account: '123456789012', region: 'us-east-1' },
 
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
-});
+  });
+}
