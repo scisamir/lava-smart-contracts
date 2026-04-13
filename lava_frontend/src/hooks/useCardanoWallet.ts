@@ -82,9 +82,10 @@ function useCardanoWalletState() {
   const backendBaseUrl = getBackendBaseUrl();
 
   const [walletAddress, setWalletAddress] = useState("");
-  const [txBuilder, setTxBuilder] = useState<MeshTxBuilder | null>(null);
-  const [blockchainProvider, setBlockchainProvider] =
-    useState<MaestroProvider | null>(null);
+  // Keep these for backward compatibility with existing context consumers.
+  // They are intentionally not initialized from any public env var.
+  const [txBuilder] = useState<MeshTxBuilder | null>(null);
+  const [blockchainProvider] = useState<MaestroProvider | null>(null);
   const [walletVK, setWalletVK] = useState<string>("");
   const [walletSK, setWalletSK] = useState<string>("");
   const restoreStartedRef = useRef(false);
@@ -180,30 +181,6 @@ function useCardanoWalletState() {
       console.info("[Lava] Frontend backend base URL:", backendBaseUrl);
       backendUrlLogged = true;
     }
-
-    const maestroKey = process.env.NEXT_PUBLIC_MAESTRO_KEY;
-    if (!maestroKey) {
-      setTxBuilder(null);
-      setBlockchainProvider(null);
-      console.warn("NEXT_PUBLIC_MAESTRO_KEY is not set; frontend tx builder/provider disabled.");
-      return;
-    }
-
-    const bp = new MaestroProvider({
-      network: "Mainnet",
-      apiKey: maestroKey,
-    });
-
-    const tb = new MeshTxBuilder({
-      fetcher: bp,
-      submitter: bp,
-      evaluator: bp,
-      verbose: true,
-    });
-    tb.setNetwork("mainnet");
-
-    setTxBuilder(tb);
-    setBlockchainProvider(bp);
   }, [backendBaseUrl]);
 
   const walletBalanceQuery = useQuery({

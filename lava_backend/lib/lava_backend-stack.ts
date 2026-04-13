@@ -165,6 +165,8 @@ export class LavaBackendStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
       handler: 'build-cancel-order-tx.handler',
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 1024,
       environment: {
         MAESTRO_API_KEY: maestroApiKey,
         TABLE_NAME: table.tableName,

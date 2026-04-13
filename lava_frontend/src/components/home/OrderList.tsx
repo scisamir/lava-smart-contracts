@@ -5,20 +5,13 @@ import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
 import { toast } from "react-toastify";
 import { OrderListProps, UserOrderType } from "@/lib/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 
 export const OrderList = ({ orders }: OrderListProps) => {
-  if (orders.length === 0) return null;
-
-  const formatOrderAmount = (order: UserOrderType) => {
-    const token = String(order.tokenName ?? "").toUpperCase();
-    if (token === "ADA" || token === "LADA") {
-      return (order.amount / 1_000_000).toFixed(2);
-    }
-
-    return order.amount.toFixed(2);
-  };
+  const [pendingCancelKeys, setPendingCancelKeys] = useState<Record<string, true>>({});
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submittingOrderKey, setSubmittingOrderKey] = useState<string>("");
 
   const {
     connected,
@@ -29,8 +22,43 @@ export const OrderList = ({ orders }: OrderListProps) => {
     walletUtxos,
     refreshWalletStateAfterTx,
   } = useCardanoWallet();
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [txHash, setTxHash] = useState<string>("");
+
+  useEffect(() => {
+    if (Object.keys(pendingCancelKeys).length === 0) {
+      return;
+    }
+
+    const liveOrderKeys = new Set(
+      orders.map((order) => `${order.txHash}-${order.outputIndex ?? 0}`)
+    );
+
+    setPendingCancelKeys((previous) => {
+      const next = { ...previous };
+      let changed = false;
+
+      Object.keys(next).forEach((key) => {
+        if (!liveOrderKeys.has(key)) {
+          delete next[key];
+          changed = true;
+        }
+      });
+
+      return changed ? next : previous;
+    });
+  }, [orders, pendingCancelKeys]);
+
+  const hasVisibleOrders =
+    orders.length > 0 || Object.keys(pendingCancelKeys).length > 0;
+  if (!hasVisibleOrders) return null;
+
+  const formatOrderAmount = (order: UserOrderType) => {
+    const token = String(order.tokenName ?? "").toUpperCase();
+    if (token === "ADA" || token === "LADA") {
+      return (order.amount / 1_000_000).toFixed(2);
+    }
+
+    return order.amount.toFixed(2);
+  };
 
   if (!connected) return null;
 
@@ -54,20 +82,23 @@ export const OrderList = ({ orders }: OrderListProps) => {
   const toastFailure = (err: any) =>
     toast.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
 
-  const handleCancelOrder = async (orderTxHash: string, orderOutputIndex = 0) => {
-    setIsProcessing(true);
-    setTxHash(orderTxHash);
+  const handleCancelOrder = async (order: UserOrderType) => {
+    const orderOutputIndex = order.outputIndex ?? 0;
+    const orderKey = `${order.txHash}-${orderOutputIndex}`;
 
-    if (!walletCollateral) {
-      toastFailure("Error: Check collateral");
-      setIsProcessing(false);
+    if (pendingCancelKeys[orderKey] || isSubmitting) {
       return;
     }
+
+    setIsSubmitting(true);
+    setSubmittingOrderKey(orderKey);
 
     let txHash = "";
     try {
       const backendBaseUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
+        process.env.NEXT_PUBLIC_BACKEND_URL
+          ?.replace(/\/lava-vaults\/?$/, "")
+          .replace(/\/+$/, "") ||
         "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
 
       const response = await fetch(`${backendBaseUrl}/build-cancel-order-tx`, {
@@ -78,7 +109,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
           walletVK,
           walletCollateral,
           walletUtxos,
-          orderTxHash,
+          orderTxHash: order.txHash,
           orderOutputIndex,
         }),
       });
@@ -91,8 +122,8 @@ export const OrderList = ({ orders }: OrderListProps) => {
           toast.info("Order is already processed. Refreshing list...");
           await refreshWalletStateAfterTx();
           window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
-          setTxHash("");
-          setIsProcessing(false);
+          setSubmittingOrderKey("");
+          setIsSubmitting(false);
           return;
         }
 
@@ -103,16 +134,20 @@ export const OrderList = ({ orders }: OrderListProps) => {
       const signedTx = await wallet.signTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
     } catch (e) {
-      setTxHash("");
-      setIsProcessing(false);
+      setSubmittingOrderKey("");
+      setIsSubmitting(false);
       toastFailure(e);
       console.error("e tx:", e);
       console.log("Err in handle cancel order");
       return;
     }
 
-    setTxHash("");
-    setIsProcessing(false);
+    setPendingCancelKeys((previous) => ({
+      ...previous,
+      [orderKey]: true,
+    }));
+    setSubmittingOrderKey("");
+    setIsSubmitting(false);
     toastSuccess(txHash);
     await refreshWalletStateAfterTx();
     window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
@@ -148,11 +183,12 @@ export const OrderList = ({ orders }: OrderListProps) => {
               variant="destructive"
               size="sm"
               className="bg-red-600 hover:bg-red-700"
-              onClick={async () => await handleCancelOrder(order.txHash, order.outputIndex ?? 0)}
-              disabled={isProcessing}
+              onClick={async () => await handleCancelOrder(order)}
+              disabled={isSubmitting || !!pendingCancelKeys[`${order.txHash}-${order.outputIndex ?? 0}`]}
             >
               <XCircle className="w-4 h-4 mr-1" />{" "}
-              {isProcessing && txHash === order.txHash
+              {(isSubmitting && submittingOrderKey === `${order.txHash}-${order.outputIndex ?? 0}`) ||
+              pendingCancelKeys[`${order.txHash}-${order.outputIndex ?? 0}`]
                 ? "Processing..."
                 : "Cancel"}
             </Button>
