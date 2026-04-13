@@ -28,7 +28,7 @@ export const handler = async (
     const orderTxHash = String(body?.orderTxHash ?? '');
     const orderOutputIndex = Number(body?.orderOutputIndex ?? 0);
 
-    if (!walletAddress || !walletVK || !walletCollateral || !orderTxHash) {
+    if (!walletAddress || !walletVK || !orderTxHash) {
       return {
         statusCode: 400,
         headers: {
@@ -38,7 +38,7 @@ export const handler = async (
         },
         body: JSON.stringify({
           error:
-            'Missing required fields: walletAddress, walletVK, walletCollateral, orderTxHash',
+            'Missing required fields: walletAddress, walletVK, orderTxHash',
         }),
       };
     }
@@ -88,6 +88,19 @@ export const handler = async (
       (asset) => asset.unit !== OrderValidatorHash
     );
 
+    const fallbackCollateral = [...walletUtxos]
+      .filter((utxo) =>
+        utxo.output.amount.length === 1 &&
+        utxo.output.amount[0].unit === 'lovelace' &&
+        BigInt(utxo.output.amount[0].quantity) >= 7_000_000n
+      )
+      .sort((a, b) => Number(BigInt(b.output.amount[0].quantity) - BigInt(a.output.amount[0].quantity)))[0];
+
+    const collateral = walletCollateral ?? fallbackCollateral;
+    if (!collateral) {
+      throw new Error('No collateral UTxO found');
+    }
+
     const unsignedTx = await txBuilder
       .spendingPlutusScriptV3()
       .txIn(
@@ -105,8 +118,8 @@ export const handler = async (
       .mintRedeemerValue(mConStr1([]))
       .txOut(receiverAddress, outputAmount)
       .txInCollateral(
-        walletCollateral.input.txHash,
-        walletCollateral.input.outputIndex
+        collateral.input.txHash,
+        collateral.input.outputIndex
       )
       .setTotalCollateral('5000000')
       .changeAddress(walletAddress)

@@ -140,6 +140,7 @@ export const StakingCard = () => {
 
   const handleSwap = () => {
     setIsSwapped((prev) => !prev);
+    setAmount("0.00");
   };
 
   const handleSelectTokenPair = (pair: TokenPair) => {
@@ -323,7 +324,7 @@ export const StakingCard = () => {
     if (tokenLabel === "LADA") {
       const rawBalance = Math.trunc(tokenBalance ?? 0);
       const halfRaw = Math.trunc(rawBalance / 2);
-      setAmount((halfRaw / 1_000_000).toFixed(6));
+      setAmount((halfRaw / 1_000_000).toFixed(2));
       return;
     }
 
@@ -333,7 +334,7 @@ export const StakingCard = () => {
   const setMaxAmount = () => {
     if (tokenLabel === "LADA") {
       const rawBalance = Math.trunc(tokenBalance ?? 0);
-      setAmount((rawBalance / 1_000_000).toFixed(6));
+      setAmount((rawBalance / 1_000_000).toFixed(2));
       return;
     }
 

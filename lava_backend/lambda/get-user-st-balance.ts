@@ -78,7 +78,7 @@ export const handler = async (
       LADA,
     };
 
-    const MIN_COLLATERAL_LOVELACE = 8_000_000n;
+    const MIN_COLLATERAL_LOVELACE = 7_000_000n;
 
     const getUtxoLovelace = (utxo: UTxO): bigint =>
       BigInt(
