@@ -11,9 +11,7 @@
     "cdk": "cdk",
     "local:api": "tsx local/server.ts",
     "local:markets": "tsx local/invoke-markets.ts",
-    "build-lambda": "node -e \"require('fs').rmSync('lambda/dist',{recursive:true,force:true});require('fs').mkdirSync('lambda/dist',{recursive:true});\" && esbuild lambda/get-user-st-balance.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-markets.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-lava-vaults.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk",
-    "synth": "npm run build-lambda && npx cdk synth",
-    "deploy": "npm run build-lambda && npx cdk deploy"
+    "build-lambda": "node -e \"require('fs').rmSync('lambda/dist',{recursive:true,force:true});require('fs').mkdirSync('lambda/dist',{recursive:true});\" && esbuild lambda/get-user-st-balance.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-markets.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk && esbuild lambda/get-lava-vaults.ts --bundle --platform=node --target=node18 --outdir=lambda/dist --external:aws-sdk"
   },
   "devDependencies": {
     "@meshsdk/core": "1.9.0-beta.102",
