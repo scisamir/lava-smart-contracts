@@ -12,6 +12,7 @@ import {
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { fetchBackend } from "@/lib/backendClient";
 
 type Market = {
   name: string;
@@ -30,7 +31,7 @@ export const ProtocolsTable = () => {
   useEffect(() => {
     const fetchMarkets = async () => {
       try {
-        const response = await fetch(`/api/backend/markets`);
+        const response = await fetchBackend('/markets');
         if (!response.ok) {
           throw new Error(`Failed to fetch markets: ${response.status}`);
         }

@@ -19,8 +19,8 @@ export class LavaBackendStack extends cdk.Stack {
       '/lava/backend-jwt-shared-secret'
     );
 
-    const jwtIssuer = process.env.JWT_ISSUER ?? 'lava-frontend';
-    const jwtAudience = process.env.JWT_AUDIENCE ?? 'lava-backend';
+    const jwtIssuer = process.env.JWT_ISSUER ?? 'lava-backend';
+    const jwtAudience = process.env.JWT_AUDIENCE ?? 'lava-client';
 
     // Retrieve Maestro API key from SSM Parameter Store
     const maestroApiKey = ssm.StringParameter.valueForStringParameter(
@@ -47,6 +47,30 @@ export class LavaBackendStack extends cdk.Stack {
     // Lambdas
     // ======================
 
+    const authChallengeLambda = new lambda.Function(this, 'AuthChallengeFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      code: lambda.Code.fromAsset('lambda/dist'),
+      handler: 'auth-challenge.handler',
+      environment: {
+        ALLOWED_ORIGINS: allowedOrigins.join(','),
+        JWT_SHARED_SECRET: jwtSharedSecret,
+        JWT_ISSUER: jwtIssuer,
+        JWT_AUDIENCE: jwtAudience,
+      },
+    });
+
+    const authVerifyLambda = new lambda.Function(this, 'AuthVerifyFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      code: lambda.Code.fromAsset('lambda/dist'),
+      handler: 'auth-verify.handler',
+      environment: {
+        ALLOWED_ORIGINS: allowedOrigins.join(','),
+        JWT_SHARED_SECRET: jwtSharedSecret,
+        JWT_ISSUER: jwtIssuer,
+        JWT_AUDIENCE: jwtAudience,
+      },
+    });
+
     const getUserBalanceLambda = new lambda.Function(this, 'GetUserBalanceFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
       code: lambda.Code.fromAsset('lambda/dist'),
@@ -70,9 +94,6 @@ export class LavaBackendStack extends cdk.Stack {
       environment: {
         TABLE_NAME: table.tableName,
         ALLOWED_ORIGINS: allowedOrigins.join(','),
-        JWT_SHARED_SECRET: jwtSharedSecret,
-        JWT_ISSUER: jwtIssuer,
-        JWT_AUDIENCE: jwtAudience,
       },
     });
 
@@ -85,9 +106,6 @@ export class LavaBackendStack extends cdk.Stack {
         MAESTRO_API_KEY: maestroApiKey,
         TABLE_NAME: table.tableName,
         ALLOWED_ORIGINS: allowedOrigins.join(','),
-        JWT_SHARED_SECRET: jwtSharedSecret,
-        JWT_ISSUER: jwtIssuer,
-        JWT_AUDIENCE: jwtAudience,
       },
     });
 
@@ -105,7 +123,7 @@ export class LavaBackendStack extends cdk.Stack {
       description: 'API for Lava DeFi app',
       defaultCorsPreflightOptions: {
         allowOrigins: allowedOrigins,
-        allowMethods: ['GET', 'OPTIONS'],
+        allowMethods: ['GET', 'POST', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization'],
       },
       deployOptions: {
@@ -114,14 +132,18 @@ export class LavaBackendStack extends cdk.Stack {
       },
     });
 
+    const authResource = api.root.addResource('auth');
+    const authChallengeResource = authResource.addResource('challenge');
+    authChallengeResource.addMethod('POST', new apigateway.LambdaIntegration(authChallengeLambda));
+
+    const authVerifyResource = authResource.addResource('verify');
+    authVerifyResource.addMethod('POST', new apigateway.LambdaIntegration(authVerifyLambda));
+
     const balanceResource = api.root.addResource('user-balance');
     balanceResource.addMethod(
       'GET',
       new apigateway.LambdaIntegration(getUserBalanceLambda),
       {
-        requestParameters: {
-          'method.request.querystring.address': true,
-        },
         methodResponses: [
           {
             statusCode: '200',

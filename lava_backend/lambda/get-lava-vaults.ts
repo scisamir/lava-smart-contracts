@@ -1,7 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { MaestroProvider, deserializeDatum, hexToString, applyParamsToScript, builtinByteString, resolveScriptHash, serializePlutusScript, NativeScript, resolveNativeScriptHash, serializeNativeScript, outputReference } from '@meshsdk/core';
 import blueprint from '../plutus.json';
-import { jsonResponse, verifyRequest } from './security';
+import { jsonResponse, verifyOriginRequest } from './security';
 
 // Compute PoolValidatorAddr
 const wallet1VK = "96cbb27c96daf8cab890de6d7f87f5ffd025bf8ac80717cbc4fae7da";
@@ -72,7 +72,7 @@ const getRandomLogo = (): string => LOGOS[getRandomInt(0, LOGOS.length - 1)];
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  const auth = await verifyRequest(event);
+  const auth = await verifyOriginRequest(event);
   if (!auth.ok) {
     return auth.response;
   }

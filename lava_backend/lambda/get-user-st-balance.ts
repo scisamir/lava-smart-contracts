@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { MaestroProvider, UTxO, stringToHex } from '@meshsdk/core';
-import { isLikelyCardanoAddress, jsonResponse, verifyRequest } from './security';
+import { jsonResponse, verifyAccessToken } from './security';
 
 const getTokenBalance = (
   utxos: UTxO[],
@@ -26,21 +26,13 @@ const getTokenBalance = (
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  const auth = await verifyRequest(event);
+  const auth = await verifyAccessToken(event);
   if (!auth.ok) {
     return auth.response;
   }
 
   try {
-    const address = event.queryStringParameters?.address;
-
-    if (!address) {
-      return jsonResponse(400, { error: 'Address parameter is required' }, auth.origin);
-    }
-
-    if (!isLikelyCardanoAddress(address)) {
-      return jsonResponse(400, { error: 'Invalid address format' }, auth.origin);
-    }
+    const address = auth.address;
 
     const maestro = new MaestroProvider({
       network: 'Preprod',

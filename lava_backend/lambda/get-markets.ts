@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { jsonResponse, verifyRequest } from './security';
+import { jsonResponse, verifyOriginRequest } from './security';
 
 const protocols = [
   {
@@ -75,7 +75,7 @@ const protocols = [
 ];
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  const auth = await verifyRequest(event);
+  const auth = await verifyOriginRequest(event);
   if (!auth.ok) {
     return auth.response;
   }

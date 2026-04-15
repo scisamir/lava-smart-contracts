@@ -5,21 +5,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { MeshProvider, CardanoWallet } from "@meshsdk/react";
 import { ToastContainer } from "react-toastify";
-import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 export default function MyApp({ Component, pageProps }: AppProps) {
-  useEffect(() => {
-    void fetch('/api/auth/client-session', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <MeshProvider>

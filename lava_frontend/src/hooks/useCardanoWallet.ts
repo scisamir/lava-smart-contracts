@@ -2,17 +2,49 @@
 
 import { useEffect, useState } from "react";
 import { useWallet } from "@meshsdk/react";
+import {
+  addressToBech32,
+  deserializeAddress as deserializeCardanoAddress,
+} from "@meshsdk/core-cst";
 import { BlockchainProviderType } from "@/e2e/types";
 import {
   AssetExtended,
   deserializeAddress,
+  MaestroProvider,
   MeshTxBuilder,
   stringToHex,
   UTxO,
 } from "@meshsdk/core";
 import { BackendVault } from "@/lib/types";
+import { fetchBackend } from "@/lib/backendClient";
+import { clearWalletAuthSession, ensureWalletAuthSession } from "@/lib/walletAuth";
 
 const LOCAL_STORAGE_KEY = "connectedWallet";
+const MAESTRO_NETWORK = "Preprod";
+
+const createTransactionContext = () => {
+  const apiKey = process.env.NEXT_PUBLIC_MAESTRO_API_KEY?.trim();
+  if (!apiKey) {
+    return { provider: null, builder: null };
+  }
+  const provider = new MaestroProvider({ network: MAESTRO_NETWORK, apiKey });
+  return {
+    provider,
+    builder: new MeshTxBuilder({ fetcher: provider, submitter: provider, evaluator: provider }),
+  };
+};
+
+const normalizeWalletAddress = (rawAddress: string): string => {
+  if (!rawAddress) {
+    return "";
+  }
+
+  if (rawAddress.startsWith("addr") || rawAddress.startsWith("stake")) {
+    return rawAddress;
+  }
+
+  return addressToBech32(deserializeCardanoAddress(rawAddress));
+};
 
 export function useCardanoWallet() {
   const { wallet, connected, connect, disconnect, name } = useWallet();
@@ -90,15 +122,37 @@ export function useCardanoWallet() {
   const fetchWalletData = async () => {
     if (connected && wallet) {
       try {
-        const addr =
+        const rawChangeAddress = await wallet.getChangeAddress();
+        const changeAddress =
           typeof (wallet as any).getChangeAddressBech32 === "function"
             ? await (wallet as any).getChangeAddressBech32()
-            : await wallet.getChangeAddress();
-        setWalletAddress(addr);
+            : rawChangeAddress;
+        const usedAddresses =
+          typeof (wallet as any).getUsedAddressesBech32 === "function"
+            ? await (wallet as any).getUsedAddressesBech32()
+            : typeof (wallet as any).getUsedAddresses === "function"
+              ? await (wallet as any).getUsedAddresses()
+              : [];
+        const normalizedChangeAddress = normalizeWalletAddress(changeAddress);
+        const normalizedUsedAddresses = usedAddresses
+          .map((address: string) => normalizeWalletAddress(address))
+          .filter(Boolean);
+        const authAddress = normalizedChangeAddress || normalizedUsedAddresses[0] || "";
 
-        const balanceRes = await fetch(
-          `/api/backend/user-balance?address=${encodeURIComponent(addr)}`
+        if (!authAddress) {
+          throw new Error("Wallet did not provide a usable Cardano address");
+        }
+
+        setWalletAddress(authAddress);
+
+        const authSession = await ensureWalletAuthSession(
+          wallet as any,
+          authAddress,
+          rawChangeAddress
         );
+        const balanceRes = await fetchBackend('/user-balance', {
+          token: authSession.token,
+        });
 
         if (!balanceRes.ok) {
           throw new Error(`Failed to fetch user balance: ${balanceRes.status}`);
@@ -111,11 +165,11 @@ export function useCardanoWallet() {
         setWalletUtxos((balanceData.walletUtxos ?? []) as UTxO[]);
         setWalletCollateral((balanceData.collateral ?? null) as UTxO | null);
 
-        const { pubKeyHash, stakeCredentialHash } = deserializeAddress(addr);
+        const { pubKeyHash, stakeCredentialHash } = deserializeAddress(authAddress);
 
         if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
 
-        const vaultsRes = await fetch(`/api/backend/lava-vaults`);
+        const vaultsRes = await fetchBackend('/lava-vaults');
         if (!vaultsRes.ok) {
           throw new Error(`Failed to fetch lava vaults: ${vaultsRes.status}`);
         }
@@ -134,8 +188,9 @@ export function useCardanoWallet() {
           })
         );
 
-        setTxBuilder(null);
-        setBlockchainProvider(null);
+        const { provider, builder } = createTransactionContext();
+        setTxBuilder(builder);
+        setBlockchainProvider(provider);
         setWalletVK(pubKeyHash);
         setWalletSK(stakeCredentialHash ?? "");
         setPoolInfo(poolInfoData);
@@ -147,6 +202,8 @@ export function useCardanoWallet() {
 
     //DO NOT CLEAR UNTIL RESTORE FINISHED
     if (!hasTriedRestore) return;
+
+    clearWalletAuthSession();
 
     // Only clear UI state (not localStorage)
     setWalletAddress("");
@@ -173,6 +230,7 @@ export function useCardanoWallet() {
 
   const disconnectWallet = async () => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
+    clearWalletAuthSession();
     await disconnect();
   };
 
@@ -184,6 +242,7 @@ export function useCardanoWallet() {
     connected,
     wallet,
     walletName: name,
+    currentUserAddress: walletAddress,
     walletAddress,
     balance,
     tokenBalances,
