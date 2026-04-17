@@ -4,22 +4,11 @@ import {
   MeshTxBuilder,
   deserializeDatum,
 } from '@meshsdk/core';
-import { batchingTxTest } from './e2e/batching/batchingTest';
-import { batchingTxStrike } from './e2e/batching/batchingStrike';
-import { batchingTxPulse } from './e2e/batching/batchingPulse';
 import { batchingTx } from './e2e/batching/batching';
 import { OrderValidatorAddr } from './e2e/order/validator';
-import { setupE2e } from './e2e/setup';
 import { OrderDatumType } from './e2e/types';
 
-type BatchType = 'test' | 'tStrike' | 'tPulse' | 'atrium';
-
-type PendingCounts = {
-  test: number;
-  tStrike: number;
-  tPulse: number;
-  atrium: number;
-};
+type PendingCounts = Record<string, number>;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -30,56 +19,30 @@ const isRateLimitError = (error: unknown) => {
 
 const getPendingCounts = async (maestro: MaestroProvider): Promise<PendingCounts> => {
   const orderUtxos = await maestro.fetchAddressUTxOs(OrderValidatorAddr);
-  const {
-    poolStakeAssetName,
-    tStrikePoolStakeAssetName,
-    tPulsePoolStakeAssetName,
-    ATRIUM_POOL_STAKE_ASSET_NAME,
-  } = setupE2e();
-
-  const totalOrders: PendingCounts = { test: 0, tStrike: 0, tPulse: 0, atrium: 0 };
+  const totalOrders: PendingCounts = {};
 
   orderUtxos.forEach((utxo) => {
     const orderPlutusData = utxo.output.plutusData;
     if (!orderPlutusData) return;
 
     const orderDatum = deserializeDatum<OrderDatumType>(orderPlutusData);
-    const poolSAN = orderDatum.fields[3].bytes;
-
-    if (poolSAN === poolStakeAssetName) {
-      totalOrders.test += 1;
-    } else if (poolSAN === tStrikePoolStakeAssetName) {
-      totalOrders.tStrike += 1;
-    } else if (poolSAN === tPulsePoolStakeAssetName) {
-      totalOrders.tPulse += 1;
-    } else if (poolSAN === ATRIUM_POOL_STAKE_ASSET_NAME) {
-      totalOrders.atrium += 1;
+    const poolSAN = String(orderDatum.fields[3].bytes ?? '').trim();
+    if (!poolSAN) {
+      return;
     }
+
+    totalOrders[poolSAN] = (totalOrders[poolSAN] ?? 0) + 1;
   });
 
   return totalOrders;
 };
 
 const runBatch = async (
-  batchType: BatchType,
+  poolStakeAssetNameHex: string,
   blockchainProvider: MaestroProvider,
   txBuilder: MeshTxBuilder
 ): Promise<string> => {
-  const { ATRIUM_POOL_STAKE_ASSET_NAME } = setupE2e();
-
-  if (batchType === 'test') {
-    return batchingTxTest(blockchainProvider, txBuilder);
-  }
-
-  if (batchType === 'tStrike') {
-    return batchingTxStrike(blockchainProvider, txBuilder);
-  }
-
-  if (batchType === 'tPulse') {
-    return batchingTxPulse(blockchainProvider, txBuilder);
-  }
-
-  return batchingTx(blockchainProvider, txBuilder, ATRIUM_POOL_STAKE_ASSET_NAME);
+  return batchingTx(blockchainProvider, txBuilder, poolStakeAssetNameHex);
 };
 
 export const handler = async (_event: ScheduledEvent) => {
@@ -104,11 +67,9 @@ export const handler = async (_event: ScheduledEvent) => {
 
   const pending = await getPendingCounts(blockchainProvider);
 
-  const queue: BatchType[] = [];
-  if (pending.test > 0) queue.push('test');
-  if (pending.tStrike > 0) queue.push('tStrike');
-  if (pending.tPulse > 0) queue.push('tPulse');
-  if (pending.atrium > 0) queue.push('atrium');
+  const queue = Object.entries(pending)
+    .filter(([, totalOrders]) => totalOrders > 0)
+    .map(([poolStakeAssetNameHex]) => poolStakeAssetNameHex);
 
   if (queue.length === 0) {
     console.log('Auto batch skipped: no pending orders', pending);
@@ -119,9 +80,9 @@ export const handler = async (_event: ScheduledEvent) => {
     };
   }
 
-  const results: Array<{ batchType: BatchType; txHash?: string; error?: string }> = [];
+  const results: Array<{ poolStakeAssetNameHex: string; txHash?: string; error?: string }> = [];
 
-  for (const batchType of queue) {
+  for (const poolStakeAssetNameHex of queue) {
     const maxAttempts = 4;
     let successTxHash: string | null = null;
     let lastError: unknown;
@@ -136,7 +97,7 @@ export const handler = async (_event: ScheduledEvent) => {
         });
         txBuilder.setNetwork('mainnet');
 
-        successTxHash = await runBatch(batchType, blockchainProvider, txBuilder);
+        successTxHash = await runBatch(poolStakeAssetNameHex, blockchainProvider, txBuilder);
         break;
       } catch (error) {
         lastError = error;
@@ -144,7 +105,7 @@ export const handler = async (_event: ScheduledEvent) => {
         if (attempt < maxAttempts && isRateLimitError(error)) {
           const waitMs = 1200 * attempt;
           console.warn(
-            `Auto batch ${batchType} hit Maestro rate limit (attempt ${attempt}/${maxAttempts}), retrying in ${waitMs}ms`
+            `Auto batch ${poolStakeAssetNameHex} hit Maestro rate limit (attempt ${attempt}/${maxAttempts}), retrying in ${waitMs}ms`
           );
           await sleep(waitMs);
           continue;
@@ -155,12 +116,12 @@ export const handler = async (_event: ScheduledEvent) => {
     }
 
     if (successTxHash) {
-      results.push({ batchType, txHash: successTxHash });
+      results.push({ poolStakeAssetNameHex, txHash: successTxHash });
       await sleep(800);
     } else {
-      console.error(`Auto batch failed for ${batchType}:`, lastError);
+      console.error(`Auto batch failed for ${poolStakeAssetNameHex}:`, lastError);
       results.push({
-        batchType,
+        poolStakeAssetNameHex,
         error: lastError instanceof Error ? lastError.message : String(lastError),
       });
     }

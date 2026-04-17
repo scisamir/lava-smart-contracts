@@ -11,7 +11,6 @@ import {
   PutCommand,
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { setupE2e } from './e2e/setup';
 import { PoolValidatorAddr } from './e2e/pool/validator';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -74,8 +73,6 @@ const loadTokenRegistry = async (tableName: string) => {
 
 export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: number; body: string }> => {
   try {
-    const { ATRIUM_POOL_STAKE_ASSET_NAME } = setupE2e();
-
     const maestroApiKey = process.env.MAESTRO_API_KEY;
     const tableName = process.env.TABLE_NAME;
 
@@ -107,10 +104,6 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
 
       const derivativeSymbol = hexToString(poolDatum.fields[6].bytes);
       const poolStakeAssetNameHex = String(poolDatum.fields[6].bytes ?? '');
-
-      if (poolStakeAssetNameHex !== ATRIUM_POOL_STAKE_ASSET_NAME) {
-        continue;
-      }
 
       const isPoolOpen = poolDatum.fields[7].constructor === 1;
       const totalUnderlying = Number(poolDatum.fields[2].int);

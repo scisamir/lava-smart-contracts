@@ -1,21 +1,40 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { MaestroProvider, MeshTxBuilder } from '@meshsdk/core';
-import { batchingTxTest } from './e2e/batching/batchingTest';
-import { batchingTxStrike } from './e2e/batching/batchingStrike';
-import { batchingTxPulse } from './e2e/batching/batchingPulse';
 import { batchingTx } from './e2e/batching/batching';
 import { setupE2e } from './e2e/setup';
 
-type BatchType = 'test' | 'tStrike' | 'tPulse' | 'atrium';
+const resolvePoolStakeAssetNameHex = (batchTypeOrPoolKey: string): string => {
+  const key = batchTypeOrPoolKey.trim();
+  if (!key) {
+    return '';
+  }
+
+  const {
+    poolStakeAssetName,
+    tStrikePoolStakeAssetName,
+    tPulsePoolStakeAssetName,
+    ATRIUM_POOL_STAKE_ASSET_NAME,
+  } = setupE2e();
+
+  const legacyMap: Record<string, string> = {
+    test: poolStakeAssetName,
+    tStrike: tStrikePoolStakeAssetName,
+    tPulse: tPulsePoolStakeAssetName,
+    atrium: ATRIUM_POOL_STAKE_ASSET_NAME,
+  };
+
+  return legacyMap[key] ?? key;
+};
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
     const body = event.body ? JSON.parse(event.body) : {};
-    const batchType = body?.batchType as BatchType;
+    const batchTypeOrPoolKey = String(body?.batchType ?? body?.poolStakeAssetNameHex ?? '').trim();
+    const poolStakeAssetNameHex = resolvePoolStakeAssetNameHex(batchTypeOrPoolKey);
 
-    if (!batchType || !['test', 'tStrike', 'tPulse', 'atrium'].includes(batchType)) {
+    if (!poolStakeAssetNameHex) {
       return {
         statusCode: 400,
         headers: {
@@ -23,7 +42,9 @@ export const handler = async (
           'Access-Control-Allow-Headers': 'Content-Type',
           'Access-Control-Allow-Methods': 'POST,OPTIONS',
         },
-        body: JSON.stringify({ error: 'Invalid or missing batchType' }),
+        body: JSON.stringify({
+          error: 'Invalid or missing batchType/poolStakeAssetNameHex',
+        }),
       };
     }
 
@@ -56,16 +77,7 @@ export const handler = async (
     });
     txBuilder.setNetwork('mainnet');
 
-    const { ATRIUM_POOL_STAKE_ASSET_NAME } = setupE2e();
-
-    const txHash =
-      batchType === 'test'
-        ? await batchingTxTest(blockchainProvider, txBuilder)
-        : batchType === 'tStrike'
-        ? await batchingTxStrike(blockchainProvider, txBuilder)
-        : batchType === 'tPulse'
-        ? await batchingTxPulse(blockchainProvider, txBuilder)
-        : await batchingTx(blockchainProvider, txBuilder, ATRIUM_POOL_STAKE_ASSET_NAME);
+    const txHash = await batchingTx(blockchainProvider, txBuilder, poolStakeAssetNameHex);
 
     return {
       statusCode: 200,
@@ -74,7 +86,7 @@ export const handler = async (
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST,OPTIONS',
       },
-      body: JSON.stringify({ txHash, batchType }),
+      body: JSON.stringify({ txHash, poolStakeAssetNameHex }),
     };
   } catch (error) {
     console.error('Batching error:', error);
