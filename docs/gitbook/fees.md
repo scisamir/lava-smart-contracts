@@ -1,42 +1,48 @@
 # Fee Structure
 
-Lava is designed to keep costs simple and transparent. There are two types of fees to be aware of: the protocol fee and the on-chain transaction fee.
+> **This section is under construction.** The fee model is still evolving and figures may change before mainnet launch. Check back for updates.
+
+---
 
 ## Protocol fee
 
-Lava charges a small fee on staking and unstaking operations. This is reflected in the conversion rate shown in the staking card before you confirm any transaction.
+Lava charges a flat fee on staking and unstaking operations.
 
-**Conversion rate example:**
+| Action | Fee |
+|--------|-----|
+| Deposit (stake) | 1 ADA |
+| Withdrawal (unstake) | 1 ADA |
 
-```
-1 LStrike = 0.996 tStrike
-```
+These fees cover protocol operations and are separate from the Cardano network transaction fee.
 
-When you stake, you receive slightly fewer L-Assets than a pure 1:1 exchange would give you. When you redeem, the same rate applies in reverse. This spread covers the operational costs of running the batcher infrastructure that processes orders.
+## Batcher fee and refundable deposit
 
-The fee is embedded in the exchange rate, so you always see the exact amount you will receive before confirming.
+When you submit a staking order, a small ADA deposit is included in the order UTxO alongside your tokens. This deposit is held on-chain while your order is pending and is returned to you in full when the batcher processes your order.
 
-## Transaction fees
+You will see this amount come back to your wallet together with your L-Assets once the order is batched. It is not a cost, it is a Cardano UTxO minimum ADA requirement that gets refunded automatically.
 
-Every stake, unstake, and cancel action involves an on-chain transaction on Cardano. You pay the standard Cardano network fee for each transaction, which is typically a fraction of an ADA. These fees go to Cardano network validators, not to Lava.
+## Network transaction fee
 
-Because Lava batches multiple orders into single transactions, the per-user cost is kept lower than it would be if each order were processed individually.
+Every stake, unstake, and cancel action involves an on-chain transaction on Cardano. You pay the standard Cardano network fee, which is typically a fraction of an ADA. This fee goes to Cardano network validators, not to Lava.
+
+Because Lava batches multiple orders into a single transaction, the per-user cost is kept lower than it would be if each order were processed individually.
 
 ## Yield fees
 
-Lava may retain a portion of the staking rewards generated before distributing the remainder to L-Asset holders. Any yield fee is factored into the displayed APY on the app, so the APY you see reflects what you actually receive after fees.
+Lava may retain a portion of staking rewards before distributing the remainder to L-Asset holders. Any yield fee is factored into the displayed APY, so the rate you see in the app already reflects what you receive after fees.
 
 ## What you never pay
 
-- No deposit fee
-- No withdrawal fee beyond the embedded conversion rate
 - No fee for holding L-Assets
 - No fee for transferring L-Assets to another address or protocol
+- No fee to cancel a pending order
 
 ## Summary
 
-| Fee type | Amount | Who receives it |
-|----------|--------|----------------|
-| Protocol fee | Embedded in exchange rate | Lava protocol |
-| Network transaction fee | Standard Cardano fee (fraction of ADA) | Cardano validators |
-| Yield fee | Included in displayed APY | Lava protocol |
+| Fee type | Amount | Notes |
+|----------|--------|-------|
+| Deposit fee | 1 ADA | Charged on stake |
+| Withdrawal fee | 1 ADA | Charged on unstake |
+| Batcher deposit | Variable (refunded) | Returned with your L-Assets after processing |
+| Network transaction fee | Standard Cardano fee | Paid to Cardano validators |
+| Yield fee | Included in displayed APY | Deducted before rewards hit the pool |
