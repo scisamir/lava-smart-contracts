@@ -46,4 +46,4 @@ UTxO Company performed the independent security audit of the Lava smart contract
 
 ## Becoming a partner
 
-If you represent a Cardano protocol and are interested in integrating L-Assets or partnering with Lava, reach out through the official channels listed on [lava.finance](https://lava.finance).
+If you represent a Cardano protocol and are interested in integrating L-Assets or partnering with Lava, reach out through the official Lava channels.

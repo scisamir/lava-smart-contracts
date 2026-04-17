@@ -32,4 +32,4 @@ Lava only integrates with audited and established Cardano protocols, but no smar
 
 ## Reporting a vulnerability
 
-If you discover a potential vulnerability in the Lava protocol, please report it responsibly through the official security contact listed on [lava.finance](https://lava.finance). Do not disclose vulnerabilities publicly before they have been addressed.
+If you discover a potential vulnerability in the Lava protocol, please report it responsibly through the official Lava security contact. Do not disclose vulnerabilities publicly before they have been addressed.

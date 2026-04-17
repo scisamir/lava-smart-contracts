@@ -12,7 +12,7 @@ Staking through Lava takes a few seconds. Here is the full process from start to
 
 **1. Connect your wallet**
 
-Go to [lava.finance](https://lava.finance) and click **Connect Wallet** in the top right corner. Select your wallet from the list and approve the connection.
+Go to the Lava app and click **Connect Wallet** in the top right corner. Select your wallet from the list and approve the connection.
 
 **2. Go to the Stake page**
 
