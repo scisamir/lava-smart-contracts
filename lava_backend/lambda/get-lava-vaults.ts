@@ -1,7 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { setupE2e } from './e2e/setup';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -46,8 +45,6 @@ export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
-    const { ATRIUM_POOL_STAKE_ASSET_NAME } = setupE2e();
-
     const tableName = process.env.TABLE_NAME;
     if (!tableName) {
       throw new Error('TABLE_NAME is not configured');
@@ -67,11 +64,6 @@ export const handler = async (
     );
 
     const vaults = ((scanResult.Items ?? []) as VaultSnapshotItem[])
-      .filter((item) => {
-        const poolStakeAssetNameHex =
-          item.poolStakeAssetNameHex ?? item.tokenDetails?.derivative?.assetNameHex ?? '';
-        return poolStakeAssetNameHex === ATRIUM_POOL_STAKE_ASSET_NAME;
-      })
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((item) => ({
         name: item.name,

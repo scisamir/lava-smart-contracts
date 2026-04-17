@@ -29,7 +29,7 @@ export class LavaBackendStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    // ✅ Lambda Layer (Mesh + AWS SDK dependencies)
+    // Lambda Layer (Mesh + AWS SDK dependencies)
     // Temporarily removed due to size limits - dependencies included in Lambda code
     // const backendLayer = new lambda.LayerVersion(this, 'BackendLayer', {
     //   code: lambda.Code.fromAsset('lambda-layer'),
@@ -141,16 +141,6 @@ export class LavaBackendStack extends cdk.Stack {
       },
     });
 
-    const buildMintTestTokensTxLambda = new lambda.Function(this, 'BuildMintTestTokensTxFunction', {
-      runtime: lambda.Runtime.NODEJS_22_X,
-      code: lambda.Code.fromAsset('lambda/dist'),
-      handler: 'build-mint-test-tokens-tx.handler',
-      environment: {
-        MAESTRO_API_KEY: maestroApiKey,
-        TABLE_NAME: table.tableName,
-      },
-    });
-
     const getUserOrdersLambda = new lambda.Function(this, 'GetUserOrdersFunction', {
       runtime: lambda.Runtime.NODEJS_22_X,
       code: lambda.Code.fromAsset('lambda/dist'),
@@ -182,7 +172,6 @@ export class LavaBackendStack extends cdk.Stack {
     table.grantReadWriteData(getBatchStatsLambda);
     table.grantReadWriteData(postBatchOrdersLambda);
     table.grantReadWriteData(buildUserOrderTxLambda);
-    table.grantReadWriteData(buildMintTestTokensTxLambda);
     table.grantReadWriteData(getUserOrdersLambda);
     table.grantReadWriteData(buildCancelOrderTxLambda);
     table.grantReadWriteData(autoBatchOrdersLambda);
@@ -359,24 +348,6 @@ export class LavaBackendStack extends cdk.Stack {
     buildUserOrderTxResource.addMethod(
       'POST',
       new apigateway.LambdaIntegration(buildUserOrderTxLambda),
-      {
-        methodResponses: [
-          {
-            statusCode: '200',
-            responseParameters: {
-              'method.response.header.Access-Control-Allow-Origin': true,
-              'method.response.header.Access-Control-Allow-Headers': true,
-              'method.response.header.Access-Control-Allow-Methods': true,
-            },
-          },
-        ],
-      }
-    );
-
-    const buildMintTestTokensTxResource = api.root.addResource('build-mint-test-tokens-tx');
-    buildMintTestTokensTxResource.addMethod(
-      'POST',
-      new apigateway.LambdaIntegration(buildMintTestTokensTxLambda),
       {
         methodResponses: [
           {

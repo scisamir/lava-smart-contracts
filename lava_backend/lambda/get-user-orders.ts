@@ -4,9 +4,59 @@ import {
   serializeAddressObj,
 } from '@meshsdk/core';
 import { MaestroProvider } from '@meshsdk/core';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { setupE2e } from './e2e/setup';
 import { OrderDatumType } from './e2e/types';
 import { OrderValidatorAddr } from './e2e/order/validator';
+
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+
+type VaultSnapshotItem = {
+  entityType?: string;
+  poolStakeAssetNameHex?: string;
+  tokenPair?: {
+    base?: string;
+    derivative?: string;
+  };
+};
+
+const resolveTokenLabelsByPoolSan = async (
+  tableName: string
+): Promise<Map<string, { base: string; derivative: string }>> => {
+  const scanResult = await ddb.send(
+    new ScanCommand({
+      TableName: tableName,
+      FilterExpression: '#entityType = :entityType',
+      ExpressionAttributeNames: {
+        '#entityType': 'entityType',
+      },
+      ExpressionAttributeValues: {
+        ':entityType': 'VAULT_SNAPSHOT',
+      },
+    })
+  );
+
+  const snapshots = (scanResult.Items ?? []) as VaultSnapshotItem[];
+  const labelsByPoolSan = new Map<string, { base: string; derivative: string }>();
+
+  snapshots.forEach((snapshot) => {
+    const poolSan = String(snapshot.poolStakeAssetNameHex ?? '').trim();
+    if (!poolSan) {
+      return;
+    }
+
+    const base = String(snapshot.tokenPair?.base ?? '').trim();
+    const derivative = String(snapshot.tokenPair?.derivative ?? '').trim();
+
+    labelsByPoolSan.set(poolSan, {
+      base,
+      derivative,
+    });
+  });
+
+  return labelsByPoolSan;
+};
 
 type UserOrder = {
   amount: number;
@@ -35,8 +85,12 @@ export const handler = async (
     }
 
     const maestroKey = process.env.MAESTRO_API_KEY;
+    const tableName = process.env.TABLE_NAME;
     if (!maestroKey) {
       throw new Error('MAESTRO_API_KEY is missing');
+    }
+    if (!tableName) {
+      throw new Error('TABLE_NAME is missing');
     }
 
     const provider = new MaestroProvider({
@@ -51,6 +105,15 @@ export const handler = async (
       tPulsePoolStakeAssetName,
       ATRIUM_POOL_STAKE_ASSET_NAME,
     } = setupE2e();
+    const tokenLabelsByPoolSan = await resolveTokenLabelsByPoolSan(tableName);
+
+    const fallbackTokenLabelsByPoolSan = new Map<string, { base: string; derivative: string }>([
+      [poolStakeAssetName, { base: 'test', derivative: 'stTest' }],
+      [tStrikePoolStakeAssetName, { base: 'tStrike', derivative: 'LStrike' }],
+      [tPulsePoolStakeAssetName, { base: 'tPulse', derivative: 'LPulse' }],
+      [ATRIUM_POOL_STAKE_ASSET_NAME, { base: 'ADA', derivative: 'LADA' }],
+    ]);
+
     const orderUtxos = await provider.fetchAddressUTxOs(OrderValidatorAddr);
 
     const userOrders: UserOrder[] = [];
@@ -71,16 +134,11 @@ export const handler = async (
       const isOptIn = Number(orderDatum.fields[0].constructor) === 0;
 
       const poolSAN = orderDatum.fields[3].bytes;
-      let tokenName = '';
-      if (poolSAN === poolStakeAssetName) {
-        tokenName = isOptIn ? 'test' : 'stTest';
-      } else if (poolSAN === tStrikePoolStakeAssetName) {
-        tokenName = isOptIn ? 'tStrike' : 'LStrike';
-      } else if (poolSAN === tPulsePoolStakeAssetName) {
-        tokenName = isOptIn ? 'tPulse' : 'LPulse';
-      } else if (poolSAN === ATRIUM_POOL_STAKE_ASSET_NAME) {
-        tokenName = isOptIn ? 'ADA' : 'LADA';
-      }
+      const tokenLabels =
+        tokenLabelsByPoolSan.get(poolSAN) ?? fallbackTokenLabelsByPoolSan.get(poolSAN);
+      const tokenName = isOptIn
+        ? tokenLabels?.base || poolSAN
+        : tokenLabels?.derivative || poolSAN;
 
       userOrders.push({
         amount: Number(orderDatum.fields[0].fields[0].int),

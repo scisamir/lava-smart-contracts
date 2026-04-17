@@ -1,14 +1,68 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { MaestroProvider, deserializeDatum } from '@meshsdk/core';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { OrderValidatorAddr } from './e2e/order/validator';
-import { setupE2e } from './e2e/setup';
 import { OrderDatumType } from './e2e/types';
+
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+
+type VaultSnapshotItem = {
+  poolStakeAssetNameHex?: string;
+  tokenPair?: {
+    base?: string;
+    derivative?: string;
+  };
+};
+
+type BatchStatsPayload = {
+  totalOrders: { test: number; tStrike: number; tPulse: number; atrium: number };
+  totalOrdersByPool: Record<string, number>;
+  pools: Array<{
+    poolStakeAssetNameHex: string;
+    baseSymbol: string;
+    derivativeSymbol: string;
+    totalOrders: number;
+  }>;
+};
+
+const loadSnapshotLabels = async (tableName: string) => {
+  const scanResult = await ddb.send(
+    new ScanCommand({
+      TableName: tableName,
+      FilterExpression: '#entityType = :entityType',
+      ExpressionAttributeNames: {
+        '#entityType': 'entityType',
+      },
+      ExpressionAttributeValues: {
+        ':entityType': 'VAULT_SNAPSHOT',
+      },
+    })
+  );
+
+  const snapshots = (scanResult.Items ?? []) as VaultSnapshotItem[];
+
+  const labelsByPool = new Map<string, { baseSymbol: string; derivativeSymbol: string }>();
+  snapshots.forEach((snapshot) => {
+    const poolKey = String(snapshot.poolStakeAssetNameHex ?? '').trim();
+    if (!poolKey) {
+      return;
+    }
+
+    labelsByPool.set(poolKey, {
+      baseSymbol: String(snapshot.tokenPair?.base ?? '').trim(),
+      derivativeSymbol: String(snapshot.tokenPair?.derivative ?? '').trim(),
+    });
+  });
+
+  return labelsByPool;
+};
 
 const BATCH_STATS_CACHE_TTL_MS = 60_000;
 let batchStatsCache:
   | {
       expiresAt: number;
-      totalOrders: { test: number; tStrike: number; tPulse: number; atrium: number };
+      payload: BatchStatsPayload;
     }
   | null = null;
 
@@ -26,8 +80,13 @@ export const handler = async (
           'Access-Control-Allow-Methods': 'GET',
           'Cache-Control': 'public, max-age=30',
         },
-        body: JSON.stringify({ totalOrders: batchStatsCache.totalOrders }),
+        body: JSON.stringify(batchStatsCache.payload),
       };
+    }
+
+    const tableName = process.env.TABLE_NAME;
+    if (!tableName) {
+      throw new Error('TABLE_NAME is missing');
     }
 
     const maestro = new MaestroProvider({
@@ -36,36 +95,64 @@ export const handler = async (
     });
 
     const orderUtxos = await maestro.fetchAddressUTxOs(OrderValidatorAddr);
-    const {
-      poolStakeAssetName,
-      tStrikePoolStakeAssetName,
-      tPulsePoolStakeAssetName,
-      ATRIUM_POOL_STAKE_ASSET_NAME,
-    } = setupE2e();
-
-    const totalOrders = { test: 0, tStrike: 0, tPulse: 0, atrium: 0 };
+    const labelsByPool = await loadSnapshotLabels(tableName);
+    const totalOrdersByPool = new Map<string, number>();
 
     orderUtxos.forEach((utxo) => {
       const orderPlutusData = utxo.output.plutusData;
       if (!orderPlutusData) return;
 
       const orderDatum = deserializeDatum<OrderDatumType>(orderPlutusData);
-      const poolSAN = orderDatum.fields[3].bytes;
+      const poolSAN = String(orderDatum.fields[3].bytes ?? '').trim();
+      if (!poolSAN) {
+        return;
+      }
 
-      if (poolSAN === poolStakeAssetName) {
-        totalOrders.test += 1;
-      } else if (poolSAN === tStrikePoolStakeAssetName) {
-        totalOrders.tStrike += 1;
-      } else if (poolSAN === tPulsePoolStakeAssetName) {
-        totalOrders.tPulse += 1;
-      } else if (poolSAN === ATRIUM_POOL_STAKE_ASSET_NAME) {
-        totalOrders.atrium += 1;
+      totalOrdersByPool.set(poolSAN, (totalOrdersByPool.get(poolSAN) ?? 0) + 1);
+    });
+
+    const pools = Array.from(totalOrdersByPool.entries())
+      .map(([poolStakeAssetNameHex, totalOrders]) => {
+        const labels = labelsByPool.get(poolStakeAssetNameHex);
+
+        return {
+          poolStakeAssetNameHex,
+          baseSymbol: labels?.baseSymbol ?? '',
+          derivativeSymbol: labels?.derivativeSymbol ?? '',
+          totalOrders,
+        };
+      })
+      .sort((a, b) => {
+        const left = a.derivativeSymbol || a.poolStakeAssetNameHex;
+        const right = b.derivativeSymbol || b.poolStakeAssetNameHex;
+        return left.localeCompare(right);
+      });
+
+    const totalOrdersLegacy = { test: 0, tStrike: 0, tPulse: 0, atrium: 0 };
+    pools.forEach((pool) => {
+      const derivativeLower = pool.derivativeSymbol.toLowerCase();
+      const baseLower = pool.baseSymbol.toLowerCase();
+
+      if (derivativeLower === 'sttest' || baseLower === 'test') {
+        totalOrdersLegacy.test += pool.totalOrders;
+      } else if (derivativeLower === 'lstrike' || baseLower === 'tstrike') {
+        totalOrdersLegacy.tStrike += pool.totalOrders;
+      } else if (derivativeLower === 'lpulse' || baseLower === 'tpulse') {
+        totalOrdersLegacy.tPulse += pool.totalOrders;
+      } else if (derivativeLower === 'lada' || baseLower === 'ada') {
+        totalOrdersLegacy.atrium += pool.totalOrders;
       }
     });
 
+    const payload: BatchStatsPayload = {
+      totalOrders: totalOrdersLegacy,
+      totalOrdersByPool: Object.fromEntries(totalOrdersByPool.entries()),
+      pools,
+    };
+
     batchStatsCache = {
       expiresAt: now + BATCH_STATS_CACHE_TTL_MS,
-      totalOrders,
+      payload,
     };
 
     return {
@@ -76,7 +163,7 @@ export const handler = async (
         'Access-Control-Allow-Methods': 'GET',
         'Cache-Control': 'public, max-age=30',
       },
-      body: JSON.stringify({ totalOrders }),
+      body: JSON.stringify(payload),
     };
   } catch (error) {
     console.error(error);
