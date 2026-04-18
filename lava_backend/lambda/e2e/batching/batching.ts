@@ -1,0 +1,317 @@
+import {
+  deserializeAddress,
+  deserializeDatum,
+  mConStr0,
+  mConStr1,
+  MeshTxBuilder,
+  MeshWallet,
+  serializeAddressObj,
+  type Asset,
+} from "@meshsdk/core";
+import { setupE2e } from "../setup";
+import { assetType, poolDatum as buildPoolDatum, scriptCredential } from "../data";
+import { OrderValidatorAddr, OrderValidatorHash, OrderValidatorScript } from "../order/validator";
+import { PoolValidatorAddr, PoolValidatorHash } from "../pool/validator";
+import { BatchingHash, BatchingRewardAddress } from "./validator";
+import { GlobalSettingsAddr } from "../global_settings/validator";
+import { BlockchainProviderType, OrderDatumType, PoolDatumType } from "../types";
+import { MintingHash, MintingValidatorScript } from "../mint/validator";
+
+export const batchingTx = async (
+  blockchainProvider: BlockchainProviderType,
+  txBuilder: MeshTxBuilder,
+  poolSAN: string
+) => {
+  const { MinPoolLovelace, PrecisionFactor, batchingScriptTxHash, batchingScriptTxIdx, poolScriptTxHash, poolScriptTxIdx, NETWORK_ID } = setupE2e();
+
+  const noOfUtxosToBatch = 10;
+  const precisionFactor = BigInt(PrecisionFactor);
+  const MIN_RECEIVER_LOVELACE = 2_000_000n;
+
+  const walletPassphrase =
+    process.env.BATCHER_WALLET_PASSPHRASE ||
+    process.env.NEXT_PUBLIC_WALLET_PASSPHRASE_ONE;
+
+  if (!walletPassphrase) {
+    throw new Error("BATCHER_WALLET_PASSPHRASE does not exist");
+  }
+
+  const wallet = new MeshWallet({
+    networkId: NETWORK_ID as 0 | 1,
+    fetcher: blockchainProvider,
+    submitter: blockchainProvider,
+    key: {
+      type: "mnemonic",
+      words: walletPassphrase.split(" "),
+    },
+  });
+
+  const walletAddress = await wallet.getChangeAddress();
+  const walletUtxos = await wallet.getUtxos();
+  const { pubKeyHash: walletVK } = deserializeAddress(walletAddress);
+
+  const walletCollateral = [...walletUtxos]
+    .filter((utxo) => {
+      if (utxo.output.amount.length !== 1) {
+        return false;
+      }
+      const [ada] = utxo.output.amount;
+      return ada?.unit === "lovelace" && BigInt(ada.quantity) >= 7_000_000n;
+    })
+    .sort((left, right) => {
+      const leftLovelace = BigInt(left.output.amount[0]?.quantity ?? "0");
+      const rightLovelace = BigInt(right.output.amount[0]?.quantity ?? "0");
+      return leftLovelace === rightLovelace ? 0 : leftLovelace > rightLovelace ? -1 : 1;
+    })[0];
+
+  if (!walletCollateral) throw new Error("No collateral utxo found");
+
+  const orderUtxos = await blockchainProvider.fetchAddressUTxOs(OrderValidatorAddr);
+  const poolUtxos = await blockchainProvider.fetchAddressUTxOs(PoolValidatorAddr);
+
+  const poolUtxo = poolUtxos.find((utxo) => {
+    const poolPlutusData = utxo.output.plutusData;
+    if (!poolPlutusData) throw new Error("No plutus data");
+    const poolDatum = deserializeDatum<PoolDatumType>(poolPlutusData);
+    const fpoolSAN = poolDatum.fields[6].bytes;
+    return fpoolSAN === poolSAN;
+  });
+  if (!poolUtxo) throw new Error("Pool UTxO not found!");
+
+  const poolPlutusData = poolUtxo.output.plutusData;
+  if (!poolPlutusData) {
+    throw new Error("Pool datum not found");
+  }
+
+  const poolData = deserializeDatum<PoolDatumType>(poolPlutusData);
+  const poolAssetField = poolData.fields[5];
+  const poolAssetIsStable = Number(poolAssetField.fields[0].constructor) === 1;
+  const poolAssetPolicyId = poolAssetField.fields[1].bytes;
+  const poolAssetName = poolAssetField.fields[2].bytes;
+  const poolAssetMultiplier = BigInt(poolAssetField.fields[3].int);
+  const poolAssetUnit =
+    poolAssetPolicyId === "" && poolAssetName === ""
+      ? "lovelace"
+      : poolAssetPolicyId + poolAssetName;
+  const poolStakeUnit = MintingHash + poolSAN;
+  const exchangeRate = BigInt(poolData.fields[3].int);
+  const totalRewardsAccrued = BigInt(poolData.fields[4].int);
+  const isProcessingOpen = Number(poolData.fields[7].constructor) === 1;
+  const currentTotalStAssetsMinted = BigInt(poolData.fields[1].int);
+  const currentTotalUnderlying = BigInt(poolData.fields[2].int);
+
+  const poolNft = poolUtxo.output.amount.find(
+    (asset) => asset.unit.startsWith(PoolValidatorHash) && asset.unit !== poolAssetUnit
+  );
+
+  if (!poolNft) {
+    throw new Error("Pool NFT not found");
+  }
+
+  const matchingOrders = orderUtxos.flatMap((utxo) => {
+    const orderPlutusData = utxo.output.plutusData;
+    if (!orderPlutusData) {
+      return [];
+    }
+
+    const orderData = deserializeDatum<OrderDatumType>(orderPlutusData);
+    if (orderData.fields[3].bytes !== poolSAN) {
+      return [];
+    }
+
+    return [{ utxo, orderData }];
+  });
+
+  const getQuantity = (assets: Asset[], unit: string) =>
+    BigInt(assets.find((asset) => asset.unit === unit)?.quantity ?? "0");
+
+  const pushAsset = (assets: Asset[], unit: string, quantity: bigint) => {
+    if (quantity > 0n) {
+      assets.push({ unit, quantity: quantity.toString() });
+    }
+  };
+
+  const selectedOrders = matchingOrders
+    .filter(({ utxo, orderData }) => {
+      if (poolAssetUnit !== "lovelace") {
+        return true;
+      }
+
+      const orderType = orderData.fields[0];
+      const isRedeemOrder = Number(orderType.constructor) === 1;
+      if (isRedeemOrder) {
+        return true;
+      }
+
+      const depositAmount = BigInt(orderType.fields[0].int);
+      const orderLovelace = getQuantity(utxo.output.amount, "lovelace");
+
+      return orderLovelace - depositAmount >= MIN_RECEIVER_LOVELACE;
+    })
+    .slice(0, noOfUtxosToBatch);
+
+  if (selectedOrders.length === 0) {
+    if (matchingOrders.length > 0 && poolAssetUnit === "lovelace") {
+      throw new Error(
+        "No batchable orders found for this pool. Opt-in orders need enough extra lovelace for receiver outputs."
+      );
+    }
+
+    throw new Error("No order UTxOs to batch");
+  }
+
+  const poolAssetData = assetType(
+    poolAssetPolicyId,
+    poolAssetName,
+    poolAssetMultiplier,
+    poolAssetIsStable
+  );
+
+  const batchingRedeemer = mConStr0([0, poolAssetData, poolSAN]);
+
+  let builder = txBuilder;
+  let totalUnderlyingDelta = 0n;
+  let totalStAssetsDelta = 0n;
+  const userOutputs: Array<{ address: string; amount: Asset[] }> = [];
+
+  for (const { utxo: orderUtxo, orderData } of selectedOrders) {
+    const orderType = orderData.fields[0];
+    const receiverAddress = serializeAddressObj(orderData.fields[1], NETWORK_ID as 0 | 1);
+    const orderLovelace = getQuantity(orderUtxo.output.amount, "lovelace");
+    const orderUnderlying = getQuantity(orderUtxo.output.amount, poolAssetUnit);
+    const orderStake = getQuantity(orderUtxo.output.amount, poolStakeUnit);
+
+    builder = builder
+      .spendingPlutusScriptV3()
+      .txIn(
+        orderUtxo.input.txHash,
+        orderUtxo.input.outputIndex,
+        orderUtxo.output.amount,
+        orderUtxo.output.address
+      )
+      .txInScript(OrderValidatorScript)
+      .txInInlineDatumPresent()
+      .txInRedeemerValue(mConStr1([]));
+
+    const userOutputAmount: Asset[] = [];
+    pushAsset(userOutputAmount, "lovelace", orderLovelace);
+
+    if (Number(orderType.constructor) === 0) {
+      const depositAmount = BigInt(orderType.fields[0].int);
+      const stAssetsToMint = (depositAmount * precisionFactor) / exchangeRate;
+
+      totalUnderlyingDelta += depositAmount;
+      totalStAssetsDelta += stAssetsToMint;
+
+      if (poolAssetUnit === "lovelace") {
+        userOutputAmount[0] = {
+          unit: "lovelace",
+          quantity: (orderLovelace - depositAmount).toString(),
+        };
+      } else {
+        pushAsset(userOutputAmount, poolAssetUnit, orderUnderlying - depositAmount);
+      }
+
+      pushAsset(userOutputAmount, poolStakeUnit, stAssetsToMint);
+    } else {
+      const stAmount = BigInt(orderType.fields[0].int);
+      const underlyingToReturn = (stAmount * exchangeRate) / precisionFactor;
+
+      totalUnderlyingDelta -= underlyingToReturn;
+      totalStAssetsDelta -= stAmount;
+
+      if (poolAssetUnit === "lovelace") {
+        userOutputAmount[0] = {
+          unit: "lovelace",
+          quantity: (orderLovelace + underlyingToReturn).toString(),
+        };
+      } else {
+        pushAsset(userOutputAmount, poolAssetUnit, underlyingToReturn);
+      }
+
+      pushAsset(userOutputAmount, poolStakeUnit, orderStake - stAmount);
+    }
+
+    userOutputs.push({ address: receiverAddress, amount: userOutputAmount });
+  }
+
+  const updatedTotalStAssetsMinted = currentTotalStAssetsMinted + totalStAssetsDelta;
+  const updatedTotalUnderlying = currentTotalUnderlying + totalUnderlyingDelta;
+
+  const updatedPoolDatum = buildPoolDatum(
+    scriptCredential(BatchingHash),
+    updatedTotalStAssetsMinted,
+    updatedTotalUnderlying,
+    exchangeRate,
+    totalRewardsAccrued,
+    poolAssetData,
+    poolSAN,
+    isProcessingOpen
+  );
+
+  const poolOutputAmount: Asset[] = [];
+  pushAsset(
+    poolOutputAmount,
+    "lovelace",
+    poolAssetUnit === "lovelace"
+      ? BigInt(MinPoolLovelace) + updatedTotalUnderlying
+      : BigInt(MinPoolLovelace)
+  );
+  pushAsset(poolOutputAmount, poolNft.unit, 1n);
+  if (poolAssetUnit !== "lovelace") {
+    pushAsset(poolOutputAmount, poolAssetUnit, updatedTotalUnderlying);
+  }
+
+  builder = builder
+    .spendingPlutusScriptV3()
+    .txIn(
+      poolUtxo.input.txHash,
+      poolUtxo.input.outputIndex,
+      poolUtxo.output.amount,
+      poolUtxo.output.address
+    )
+    .spendingTxInReference(poolScriptTxHash, poolScriptTxIdx, undefined, PoolValidatorHash)
+    .spendingReferenceTxInInlineDatumPresent()
+    .spendingReferenceTxInRedeemerValue(mConStr0([]))
+    .withdrawalPlutusScriptV3()
+    .withdrawal(BatchingRewardAddress, "0")
+    .withdrawalTxInReference(batchingScriptTxHash, batchingScriptTxIdx, undefined, BatchingHash)
+    .withdrawalRedeemerValue(batchingRedeemer)
+    .mintPlutusScriptV3()
+    .mint(String(-selectedOrders.length), OrderValidatorHash, "")
+    .mintingScript(OrderValidatorScript)
+    .mintRedeemerValue(mConStr1([]));
+
+  if (totalStAssetsDelta !== 0n) {
+    builder = builder
+      .mintPlutusScriptV3()
+      .mint(totalStAssetsDelta.toString(), MintingHash, poolSAN)
+      .mintingScript(MintingValidatorScript)
+      .mintRedeemerValue(mConStr0([]));
+  }
+
+  for (const userOutput of userOutputs) {
+    builder = builder.txOut(userOutput.address, userOutput.amount);
+  }
+
+  const gsUtxo = (await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr))[0];
+
+  const unsignedTx = await builder
+    .txOut(
+      PoolValidatorAddr,
+      poolOutputAmount
+    )
+    .txOutInlineDatumValue(updatedPoolDatum)
+    .readOnlyTxInReference(gsUtxo.input.txHash, gsUtxo.input.outputIndex)
+    .txInCollateral(walletCollateral.input.txHash, walletCollateral.input.outputIndex)
+    .setTotalCollateral("10000000")
+    .requiredSignerHash(walletVK)
+    .changeAddress(walletAddress)
+    .selectUtxosFrom(walletUtxos)
+    .complete();
+
+  const signedTx = await wallet.signTx(unsignedTx);
+  const txHash = await wallet.submitTx(signedTx);
+
+  return txHash;
+};

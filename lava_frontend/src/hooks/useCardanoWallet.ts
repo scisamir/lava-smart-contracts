@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useWallet } from "@meshsdk/react";
 import {
-  addressToBech32,
-  deserializeAddress as deserializeCardanoAddress,
-} from "@meshsdk/core-cst";
-import { BlockchainProviderType } from "@/e2e/types";
+  ReactNode,
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useWallet } from "@meshsdk/react";
 import {
   AssetExtended,
   deserializeAddress,
@@ -15,54 +19,70 @@ import {
   stringToHex,
   UTxO,
 } from "@meshsdk/core";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BackendVault } from "@/lib/types";
-import { fetchBackend } from "@/lib/backendClient";
-import { clearWalletAuthSession, ensureWalletAuthSession } from "@/lib/walletAuth";
 
 const LOCAL_STORAGE_KEY = "connectedWallet";
-const MAESTRO_NETWORK = "Preprod";
 
-const createTransactionContext = () => {
-  const apiKey = process.env.NEXT_PUBLIC_MAESTRO_API_KEY?.trim();
-  if (!apiKey) {
-    return { provider: null, builder: null };
-  }
-  const provider = new MaestroProvider({ network: MAESTRO_NETWORK, apiKey });
-  return {
-    provider,
-    builder: new MeshTxBuilder({ fetcher: provider, submitter: provider, evaluator: provider }),
-  };
+const getBackendBaseUrl = () =>
+  process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
+  "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
+
+type WalletBalanceResponse = {
+  balance?: number;
+  tokenBalances?: Record<string, number>;
+  walletUtxos?: UTxO[];
+  collateral?: UTxO | null;
 };
 
-const normalizeWalletAddress = (rawAddress: string): string => {
-  if (!rawAddress) {
-    return "";
+const fetchWalletBalance = async (address: string): Promise<WalletBalanceResponse> => {
+  const backendBaseUrl = getBackendBaseUrl();
+  const balanceRes = await fetch(
+    `${backendBaseUrl}/user-balance?address=${encodeURIComponent(address)}`
+  );
+
+  if (!balanceRes.ok) {
+    throw new Error(`Failed to fetch user balance: ${balanceRes.status}`);
   }
 
-  if (rawAddress.startsWith("addr") || rawAddress.startsWith("stake")) {
-    return rawAddress;
-  }
-
-  return addressToBech32(deserializeCardanoAddress(rawAddress));
+  return balanceRes.json();
 };
 
-export function useCardanoWallet() {
+const fetchVaults = async (): Promise<BackendVault[]> => {
+  const backendBaseUrl = getBackendBaseUrl();
+  const vaultsRes = await fetch(`${backendBaseUrl}/lava-vaults`);
+
+  if (!vaultsRes.ok) {
+    throw new Error(`Failed to fetch lava vaults: ${vaultsRes.status}`);
+  }
+
+  const vaultsData = await vaultsRes.json();
+
+  return (vaultsData.vaults ?? []).map((vault: any) => ({
+    name: String(vault.name ?? ""),
+    logo: String(vault.logo ?? ""),
+    score: String(vault.score ?? "0"),
+    status: String(vault.status ?? "Closed"),
+    recentBlocks: Number(vault.recentBlocks ?? 0),
+    stStake: String(vault.stStake ?? "0"),
+    staked: String(vault.staked ?? "0"),
+    tokenPair: vault.tokenPair ?? { base: "", derivative: "" },
+    tokenDetails: vault.tokenDetails ?? null,
+    poolStakeAssetNameHex: String(vault.poolStakeAssetNameHex ?? ""),
+  }));
+};
+
+function useCardanoWalletState() {
   const { wallet, connected, connect, disconnect, name } = useWallet();
+  const queryClient = useQueryClient();
 
   const [walletAddress, setWalletAddress] = useState("");
-  const [balance, setBalance] = useState(0);
   const [txBuilder, setTxBuilder] = useState<MeshTxBuilder | null>(null);
   const [blockchainProvider, setBlockchainProvider] =
-    useState<BlockchainProviderType | null>(null);
+    useState<MaestroProvider | null>(null);
   const [walletVK, setWalletVK] = useState<string>("");
   const [walletSK, setWalletSK] = useState<string>("");
-  const [walletUtxos, setWalletUtxos] = useState<UTxO[]>([]);
-  const [walletCollateral, setWalletCollateral] = useState<UTxO | null>(null);
-
-  const [tokenBalances, setTokenBalances] = useState<{ [key: string]: number }>(
-    {}
-  );
-  const [poolInfo, setPoolInfo] = useState<BackendVault[]>([]);
+  const restoreStartedRef = useRef(false);
 
   //CRITICAL FLAG
   const [hasTriedRestore, setHasTriedRestore] = useState(false);
@@ -83,6 +103,11 @@ export function useCardanoWallet() {
 
   useEffect(() => {
     const restoreWallet = async () => {
+      if (restoreStartedRef.current) {
+        return;
+      }
+      restoreStartedRef.current = true;
+
       const lastWallet = localStorage.getItem(LOCAL_STORAGE_KEY);
 
       if (!lastWallet || connected) {
@@ -90,12 +115,9 @@ export function useCardanoWallet() {
         return;
       }
 
-      // Delay to allow wallet extension to load
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       // Poll for wallet availability
       let attempts = 0;
-      const maxAttempts = 50;
+      const maxAttempts = 30;
       while (attempts < maxAttempts) {
         const cardano = (window as any).cardano;
         if (cardano?.[lastWallet]) {
@@ -109,7 +131,7 @@ export function useCardanoWallet() {
           }
         }
         attempts++;
-        await new Promise(resolve => setTimeout(resolve, 100)); // Wait 100ms before next check
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       setHasTriedRestore(true);
@@ -118,107 +140,100 @@ export function useCardanoWallet() {
     restoreWallet();
   }, [connect, connected]);
 
-  // Fetch Wallet Data
-  const fetchWalletData = async () => {
-    if (connected && wallet) {
+  useEffect(() => {
+    const setAddressAndKeys = async () => {
+      if (!(connected && wallet)) {
+        //DO NOT CLEAR UNTIL RESTORE FINISHED
+        if (!hasTriedRestore) return;
+
+        setWalletAddress("");
+        setWalletVK("");
+        setWalletSK("");
+        return;
+      }
+
       try {
-        const rawChangeAddress = await wallet.getChangeAddress();
-        const changeAddress =
-          typeof (wallet as any).getChangeAddressBech32 === "function"
-            ? await (wallet as any).getChangeAddressBech32()
-            : rawChangeAddress;
-        const usedAddresses =
-          typeof (wallet as any).getUsedAddressesBech32 === "function"
-            ? await (wallet as any).getUsedAddressesBech32()
-            : typeof (wallet as any).getUsedAddresses === "function"
-              ? await (wallet as any).getUsedAddresses()
-              : [];
-        const normalizedChangeAddress = normalizeWalletAddress(changeAddress);
-        const normalizedUsedAddresses = usedAddresses
-          .map((address: string) => normalizeWalletAddress(address))
-          .filter(Boolean);
-        const authAddress = normalizedChangeAddress || normalizedUsedAddresses[0] || "";
+        const addr = await wallet.getChangeAddress();
+        setWalletAddress(addr);
 
-        if (!authAddress) {
-          throw new Error("Wallet did not provide a usable Cardano address");
-        }
-
-        setWalletAddress(authAddress);
-
-        const authSession = await ensureWalletAuthSession(
-          wallet as any,
-          authAddress,
-          rawChangeAddress
-        );
-        const balanceRes = await fetchBackend('/user-balance', {
-          token: authSession.token,
-        });
-
-        if (!balanceRes.ok) {
-          throw new Error(`Failed to fetch user balance: ${balanceRes.status}`);
-        }
-
-        const balanceData = await balanceRes.json();
-
-        setBalance(Number(balanceData.balance ?? 0));
-        setTokenBalances(balanceData.tokenBalances ?? {});
-        setWalletUtxos((balanceData.walletUtxos ?? []) as UTxO[]);
-        setWalletCollateral((balanceData.collateral ?? null) as UTxO | null);
-
-        const { pubKeyHash, stakeCredentialHash } = deserializeAddress(authAddress);
-
-        if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
-
-        const vaultsRes = await fetchBackend('/lava-vaults');
-        if (!vaultsRes.ok) {
-          throw new Error(`Failed to fetch lava vaults: ${vaultsRes.status}`);
-        }
-
-        const vaultsData = await vaultsRes.json();
-        const poolInfoData: BackendVault[] = (vaultsData.vaults ?? []).map(
-          (vault: any) => ({
-            name: String(vault.name ?? ""),
-            logo: String(vault.logo ?? ""),
-            score: String(vault.score ?? "0"),
-            status: String(vault.status ?? "Closed"),
-            recentBlocks: Number(vault.recentBlocks ?? 0),
-            stStake: String(vault.stStake ?? "0"),
-            staked: String(vault.staked ?? "0"),
-            tokenPair: vault.tokenPair ?? { base: "", derivative: "" },
-          })
-        );
-
-        const { provider, builder } = createTransactionContext();
-        setTxBuilder(builder);
-        setBlockchainProvider(provider);
+        const { pubKeyHash, stakeCredentialHash } = deserializeAddress(addr);
         setWalletVK(pubKeyHash);
         setWalletSK(stakeCredentialHash ?? "");
-        setPoolInfo(poolInfoData);
+
+        if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
       } catch (err) {
-        console.error("Error fetching wallet data:", err);
+        console.error("Error resolving wallet address:", err);
       }
+    };
+
+    setAddressAndKeys();
+  }, [connected, wallet, name, hasTriedRestore]);
+
+  useEffect(() => {
+    const maestroKey = process.env.NEXT_PUBLIC_MAESTRO_KEY;
+    if (!maestroKey) {
+      setTxBuilder(null);
+      setBlockchainProvider(null);
+      console.warn("NEXT_PUBLIC_MAESTRO_KEY is not set; frontend tx builder/provider disabled.");
       return;
     }
 
-    //DO NOT CLEAR UNTIL RESTORE FINISHED
-    if (!hasTriedRestore) return;
+    const bp = new MaestroProvider({
+      network: "Mainnet",
+      apiKey: maestroKey,
+    });
 
-    clearWalletAuthSession();
+    const tb = new MeshTxBuilder({
+      fetcher: bp,
+      submitter: bp,
+      evaluator: bp,
+      verbose: true,
+    });
+    tb.setNetwork("mainnet");
 
-    // Only clear UI state (not localStorage)
-    setWalletAddress("");
-    setBalance(0);
-    setTxBuilder(null);
-    setBlockchainProvider(null);
-    setWalletCollateral(null);
-    setWalletUtxos([]);
-    setTokenBalances({});
-    setPoolInfo([]);
-  };
+    setTxBuilder(tb);
+    setBlockchainProvider(bp);
+  }, []);
 
-  useEffect(() => {
-    fetchWalletData();
-  }, [connected, wallet, name, hasTriedRestore]);
+  const walletBalanceQuery = useQuery({
+    queryKey: ["wallet-balance", walletAddress],
+    queryFn: () => fetchWalletBalance(walletAddress),
+    enabled: connected && !!walletAddress,
+    staleTime: 30_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
+  });
+
+  const vaultsQuery = useQuery({
+    queryKey: ["lava-vaults"],
+    queryFn: fetchVaults,
+    staleTime: 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
+  });
+
+  const balance = useMemo(
+    () => (connected ? Number(walletBalanceQuery.data?.balance ?? 0) : 0),
+    [connected, walletBalanceQuery.data?.balance]
+  );
+  const tokenBalances = useMemo(
+    () => (connected ? walletBalanceQuery.data?.tokenBalances ?? {} : {}),
+    [connected, walletBalanceQuery.data?.tokenBalances]
+  );
+  const walletUtxos = useMemo(
+    () => (connected ? ((walletBalanceQuery.data?.walletUtxos ?? []) as UTxO[]) : []),
+    [connected, walletBalanceQuery.data?.walletUtxos]
+  );
+  const walletCollateral = useMemo(
+    () => (connected ? ((walletBalanceQuery.data?.collateral ?? null) as UTxO | null) : null),
+    [connected, walletBalanceQuery.data?.collateral]
+  );
+  const poolInfo = useMemo(
+    () => vaultsQuery.data ?? [],
+    [vaultsQuery.data]
+  );
 
 
   // Public API
@@ -230,19 +245,21 @@ export function useCardanoWallet() {
 
   const disconnectWallet = async () => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
-    clearWalletAuthSession();
     await disconnect();
+    queryClient.removeQueries({ queryKey: ["wallet-balance"] });
   };
 
   const reloadWalletState = async () => {
-    await fetchWalletData();
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["wallet-balance", walletAddress] }),
+      queryClient.invalidateQueries({ queryKey: ["lava-vaults"] }),
+    ]);
   };
 
   return {
     connected,
     wallet,
     walletName: name,
-    currentUserAddress: walletAddress,
     walletAddress,
     balance,
     tokenBalances,
@@ -258,4 +275,24 @@ export function useCardanoWallet() {
     getTokenBalance,
     poolInfo,
   };
+}
+
+type CardanoWalletContextValue = ReturnType<typeof useCardanoWalletState>;
+
+const CardanoWalletContext = createContext<CardanoWalletContextValue | null>(null);
+
+export function CardanoWalletProvider({ children }: { children: ReactNode }) {
+  const value = useCardanoWalletState();
+
+  return createElement(CardanoWalletContext.Provider, { value }, children);
+}
+
+export function useCardanoWallet() {
+  const context = useContext(CardanoWalletContext);
+
+  if (!context) {
+    throw new Error("useCardanoWallet must be used inside CardanoWalletProvider");
+  }
+
+  return context;
 }

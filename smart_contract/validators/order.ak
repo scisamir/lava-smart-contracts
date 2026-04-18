@@ -3,7 +3,9 @@ use aiken/collection/list
 use aiken/collection/pairs
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Address, Credential, Inline, Script}
-use cardano/assets.{PolicyId, from_asset, from_lovelace, without_lovelace}
+use cardano/assets.{
+  PolicyId, from_asset, from_lovelace, lovelace_of, without_lovelace,
+}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Transaction, find_input,
   placeholder,
@@ -82,10 +84,14 @@ validator order_validator(
           when order_type is {
             OptIn { deposit_amount } ->
               if is_ada_asset {
-                order_output.value == assets.merge(
-                  from_lovelace(deposit_amount),
-                  from_asset(policy_id, order_nft_name, 1),
-                )
+                and {
+                  without_lovelace(order_output.value) == from_asset(
+                    policy_id,
+                    order_nft_name,
+                    1,
+                  ),
+                  lovelace_of(order_output.value) >= deposit_amount,
+                }
               } else {
                 without_lovelace(order_output.value) == assets.merge(
                   from_asset(at_pid, at_an, deposit_amount),
