@@ -3,12 +3,22 @@
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card } from "@/components/ui/card";
-import { LAVA_LOGO } from "@/lib/images";
+import { ADA_LOGO, LAVA_LOGO } from "@/lib/images";
 import appBg from "@/assets/app-bg.png";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 
 const NET_APY = 4.32; // %
 const USD_TO_ADA = 0.56;
+
+const getTokenIcon = (symbol: string) => {
+  const token = String(symbol ?? "").trim();
+
+  if (token === "ADA") {
+    return ADA_LOGO.src;
+  }
+
+  return LAVA_LOGO.src;
+};
 
 const Portfolio = () => {
   const { tokenBalances } = useCardanoWallet();
@@ -156,7 +166,7 @@ const Portfolio = () => {
                         <tr key={index} className="border-0 hover:bg-muted/50 transition-colors">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <img src={LAVA_LOGO.src} alt={asset.symbol} className="w-6 h-6" />
+                              <img src={getTokenIcon(asset.symbol)} alt={asset.symbol} className="w-6 h-6" />
                               <span className="font-medium">
                                 {asset.amount.toFixed(2)}{" "}
                                 <span className="text-muted-foreground">{asset.symbol}</span>
@@ -186,7 +196,7 @@ const Portfolio = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <img
-                          src={LAVA_LOGO.src}
+                          src={getTokenIcon(asset.symbol)}
                           alt={asset.symbol}
                           className="w-6 h-6"
                         />
