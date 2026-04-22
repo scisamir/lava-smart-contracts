@@ -1,5 +1,6 @@
 // Centralized image exports so components import images from a single place.
 import circleLogo from "@/assets/circle-logo.png";
+import adaLogo from "@/assets/ada.svg";
 import flameGraphic from "@/assets/flame-graphic.png";
 import fluidtokensLogo from "@/assets/fluidtokens-logo.png";
 import iagonLogo from "@/assets/iagon-logo.png";
@@ -15,6 +16,7 @@ import bgBehindd from "@/assets/bgBehind.png";
 import striketoken from "@/assets/striketoken.jpeg";
 
 export const LAVA_LOGO = lavaColorful;
+export const ADA_LOGO = adaLogo;
 export const BG_BEHIND = bgBehindd;
 export const CIRCLE_LOGO = circleLogo;
 export const FLAME_GRAPHIC = flameGraphic;
@@ -31,6 +33,7 @@ export const STRIKETOKENS_LOGO = striketoken;
 
 export default {
   LAVA_LOGO,
+  ADA_LOGO,
   CIRCLE_LOGO,
   FLAME_GRAPHIC,
   FLUIDTOKENS_LOGO,

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowDown, ChevronDown, Zap, Wallet } from "lucide-react";
-import { LAVA_LOGO, STRIKETOKENS_LOGO, SPLASH_LOGO, FLUIDTOKENS_LOGO } from "@/lib/images";
+import { ADA_LOGO, LAVA_LOGO, STRIKETOKENS_LOGO, SPLASH_LOGO, FLUIDTOKENS_LOGO } from "@/lib/images";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
 import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
@@ -384,6 +384,7 @@ export const StakingCard = () => {
             {(() => {
               const name = isSwapped ? selectedToken.derivative : selectedToken.base;
               const map: Record<string, string | undefined> = {
+                ADA: ADA_LOGO?.src,
                 tStrike: STRIKETOKENS_LOGO?.src,
                 tPulse: SPLASH_LOGO?.src,
                 test: FLUIDTOKENS_LOGO?.src,
@@ -467,6 +468,7 @@ export const StakingCard = () => {
             {(() => {
               const name = isSwapped ? selectedToken.base : selectedToken.derivative;
               const map: Record<string, string | undefined> = {
+                ADA: ADA_LOGO?.src,
                 tStrike: STRIKETOKENS_LOGO?.src,
                 tPulse: SPLASH_LOGO?.src,
                 test: FLUIDTOKENS_LOGO?.src,

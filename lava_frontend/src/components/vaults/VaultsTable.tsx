@@ -1,7 +1,11 @@
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import {
+  ADA_LOGO,
+  FLUIDTOKENS_LOGO,
   LAVA_LOGO,
+  SPLASH_LOGO,
+  STRIKETOKENS_LOGO,
 } from "@/lib/images";
 import {
   Table,
@@ -16,6 +20,18 @@ import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 export const VaultsTable = () => {
   const { poolInfo, vaultsLoading } = useCardanoWallet();
   const poolInfoExtended = poolInfo;
+
+  const getTokenIcon = (symbol?: string) => {
+    const token = String(symbol ?? "").trim();
+    const map: Record<string, string | undefined> = {
+      ADA: ADA_LOGO?.src,
+      tStrike: STRIKETOKENS_LOGO?.src,
+      tPulse: SPLASH_LOGO?.src,
+      test: FLUIDTOKENS_LOGO?.src,
+    };
+
+    return map[token] ?? LAVA_LOGO.src;
+  };
 
   const normalizeAmount = (value: string | number, symbol?: string) => {
     const raw = Number(String(value ?? "0").replace(/,/g, ""));
@@ -147,13 +163,11 @@ export const VaultsTable = () => {
 
                 <TableCell className="hidden md:table-cell">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-gradient-lava flex items-center justify-center p-1">
-                      <img
-                        src={LAVA_LOGO.src}
-                        alt="stADA"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
+                    <img
+                      src={getTokenIcon(vault.tokenPair?.derivative)}
+                      alt={vault.tokenPair?.derivative ?? "token"}
+                      className="w-5 h-5 object-contain"
+                    />
                     <span>
                       {normalizeAmount(vault.stStake, vault.tokenPair?.derivative)}{" "}
                       <span className="text-muted-foreground">
@@ -165,13 +179,11 @@ export const VaultsTable = () => {
 
                 <TableCell className="hidden md:table-cell">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-gradient-lava flex items-center justify-center p-1">
-                      <img
-                        src={LAVA_LOGO.src}
-                        alt="stADA"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
+                    <img
+                      src={getTokenIcon(vault.tokenPair?.base)}
+                      alt={vault.tokenPair?.base ?? "token"}
+                      className="w-5 h-5 object-contain"
+                    />
                     <span>
                       {normalizeAmount(vault.staked, vault.tokenPair?.base)}{" "}
                       <span className="text-muted-foreground">
@@ -214,13 +226,11 @@ export const VaultsTable = () => {
                       <div>
                         <p className="text-xs text-muted-foreground">stStake</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <div className="w-5 h-5 rounded-full bg-gradient-lava flex items-center justify-center p-1">
-                            <img
-                              src={LAVA_LOGO.src}
-                              alt="stADA"
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
+                          <img
+                            src={getTokenIcon(vault.tokenPair?.derivative)}
+                            alt={vault.tokenPair?.derivative ?? "token"}
+                            className="w-5 h-5 object-contain"
+                          />
                           <span>
                             {normalizeAmount(vault.stStake, vault.tokenPair?.derivative)} {vault.tokenPair?.derivative ?? ""}
                           </span>
@@ -248,13 +258,11 @@ export const VaultsTable = () => {
                       <div>
                         <p className="text-xs text-muted-foreground">Staked</p>
                         <div className="flex justify-end items-center gap-1 mt-1">
-                          <div className="w-5 h-5 rounded-full bg-gradient-lava flex items-center justify-center p-1">
-                            <img
-                              src={LAVA_LOGO.src}
-                              alt="stADA"
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
+                          <img
+                            src={getTokenIcon(vault.tokenPair?.base)}
+                            alt={vault.tokenPair?.base ?? "token"}
+                            className="w-5 h-5 object-contain"
+                          />
                           <span>
                             {normalizeAmount(vault.staked, vault.tokenPair?.base)} {vault.tokenPair?.base ?? ""}
                           </span>
