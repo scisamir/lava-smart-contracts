@@ -28,7 +28,7 @@ export const BatchOrders = ({ totalOrder }: any) => {
       try {
         const backendBaseUrl =
           process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-          "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
+          "https://tk3y4kw3f6.execute-api.us-east-1.amazonaws.com/prod/";
 
         const response = await fetch(`${backendBaseUrl}/batch-orders`, {
           method: "POST",
