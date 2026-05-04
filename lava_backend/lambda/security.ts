@@ -1,6 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { randomUUID } from 'node:crypto';
-import { checkSignature, deserializeAddress } from '@meshsdk/core';
+import { checkSignature } from '@meshsdk/core';
+import { addressToBech32, deserializeAddress as cstDeserializeAddress } from '@meshsdk/core-cst';
 import { jwtVerify, SignJWT } from 'jose';
 import type { DataSignature } from '@meshsdk/common';
 
@@ -22,8 +23,13 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? '')
   .map((value) => value.trim())
   .filter(Boolean);
 
-const JWT_SHARED_SECRET =
-  process.env.JWT_SHARED_SECRET?.trim() || process.env.PROXY_SHARED_SECRET?.trim() || '';
+const _jwtSecret = process.env.JWT_SHARED_SECRET?.trim() || '';
+if (!_jwtSecret) {
+  console.warn(
+    '[security] JWT_SHARED_SECRET is not set;'
+  );
+}
+const JWT_SHARED_SECRET = _jwtSecret;
 const JWT_ISSUER = process.env.JWT_ISSUER ?? 'lava-backend';
 const ACCESS_TOKEN_AUDIENCE = process.env.JWT_AUDIENCE ?? 'lava-client';
 const CHALLENGE_TOKEN_AUDIENCE = `${ACCESS_TOKEN_AUDIENCE}:challenge`;
@@ -182,7 +188,16 @@ const buildChallengeMessage = (address: string, nonce: string, expiresAtIso: str
 
 const toHex = (value: string): string => Buffer.from(value, 'utf8').toString('hex');
 
+const normalizeCardanoAddress = (address: string): string => {
+  try {
+    return addressToBech32(cstDeserializeAddress(address));
+  } catch {
+    return address;
+  }
+};
+
 export const createWalletChallenge = async (address: string) => {
+  const normalizedAddress = normalizeCardanoAddress(address);
   const issuedAt = Math.floor(Date.now() / 1000);
   const expiresAt = issuedAt + CHALLENGE_TOKEN_TTL_SECONDS;
   const expiresAtIso = new Date(expiresAt * 1000).toISOString();
@@ -196,13 +211,13 @@ export const createWalletChallenge = async (address: string) => {
     .setIssuedAt(issuedAt)
     .setIssuer(JWT_ISSUER)
     .setAudience(CHALLENGE_TOKEN_AUDIENCE)
-    .setSubject(address)
+    .setSubject(normalizedAddress)
     .setExpirationTime(expiresAt)
     .sign(getJwtSecret());
 
   return {
     challengeToken,
-    message: buildChallengeMessage(address, nonce, expiresAtIso),
+    message: buildChallengeMessage(normalizedAddress, nonce, expiresAtIso),
     expiresAt: expiresAtIso,
   };
 };
@@ -220,11 +235,13 @@ export const verifyWalletChallenge = async (
     return false;
   }
 
+  const normalizedAddress = normalizeCardanoAddress(address);
+
   try {
     const verified = await jwtVerify(challengeToken, getJwtSecret(), {
       issuer: JWT_ISSUER,
       audience: CHALLENGE_TOKEN_AUDIENCE,
-      subject: address,
+      subject: normalizedAddress,
     });
 
     const nonce = typeof verified.payload.nonce === 'string' ? verified.payload.nonce : '';
@@ -234,8 +251,8 @@ export const verifyWalletChallenge = async (
 
     const expiresAt = typeof verified.payload.exp === 'number' ? verified.payload.exp : 0;
     const expiresAtIso = new Date(expiresAt * 1000).toISOString();
-    const message = buildChallengeMessage(address, nonce, expiresAtIso);
-    return checkSignature(toHex(message), signature, address);
+    const message = buildChallengeMessage(normalizedAddress, nonce, expiresAtIso);
+    return checkSignature(toHex(message), signature, normalizedAddress);
   } catch {
     return false;
   }
@@ -282,8 +299,8 @@ export const isLikelyCardanoAddress = (address: string): boolean => {
   }
 
   try {
-    const decoded = deserializeAddress(address);
-    return Boolean(decoded.pubKeyHash || decoded.scriptHash);
+    addressToBech32(cstDeserializeAddress(address));
+    return true;
   } catch {
     return false;
   }
