@@ -14,12 +14,18 @@ import {
 } from './e2e/order/validator';
 import { OrderDatumType } from './e2e/types';
 import { setupE2e } from './e2e/setup';
+import { jsonResponse, normalizeCardanoAddress, parseJsonBody, verifyAccessToken } from './security';
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  const auth = await verifyAccessToken(event);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
-    const body = event.body ? JSON.parse(event.body) : {};
+    const body = parseJsonBody<Record<string, unknown>>(event) ?? {};
 
     const walletAddress = String(body?.walletAddress ?? '');
     const walletVK = String(body?.walletVK ?? '');
@@ -27,19 +33,19 @@ export const handler = async (
     const walletUtxos = (body?.walletUtxos ?? []) as UTxO[];
     const orderTxHash = String(body?.orderTxHash ?? '');
 
+    if (normalizeCardanoAddress(walletAddress) !== auth.address) {
+      return jsonResponse(403, { error: 'Wallet address does not match authorization token' }, auth.origin);
+    }
+
     if (!walletAddress || !walletVK || !walletCollateral || !orderTxHash) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST,OPTIONS',
-        },
-        body: JSON.stringify({
+      return jsonResponse(
+        400,
+        {
           error:
             'Missing required fields: walletAddress, walletVK, walletCollateral, orderTxHash',
-        }),
-      };
+        },
+        auth.origin
+      );
     }
 
     const maestroKey = process.env.MAESTRO_API_KEY;
@@ -65,15 +71,7 @@ export const handler = async (
     const orderUtxos = await provider.fetchUTxOs(orderTxHash, 0);
     const orderUtxo = orderUtxos[0];
     if (!orderUtxo) {
-      return {
-        statusCode: 404,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST,OPTIONS',
-        },
-        body: JSON.stringify({ error: 'Order UTxO not found' }),
-      };
+      return jsonResponse(404, { error: 'Order UTxO not found' }, auth.origin);
     }
 
     const orderPlutusData = orderUtxo.output.plutusData;
@@ -83,6 +81,10 @@ export const handler = async (
 
     const orderDatum = deserializeDatum<OrderDatumType>(orderPlutusData);
     const receiverAddress = serializeAddressObj(orderDatum.fields[1], NETWORK_ID as 0 | 1);
+    if (normalizeCardanoAddress(receiverAddress) !== auth.address) {
+      return jsonResponse(403, { error: 'Order does not belong to the authenticated wallet' }, auth.origin);
+    }
+
     const outputAmount = orderUtxo.output.amount.filter(
       (asset) => asset.unit !== OrderValidatorHash
     );
@@ -113,27 +115,15 @@ export const handler = async (
       .requiredSignerHash(walletVK)
       .complete();
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST,OPTIONS',
-      },
-      body: JSON.stringify({ unsignedTx }),
-    };
+    return jsonResponse(200, { unsignedTx }, auth.origin);
   } catch (error) {
     console.error('Build cancel order tx error:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST,OPTIONS',
-      },
-      body: JSON.stringify({
+    return jsonResponse(
+      500,
+      {
         error: error instanceof Error ? error.message : 'Internal server error',
-      }),
-    };
+      },
+      auth.origin
+    );
   }
 };

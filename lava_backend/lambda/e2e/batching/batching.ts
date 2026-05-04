@@ -28,9 +28,7 @@ export const batchingTx = async (
   const precisionFactor = BigInt(PrecisionFactor);
   const MIN_RECEIVER_LOVELACE = 2_000_000n;
 
-  const walletPassphrase =
-    process.env.BATCHER_WALLET_PASSPHRASE ||
-    process.env.NEXT_PUBLIC_WALLET_PASSPHRASE_ONE;
+  const walletPassphrase = process.env.BATCHER_WALLET_PASSPHRASE;
 
   if (!walletPassphrase) {
     throw new Error("BATCHER_WALLET_PASSPHRASE does not exist");

@@ -12,9 +12,11 @@ import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { UserOrderType } from "@/lib/types";
 import { BatchOrders } from "@/components/stake/BatchOrders";
 import { BG_BEHIND } from "@/lib/images";
+import { fetchBackend } from "@/lib/backendClient";
+import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 
 const Index = () => {
-  const { walletAddress } = useCardanoWallet();
+  const { wallet, walletAddress } = useCardanoWallet();
   const [orders, setOrders] = useState<UserOrderType[]>([]);
   const [totalOrder, setTotalOrder] = useState({});
   const showBatchButtons = false;
@@ -22,14 +24,15 @@ const Index = () => {
   useEffect(() => {
     const awaitFetchData = async () => {
       try {
-        const backendBaseUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-          "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
-
-        if (walletAddress) {
-          const ordersRes = await fetch(
-            `${backendBaseUrl}/user-orders?address=${encodeURIComponent(walletAddress)}`
+        if (walletAddress && wallet) {
+          const session = await ensureWalletAuthSession(
+            wallet as WalletSigner,
+            walletAddress,
+            walletAddress
           );
+          const ordersRes = await fetchBackend('/user-orders', {
+            token: session.token,
+          });
 
           if (!ordersRes.ok) {
             throw new Error(`Failed to fetch user orders: ${ordersRes.status}`);
@@ -41,7 +44,7 @@ const Index = () => {
           setOrders([]);
         }
 
-        const batchStatsRes = await fetch(`${backendBaseUrl}/batch-stats`);
+        const batchStatsRes = await fetchBackend('/batch-stats');
         if (!batchStatsRes.ok) {
           throw new Error(`Failed to fetch batch stats: ${batchStatsRes.status}`);
         }
@@ -58,7 +61,7 @@ const Index = () => {
     const interval = setInterval(awaitFetchData, 10000);
 
     return () => clearInterval(interval);
-  }, [walletAddress]);
+  }, [wallet, walletAddress]);
 
   return (
     <div

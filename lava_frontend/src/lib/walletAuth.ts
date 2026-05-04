@@ -6,7 +6,7 @@ type WalletSignature = {
   signature: string;
 };
 
-type WalletSigner = {
+export type WalletSigner = {
   signData: (payload: string, address?: string) => Promise<WalletSignature>;
   walletInstance?: {
     signData?: (address: string, payload: string) => Promise<WalletSignature>;
@@ -42,12 +42,20 @@ const isSessionValid = (session: WalletAuthSession | null, address?: string): se
   return new Date(session.expiresAt).getTime() > Date.now() + 30_000;
 };
 
+const getAuthStorage = (): Storage | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return window.sessionStorage;
+};
+
 const saveWalletAuthSession = (session: WalletAuthSession) => {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  getAuthStorage()?.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
 };
 
 export const loadWalletAuthSession = (address?: string): WalletAuthSession | null => {
-  const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+  const raw = getAuthStorage()?.getItem(AUTH_STORAGE_KEY);
   if (!raw) {
     return null;
   }
@@ -55,19 +63,19 @@ export const loadWalletAuthSession = (address?: string): WalletAuthSession | nul
   try {
     const parsed = JSON.parse(raw) as WalletAuthSession;
     if (!isSessionValid(parsed, address)) {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+      getAuthStorage()?.removeItem(AUTH_STORAGE_KEY);
       return null;
     }
 
     return parsed;
   } catch {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+    getAuthStorage()?.removeItem(AUTH_STORAGE_KEY);
     return null;
   }
 };
 
 export const clearWalletAuthSession = () => {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
+  getAuthStorage()?.removeItem(AUTH_STORAGE_KEY);
 };
 
 const parseJson = async <T>(response: Response): Promise<T> => {

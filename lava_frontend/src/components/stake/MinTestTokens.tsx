@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
+import { fetchBackend } from "@/lib/backendClient";
+import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 
 export const MintTestTokens = ({ variant = "default", className = "" }: { variant?: "default" | "mobile"; className?: string }) => {
 
@@ -60,12 +62,15 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
 
     let txHash = "";
     try {
-      const backendBaseUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-        "https://0lth59w8rl.execute-api.us-east-1.amazonaws.com/prod";
+      const session = await ensureWalletAuthSession(
+        wallet as WalletSigner,
+        walletAddress,
+        walletAddress
+      );
 
-      const response = await fetch(`${backendBaseUrl}/build-mint-test-tokens-tx`, {
+      const response = await fetchBackend('/build-mint-test-tokens-tx', {
         method: "POST",
+        token: session.token,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           walletAddress,

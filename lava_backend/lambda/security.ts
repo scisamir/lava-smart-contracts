@@ -9,6 +9,8 @@ type OriginResult =
   | { ok: true; origin: string | null }
   | { ok: false; response: APIGatewayProxyResult };
 
+type AccessScope = 'lava:read' | 'lava:batch';
+
 type AccessTokenResult =
   | { ok: true; origin: string | null; address: string }
   | { ok: false; response: APIGatewayProxyResult };
@@ -35,6 +37,20 @@ const ACCESS_TOKEN_AUDIENCE = process.env.JWT_AUDIENCE ?? 'lava-client';
 const CHALLENGE_TOKEN_AUDIENCE = `${ACCESS_TOKEN_AUDIENCE}:challenge`;
 const ACCESS_TOKEN_TTL_SECONDS = Number(process.env.ACCESS_TOKEN_TTL_SECONDS ?? 900);
 const CHALLENGE_TOKEN_TTL_SECONDS = Number(process.env.CHALLENGE_TOKEN_TTL_SECONDS ?? 300);
+
+const _normalizeCardanoAddress = (address: string): string => {
+  try {
+    return addressToBech32(cstDeserializeAddress(address));
+  } catch {
+    return address;
+  }
+};
+
+const AUTH_ADMIN_ADDRESSES = (process.env.AUTH_ADMIN_ADDRESSES ?? '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean)
+  .map((address) => _normalizeCardanoAddress(address));
 
 const getJwtSecret = (): Uint8Array => new TextEncoder().encode(JWT_SHARED_SECRET);
 
@@ -134,8 +150,29 @@ const parseBearerToken = (authorization: string): string | null => {
   return token;
 };
 
+const parseScopes = (scopeClaim: unknown): Set<AccessScope> => {
+  if (typeof scopeClaim !== 'string') {
+    return new Set();
+  }
+
+  return new Set(
+    scopeClaim
+      .split(/\s+/)
+      .map((scope) => scope.trim())
+      .filter((scope): scope is AccessScope =>
+        scope === 'lava:read' || scope === 'lava:batch'
+      )
+  );
+};
+
+const hasRequiredScopes = (
+  tokenScopes: Set<AccessScope>,
+  requiredScopes: AccessScope[]
+): boolean => requiredScopes.every((scope) => tokenScopes.has(scope));
+
 export const verifyAccessToken = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
+  options?: { requiredScopes?: AccessScope[] }
 ): Promise<AccessTokenResult> => {
   const originCheck = await verifyOriginRequest(event);
   if (!originCheck.ok) {
@@ -169,7 +206,20 @@ export const verifyAccessToken = async (
       };
     }
 
-    return { ok: true, origin: originCheck.origin, address };
+    const requiredScopes = options?.requiredScopes ?? [];
+    const tokenScopes = parseScopes(verified.payload.scope);
+    if (!hasRequiredScopes(tokenScopes, requiredScopes)) {
+      return {
+        ok: false,
+        response: jsonResponse(403, { error: 'Insufficient token scope' }, originCheck.origin),
+      };
+    }
+
+    return {
+      ok: true,
+      origin: originCheck.origin,
+      address: normalizeCardanoAddress(address),
+    };
   } catch {
     return {
       ok: false,
@@ -188,13 +238,7 @@ const buildChallengeMessage = (address: string, nonce: string, expiresAtIso: str
 
 const toHex = (value: string): string => Buffer.from(value, 'utf8').toString('hex');
 
-const normalizeCardanoAddress = (address: string): string => {
-  try {
-    return addressToBech32(cstDeserializeAddress(address));
-  } catch {
-    return address;
-  }
-};
+export const normalizeCardanoAddress = _normalizeCardanoAddress;
 
 export const createWalletChallenge = async (address: string) => {
   const normalizedAddress = normalizeCardanoAddress(address);
@@ -259,23 +303,27 @@ export const verifyWalletChallenge = async (
 };
 
 export const issueAccessToken = async (address: string) => {
+  const normalizedAddress = normalizeCardanoAddress(address);
   const issuedAt = Math.floor(Date.now() / 1000);
   const expiresAt = issuedAt + ACCESS_TOKEN_TTL_SECONDS;
   const expiresAtIso = new Date(expiresAt * 1000).toISOString();
+  const scope = AUTH_ADMIN_ADDRESSES.includes(normalizedAddress)
+    ? 'lava:read lava:batch'
+    : 'lava:read';
 
   const token = await new SignJWT({
-    scope: 'lava:read',
+    scope,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt(issuedAt)
     .setIssuer(JWT_ISSUER)
     .setAudience(ACCESS_TOKEN_AUDIENCE)
-    .setSubject(address)
+    .setSubject(normalizedAddress)
     .setExpirationTime(expiresAt)
     .sign(getJwtSecret());
 
   return {
-    address,
+    address: normalizedAddress,
     token,
     expiresAt: expiresAtIso,
   };

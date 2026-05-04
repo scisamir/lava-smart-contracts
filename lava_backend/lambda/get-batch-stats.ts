@@ -3,10 +3,16 @@ import { MaestroProvider, deserializeDatum } from '@meshsdk/core';
 import { OrderValidatorAddr } from './e2e/order/validator';
 import { setupE2e } from './e2e/setup';
 import { OrderDatumType } from './e2e/types';
+import { jsonResponse, verifyOriginRequest } from './security';
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  const originCheck = await verifyOriginRequest(event);
+  if (!originCheck.ok) {
+    return originCheck.response;
+  }
+
   try {
     const maestro = new MaestroProvider({
       network: 'Mainnet',
@@ -41,25 +47,9 @@ export const handler = async (
       }
     });
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET',
-      },
-      body: JSON.stringify({ totalOrders }),
-    };
+    return jsonResponse(200, { totalOrders }, originCheck.origin);
   } catch (error) {
     console.error(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET',
-      },
-      body: JSON.stringify({ error: 'Internal server error' }),
-    };
+    return jsonResponse(500, { error: 'Internal server error' }, originCheck.origin);
   }
 };

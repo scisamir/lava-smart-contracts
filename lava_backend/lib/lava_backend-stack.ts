@@ -23,6 +23,7 @@ export class LavaBackendStack extends cdk.Stack {
 
     const jwtIssuer = process.env.JWT_ISSUER ?? 'lava-backend';
     const jwtAudience = process.env.JWT_AUDIENCE ?? 'lava-client';
+    const authAdminAddresses = process.env.AUTH_ADMIN_ADDRESSES ?? '';
 
     // Retrieve Maestro API key from SSM Parameter Store
     const maestroApiKey = ssm.StringParameter.valueForStringParameter(
@@ -75,6 +76,7 @@ export class LavaBackendStack extends cdk.Stack {
         JWT_SHARED_SECRET: jwtSharedSecret,
         JWT_ISSUER: jwtIssuer,
         JWT_AUDIENCE: jwtAudience,
+        AUTH_ADMIN_ADDRESSES: authAdminAddresses,
       },
     });
 
@@ -111,6 +113,7 @@ export class LavaBackendStack extends cdk.Stack {
       // layers: [backendLayer],
       environment: {
         TABLE_NAME: table.tableName,
+        ALLOWED_ORIGINS: allowedOrigins.join(','),
       },
     });
 
@@ -142,6 +145,7 @@ export class LavaBackendStack extends cdk.Stack {
       environment: {
         MAESTRO_API_KEY: maestroApiKey,
         TABLE_NAME: table.tableName,
+        ALLOWED_ORIGINS: allowedOrigins.join(','),
       },
     });
 
@@ -154,8 +158,11 @@ export class LavaBackendStack extends cdk.Stack {
       environment: {
         MAESTRO_API_KEY: maestroApiKey,
         TABLE_NAME: table.tableName,
+        ALLOWED_ORIGINS: allowedOrigins.join(','),
+        JWT_SHARED_SECRET: jwtSharedSecret,
+        JWT_ISSUER: jwtIssuer,
+        JWT_AUDIENCE: jwtAudience,
         BATCHER_WALLET_PASSPHRASE: batcherWalletPassphrase,
-        NEXT_PUBLIC_WALLET_PASSPHRASE_ONE: batcherWalletPassphrase,
       },
     });
 
@@ -169,7 +176,6 @@ export class LavaBackendStack extends cdk.Stack {
         MAESTRO_API_KEY: maestroApiKey,
         TABLE_NAME: table.tableName,
         BATCHER_WALLET_PASSPHRASE: batcherWalletPassphrase,
-        NEXT_PUBLIC_WALLET_PASSPHRASE_ONE: batcherWalletPassphrase,
       },
     });
 
@@ -180,6 +186,10 @@ export class LavaBackendStack extends cdk.Stack {
       environment: {
         MAESTRO_API_KEY: maestroApiKey,
         TABLE_NAME: table.tableName,
+        ALLOWED_ORIGINS: allowedOrigins.join(','),
+        JWT_SHARED_SECRET: jwtSharedSecret,
+        JWT_ISSUER: jwtIssuer,
+        JWT_AUDIENCE: jwtAudience,
       },
     });
 
@@ -190,6 +200,10 @@ export class LavaBackendStack extends cdk.Stack {
       environment: {
         MAESTRO_API_KEY: maestroApiKey,
         TABLE_NAME: table.tableName,
+        ALLOWED_ORIGINS: allowedOrigins.join(','),
+        JWT_SHARED_SECRET: jwtSharedSecret,
+        JWT_ISSUER: jwtIssuer,
+        JWT_AUDIENCE: jwtAudience,
       },
     });
 
@@ -200,6 +214,10 @@ export class LavaBackendStack extends cdk.Stack {
       environment: {
         MAESTRO_API_KEY: maestroApiKey,
         TABLE_NAME: table.tableName,
+        ALLOWED_ORIGINS: allowedOrigins.join(','),
+        JWT_SHARED_SECRET: jwtSharedSecret,
+        JWT_ISSUER: jwtIssuer,
+        JWT_AUDIENCE: jwtAudience,
       },
     });
 
@@ -211,6 +229,9 @@ export class LavaBackendStack extends cdk.Stack {
         MAESTRO_API_KEY: maestroApiKey,
         TABLE_NAME: table.tableName,
         ALLOWED_ORIGINS: allowedOrigins.join(','),
+        JWT_SHARED_SECRET: jwtSharedSecret,
+        JWT_ISSUER: jwtIssuer,
+        JWT_AUDIENCE: jwtAudience,
       },
     });
 
@@ -446,9 +467,6 @@ export class LavaBackendStack extends cdk.Stack {
       'GET',
       new apigateway.LambdaIntegration(getUserOrdersLambda),
       {
-        requestParameters: {
-          'method.request.querystring.address': true,
-        },
         methodResponses: [
           {
             statusCode: '200',
