@@ -8,39 +8,72 @@ import { CTASection } from "@/components/home/CTASection";
 import appBg from "@/assets/app-bg.png";
 import { OrderList } from "@/components/home/OrderList";
 import { useEffect, useState } from "react";
-import { fetchUserOrders, getTotalOrderNumbers } from "@/e2e/utils";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { UserOrderType } from "@/lib/types";
 import { BatchOrders } from "@/components/stake/BatchOrders";
 import { BG_BEHIND } from "@/lib/images";
 
+const HOME_DATA_REFRESH_EVENT = "lava:refresh-home-data";
+
 const Index = () => {
-  const { blockchainProvider, walletAddress, walletUtxos, wallet } =
-    useCardanoWallet();
+  const { walletAddress } = useCardanoWallet();
   const [orders, setOrders] = useState<UserOrderType[]>([]);
   const [totalOrder, setTotalOrder] = useState({});
+  const showBatchButtons = false;
 
   useEffect(() => {
-    if (blockchainProvider) {
-      const awaitFetchUserOrders = async () => {
-        const userOrders = await fetchUserOrders(
-          blockchainProvider,
-          walletAddress
-        );
-        setOrders(userOrders);
-        console.log("userOrders:", userOrders);
+    const awaitFetchData = async () => {
+      try {
+        const backendBaseUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
+          "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
 
-        const orderTotals = await getTotalOrderNumbers(blockchainProvider);
-        setTotalOrder(orderTotals);
-      };
+        if (walletAddress) {
+          const ordersRes = await fetch(
+            `${backendBaseUrl}/user-orders?address=${encodeURIComponent(walletAddress)}`
+          );
 
-      awaitFetchUserOrders();
+          if (!ordersRes.ok) {
+            throw new Error(`Failed to fetch user orders: ${ordersRes.status}`);
+          }
 
-      const interval = setInterval(awaitFetchUserOrders, 10000);
+          const ordersData = await ordersRes.json();
+          setOrders((ordersData?.orders ?? []) as UserOrderType[]);
+        } else {
+          setOrders([]);
+        }
 
-      return () => clearInterval(interval);
-    }
-  }, [blockchainProvider, walletAddress]);
+        if (showBatchButtons) {
+          const batchStatsRes = await fetch(`${backendBaseUrl}/batch-stats`);
+          if (!batchStatsRes.ok) {
+            throw new Error(`Failed to fetch batch stats: ${batchStatsRes.status}`);
+          }
+
+          const batchStatsData = await batchStatsRes.json();
+          setTotalOrder(batchStatsData?.totalOrders ?? {});
+        }
+      } catch (error) {
+        console.error("Failed to fetch home page data:", error);
+      }
+    };
+
+    awaitFetchData();
+
+    const refreshHandler = () => {
+      void awaitFetchData();
+    };
+
+    window.addEventListener(HOME_DATA_REFRESH_EVENT, refreshHandler);
+
+    const interval = setInterval(() => {
+      void awaitFetchData();
+    }, 1_800_000);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener(HOME_DATA_REFRESH_EVENT, refreshHandler);
+    };
+  }, [walletAddress, showBatchButtons]);
 
   return (
     <div
@@ -100,7 +133,7 @@ const Index = () => {
                   </div>
 
                   <OrderList orders={orders} />
-                  <BatchOrders totalOrder={totalOrder} />
+                  {showBatchButtons && <BatchOrders totalOrder={totalOrder} />}
                 </div>
         </section>
 

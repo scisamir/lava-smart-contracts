@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowDown, ChevronDown, Zap, Wallet } from "lucide-react";
-import { LAVA_LOGO, STRIKETOKENS_LOGO, SPLASH_LOGO, FLUIDTOKENS_LOGO } from "@/lib/images";
+import { ADA_LOGO, LAVA_LOGO, STRIKETOKENS_LOGO, SPLASH_LOGO, FLUIDTOKENS_LOGO } from "@/lib/images";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
-import { createOptInOrder } from "@/e2e/order/create_opt_in_order";
-import { createRedeemOrder } from "@/e2e/order/create_redeem_order";
 import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
 
 // PixelCorner removed — unused decorative element
@@ -37,22 +35,90 @@ const Cluster = ({ left, right, top, bottom, rotate = 0 }: { left?: number; righ
 };
 
 export const StakingCard = () => {
+  const DEFAULT_TOKEN_PAIR: TokenPair = TOKEN_PAIRS[0] ?? {
+    base: "ADA",
+    derivative: "LADA",
+  };
+
   const [amount, setAmount] = useState<string>("0.00");
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isSwapped, setIsSwapped] = useState<boolean>(false);
-  const [selectedToken, setSelectedToken] = useState<TokenPair>(TOKEN_PAIRS[1]);
+  const [selectedToken, setSelectedToken] = useState<TokenPair>(DEFAULT_TOKEN_PAIR);
+  const [isTokenMenuOpen, setIsTokenMenuOpen] = useState<boolean>(false);
+  const [tokenMenuStyle, setTokenMenuStyle] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  }>({ top: 0, left: 0, width: 220 });
+  const tokenButtonRef = useRef<HTMLButtonElement | null>(null);
+  const tokenMenuRef = useRef<HTMLDivElement | null>(null);
 
   const {
     connected,
-    txBuilder,
-    blockchainProvider,
     wallet,
     walletAddress,
     walletVK,
     walletSK,
     walletUtxos,
     tokenBalances,
+    poolInfo,
+    refreshWalletStateAfterTx,
   } = useCardanoWallet();
+
+  const availableTokenPairs: TokenPair[] = (() => {
+    const fromVaults = (poolInfo ?? [])
+      .map((vault) => ({
+        base: String(vault?.tokenPair?.base ?? ""),
+        derivative: String(vault?.tokenPair?.derivative ?? ""),
+      }))
+      .filter((pair) => pair.base.length > 0 && pair.derivative.length > 0);
+
+    const source = fromVaults.length > 0 ? fromVaults : TOKEN_PAIRS;
+    const uniquePairs: TokenPair[] = [];
+
+    source.forEach((pair) => {
+      const exists = uniquePairs.some(
+        (p) => p.base === pair.base && p.derivative === pair.derivative
+      );
+      if (!exists) {
+        uniquePairs.push(pair);
+      }
+    });
+
+    return uniquePairs;
+  })();
+
+  const selectedVault = (poolInfo ?? []).find(
+    (vault) =>
+      vault?.tokenPair?.base === selectedToken.base &&
+      vault?.tokenPair?.derivative === selectedToken.derivative
+  );
+
+  const selectedPoolStakeAssetNameHex =
+    selectedVault?.poolStakeAssetNameHex ||
+    selectedVault?.tokenDetails?.derivative?.assetNameHex ||
+    "";
+
+  const selectedUnderlyingUnit = (() => {
+    const policyId = selectedVault?.tokenDetails?.base?.policyId ?? "";
+    const assetNameHex = selectedVault?.tokenDetails?.base?.assetNameHex ?? "";
+    if (!policyId && !assetNameHex) {
+      return "lovelace";
+    }
+    return `${policyId}${assetNameHex}`;
+  })();
+
+  useEffect(() => {
+    const selectedStillExists = availableTokenPairs.some(
+      (pair) =>
+        pair.base === selectedToken.base &&
+        pair.derivative === selectedToken.derivative
+    );
+
+    if (!selectedStillExists && availableTokenPairs.length > 0) {
+      setSelectedToken(availableTokenPairs[0]);
+    }
+  }, [availableTokenPairs, selectedToken.base, selectedToken.derivative]);
 
   const conversionRate = 0.996;
   const usdRate = 0.32;
@@ -74,7 +140,55 @@ export const StakingCard = () => {
 
   const handleSwap = () => {
     setIsSwapped((prev) => !prev);
+    setAmount("0.00");
   };
+
+  const handleSelectTokenPair = (pair: TokenPair) => {
+    setSelectedToken(pair);
+    setIsTokenMenuOpen(false);
+  };
+
+  useEffect(() => {
+    if (!isTokenMenuOpen) {
+      return;
+    }
+
+    const updateMenuPosition = () => {
+      const rect = tokenButtonRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return;
+      }
+
+      setTokenMenuStyle({
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: Math.max(220, rect.width + 40),
+      });
+    };
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        tokenButtonRef.current?.contains(target) ||
+        tokenMenuRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setIsTokenMenuOpen(false);
+    };
+
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isTokenMenuOpen]);
 
   useEffect(() => {
     if (isProcessing === true) setAmount("0.00");
@@ -87,7 +201,7 @@ export const StakingCard = () => {
         Success!
         <br />
         <a
-          href={`https://preprod.cardanoscan.io/transaction/${txHash}`}
+          href={`https://cardanoscan.io/transaction/${txHash}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#61dafb", textDecoration: "underline" }}
@@ -102,30 +216,38 @@ export const StakingCard = () => {
 
   const handleCreateOptInOrder = async (amount: number, tokenName: string) => {
     setIsProcessing(true);
-    console.log("txBuilder:", txBuilder);
-    console.log("blockchainProvider:", blockchainProvider);
-
-    if (!txBuilder || !blockchainProvider) {
-      toastFailure("Error: Blockchain not initialized!");
-      setIsProcessing(false);
-      return;
-    }
 
     let txHash = "";
     try {
-      txHash = await createOptInOrder(
-        txBuilder,
-        wallet,
-        walletAddress,
-        walletUtxos,
-        walletVK,
-        walletSK,
-        amount,
-        tokenName
-      );
-      txBuilder.reset();
+      const backendBaseUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
+        "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
+
+      const response = await fetch(`${backendBaseUrl}/build-user-order-tx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderType: "opt-in",
+          amount,
+          tokenName,
+          poolStakeAssetName: selectedPoolStakeAssetNameHex,
+          underlyingUnit: selectedUnderlyingUnit,
+          walletAddress,
+          walletVK,
+          walletSK,
+          walletUtxos,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody?.error || `Failed to build tx: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
-      txBuilder.reset();
       setIsProcessing(false);
       toastFailure(e);
       console.error("e tx:", e);
@@ -133,40 +255,49 @@ export const StakingCard = () => {
       return;
     }
 
-    blockchainProvider.onTxConfirmed(txHash, () => {
-      txBuilder.reset();
-      setIsProcessing(false);
-      toastSuccess(txHash);
-      console.log("Create opt in order tx hash:", txHash);
-    });
+    setIsProcessing(false);
+    toastSuccess(txHash);
+    await refreshWalletStateAfterTx();
+    window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
+    console.log("Create opt in order tx hash:", txHash);
   };
 
   const handleCreateRedeemOrder = async (amount: number, tokenName: string) => {
     setIsProcessing(true);
-    console.log("txBuilder:", txBuilder);
-    console.log("blockchainProvider:", blockchainProvider);
 
-    if (!txBuilder || !blockchainProvider) {
-      toastFailure("Error: Blockchain not initialized!");
-      setIsProcessing(false);
-      return;
-    }
+    const requestAmount = tokenName === "LADA" ? Math.trunc(amount * 1_000_000) : amount;
 
     let txHash = "";
     try {
-      txHash = await createRedeemOrder(
-        txBuilder,
-        wallet,
-        walletAddress,
-        walletUtxos,
-        walletVK,
-        walletSK,
-        amount,
-        tokenName
-      );
-      txBuilder.reset();
+      const backendBaseUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
+        "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
+
+      const response = await fetch(`${backendBaseUrl}/build-user-order-tx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderType: "redeem",
+          amount: requestAmount,
+          tokenName,
+          poolStakeAssetName: selectedPoolStakeAssetNameHex,
+          underlyingUnit: selectedUnderlyingUnit,
+          walletAddress,
+          walletVK,
+          walletSK,
+          walletUtxos,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody?.error || `Failed to build tx: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
-      txBuilder.reset();
       setIsProcessing(false);
       toastFailure(e);
       console.error("e tx:", e);
@@ -174,12 +305,11 @@ export const StakingCard = () => {
       return;
     }
 
-    blockchainProvider.onTxConfirmed(txHash, () => {
-      txBuilder.reset();
-      setIsProcessing(false);
-      toastSuccess(txHash);
-      console.log("Create redeem order tx hash:", txHash);
-    });
+    setIsProcessing(false);
+    toastSuccess(txHash);
+    await refreshWalletStateAfterTx();
+    window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
+    console.log("Create redeem order tx hash:", txHash);
   };
 
   // helper for which token balance to use
@@ -187,6 +317,29 @@ export const StakingCard = () => {
     ? tokenBalances[selectedToken.derivative]
     : tokenBalances[selectedToken.base];
   const tokenLabel = isSwapped ? selectedToken.derivative : selectedToken.base;
+  const displayedTokenBalance =
+    tokenLabel === "LADA" ? (tokenBalance ?? 0) / 1_000_000 : tokenBalance ?? 0;
+
+  const setHalfAmount = () => {
+    if (tokenLabel === "LADA") {
+      const rawBalance = Math.trunc(tokenBalance ?? 0);
+      const halfRaw = Math.trunc(rawBalance / 2);
+      setAmount((halfRaw / 1_000_000).toFixed(2));
+      return;
+    }
+
+    setAmount((displayedTokenBalance / 2).toFixed(2));
+  };
+
+  const setMaxAmount = () => {
+    if (tokenLabel === "LADA") {
+      const rawBalance = Math.trunc(tokenBalance ?? 0);
+      setAmount((rawBalance / 1_000_000).toFixed(2));
+      return;
+    }
+
+    setAmount(displayedTokenBalance.toFixed(2));
+  };
 
   return (
   <Card className="w-full max-w-[520px] h-[436px] bg-[#0D0D0D] p-6 flex flex-col gap-6 relative rounded-none">
@@ -210,14 +363,14 @@ export const StakingCard = () => {
 
           <div className="flex gap-1 staking-half-box">
             <button
-              onClick={() => setAmount(((tokenBalance ?? 0) / 2).toFixed(2))}
+              onClick={setHalfAmount}
               className="w-[40px] h-[24px] border border-[#D5463E80] text-[#D5463E] text-[12px] font-medium bg-white/[0.02] staking-half-btn"
             >
               Half
             </button>
 
             <button
-              onClick={() => setAmount((tokenBalance ?? 0).toFixed(2))}
+              onClick={setMaxAmount}
               className="w-[41px] h-[24px] border border-[#D5463E80] text-[#D5463E] text-[12px] font-medium bg-white/[0.02] staking-max-btn"
             >
               Max
@@ -231,6 +384,7 @@ export const StakingCard = () => {
             {(() => {
               const name = isSwapped ? selectedToken.derivative : selectedToken.base;
               const map: Record<string, string | undefined> = {
+                ADA: ADA_LOGO?.src,
                 tStrike: STRIKETOKENS_LOGO?.src,
                 tPulse: SPLASH_LOGO?.src,
                 test: FLUIDTOKENS_LOGO?.src,
@@ -243,10 +397,21 @@ export const StakingCard = () => {
               );
             })()}
 
-            <span className="text-[24px] font-medium text-white flex items-center gap-2">
-              {isSwapped ? selectedToken.derivative : selectedToken.base}
-              <ChevronDown className="w-5 h-5 text-[#D5463E]" />
-            </span>
+            <div>
+              <button
+                ref={tokenButtonRef}
+                type="button"
+                onClick={() => setIsTokenMenuOpen((prev) => !prev)}
+                className="text-[24px] font-medium text-white flex items-center gap-2"
+              >
+                {isSwapped ? selectedToken.derivative : selectedToken.base}
+                <ChevronDown
+                  className={`w-5 h-5 text-[#D5463E] transition-transform ${
+                    isTokenMenuOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
           <div className="text-right">
@@ -265,7 +430,7 @@ export const StakingCard = () => {
       </div>
 
       <div
-        className="absolute left-0 right-0 flex items-center justify-center z-40"
+        className="absolute left-0 right-0 flex items-center justify-center z-40 pointer-events-none"
         style={{ top: "112px", height: "6px" }}
       >
         <div className="flex-1 h-[2px] bg-[#2A2A2A]" />
@@ -279,7 +444,12 @@ export const StakingCard = () => {
         style={{ top: "100px" }}
       >
         <div className="w-[30px] h-[30px] bg-[#000000] border-[2px] border-[#2A2A2A] flex items-center justify-center staking-arrow">
-          <button onClick={handleSwap} className="staking-arrow-btn">
+          <button
+            type="button"
+            onClick={handleSwap}
+            className="staking-arrow-btn w-full h-full flex items-center justify-center"
+            aria-label="Swap tokens"
+          >
             <ArrowDown
               className={`w-5 h-5 text-[#303030] transition-transform ${
                 isSwapped ? "rotate-180" : ""
@@ -298,6 +468,7 @@ export const StakingCard = () => {
             {(() => {
               const name = isSwapped ? selectedToken.base : selectedToken.derivative;
               const map: Record<string, string | undefined> = {
+                ADA: ADA_LOGO?.src,
                 tStrike: STRIKETOKENS_LOGO?.src,
                 tPulse: SPLASH_LOGO?.src,
                 test: FLUIDTOKENS_LOGO?.src,
@@ -343,7 +514,7 @@ export const StakingCard = () => {
           Balance
         </span>
         <span className="no-pixelify flex items-center gap-2">
-          <span>{(tokenBalance ?? 0).toFixed(2)} {tokenLabel}</span>
+          <span>{displayedTokenBalance.toFixed(2)} {tokenLabel}</span>
           <Wallet className="w-4 h-4 text-[#666666]" style={{ color: '#666666' }} />
         </span>
       </div>
@@ -354,6 +525,40 @@ export const StakingCard = () => {
     <Cluster right={0.31} top={-0.25} rotate={-270} />
     <Cluster left={0.31} bottom={-0.25} rotate={-90} />
     <Cluster right={0.31} bottom={-0.25} rotate={180} />
+
+    {isTokenMenuOpen && (
+      <div
+        ref={tokenMenuRef}
+        className="fixed max-h-[220px] overflow-y-auto bg-[#111111] border border-[#2A2A2A] shadow-2xl z-[9999]"
+        style={{
+          top: tokenMenuStyle.top,
+          left: tokenMenuStyle.left,
+          width: tokenMenuStyle.width,
+        }}
+      >
+        {availableTokenPairs.map((pair) => {
+          const pairLabel = isSwapped
+            ? `${pair.derivative} / ${pair.base}`
+            : `${pair.base} / ${pair.derivative}`;
+          const isSelected =
+            pair.base === selectedToken.base &&
+            pair.derivative === selectedToken.derivative;
+
+          return (
+            <button
+              key={`${pair.base}-${pair.derivative}`}
+              type="button"
+              onClick={() => handleSelectTokenPair(pair)}
+              className={`w-full px-3 py-2 text-left text-sm border-b border-[#1F1F1F] last:border-b-0 hover:bg-[#1B1B1B] ${
+                isSelected ? "text-[#D5463E]" : "text-white"
+              }`}
+            >
+              {pairLabel}
+            </button>
+          );
+        })}
+      </div>
+    )}
 
     {/* ACTION BUTTON */}
     <Button
