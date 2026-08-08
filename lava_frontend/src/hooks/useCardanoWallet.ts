@@ -21,12 +21,10 @@ import {
 } from "@meshsdk/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BackendVault } from "@/lib/types";
+import { fetchBackend, getBackendBaseUrl } from "@/lib/backendClient";
+import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 
 const LOCAL_STORAGE_KEY = "connectedWallet";
-
-const getBackendBaseUrl = () =>
-  process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-  "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
 
 let backendUrlLogged = false;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -39,11 +37,14 @@ type WalletBalanceResponse = {
   collateral?: UTxO | null;
 };
 
-const fetchWalletBalance = async (address: string): Promise<WalletBalanceResponse> => {
-  const backendBaseUrl = getBackendBaseUrl();
-  const balanceRes = await fetch(
-    `${backendBaseUrl}/user-balance?address=${encodeURIComponent(address)}`
-  );
+const fetchWalletBalance = async (
+  wallet: WalletSigner,
+  address: string
+): Promise<WalletBalanceResponse> => {
+  const session = await ensureWalletAuthSession(wallet, address, address);
+  const balanceRes = await fetchBackend('/user-balance', {
+    token: session.token,
+  });
 
   if (!balanceRes.ok) {
     throw new Error(`Failed to fetch user balance: ${balanceRes.status}`);
@@ -53,8 +54,7 @@ const fetchWalletBalance = async (address: string): Promise<WalletBalanceRespons
 };
 
 const fetchVaults = async (): Promise<BackendVault[]> => {
-  const backendBaseUrl = getBackendBaseUrl();
-  const vaultsRes = await fetch(`${backendBaseUrl}/lava-vaults`);
+  const vaultsRes = await fetchBackend('/lava-vaults');
 
   if (!vaultsRes.ok) {
     throw new Error(`Failed to fetch lava vaults: ${vaultsRes.status}`);
@@ -185,8 +185,8 @@ function useCardanoWalletState() {
 
   const walletBalanceQuery = useQuery({
     queryKey: ["wallet-balance", walletAddress],
-    queryFn: () => fetchWalletBalance(walletAddress),
-    enabled: connected && !!walletAddress,
+    queryFn: () => fetchWalletBalance(wallet as WalletSigner, walletAddress),
+    enabled: connected && !!walletAddress && !!wallet,
     staleTime: 30_000,
     gcTime: 30 * 60_000,
     refetchOnWindowFocus: true,

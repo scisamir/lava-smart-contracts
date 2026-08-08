@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { MaestroProvider, UTxO } from "@meshsdk/core";
+import { jsonResponse, verifyAccessToken } from './security';
 import { setupE2e } from "./e2e/setup";
 import { MintingHash } from "./e2e/mint/validator";
 
@@ -37,15 +38,13 @@ const getAssetBalanceByNameSuffix = (
 export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
-  try {
-    const address = event.queryStringParameters?.address;
+  const auth = await verifyAccessToken(event);
+  if (!auth.ok) {
+    return auth.response;
+  }
 
-    if (!address) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Address parameter is required" }),
-      };
-    }
+  try {
+    const address = auth.address;
 
     const maestro = new MaestroProvider({
       network: "Mainnet",
@@ -113,26 +112,19 @@ export const handler = async (
 
     const collateral = pickPreferredCollateral(utxos);
 
-    return {
-      statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "GET",
-      },
-      body: JSON.stringify({
+    return jsonResponse(
+      200,
+      {
         balance: adaBalance,
         tokenBalances,
         walletUtxos: utxos,
         collateral,
-      }),
-    };
+      },
+      auth.origin
+    );
   } catch (error) {
     console.error(error);
 
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Internal server error" }),
-    };
+    return jsonResponse(500, { error: 'Internal server error' }, auth.origin);
   }
 };

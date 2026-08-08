@@ -28,6 +28,7 @@ import {
 } from './e2e/global_settings/validator';
 import { PoolValidatorAddr } from './e2e/pool/validator';
 import { PoolDatumType } from './e2e/types';
+import { jsonResponse, normalizeCardanoAddress, parseJsonBody, verifyAccessToken } from './security';
 
 type OrderKind = 'opt-in' | 'redeem';
 
@@ -106,8 +107,13 @@ const resolveUnderlyingUnitFromPool = async (
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  const auth = await verifyAccessToken(event);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
-    const body = event.body ? JSON.parse(event.body) : {};
+    const body = parseJsonBody<Record<string, unknown>>(event) ?? {};
 
     const orderType = body?.orderType as OrderKind;
     const amount = Number(body?.amount ?? 0);
@@ -120,31 +126,23 @@ export const handler = async (
     const requestedUnderlyingUnit = String(body?.underlyingUnit ?? '');
     const walletCollateral = (body?.walletCollateral ?? null) as UTxO | null;
 
+    if (normalizeCardanoAddress(walletAddress) !== auth.address) {
+      return jsonResponse(403, { error: 'Wallet address does not match authorization token' }, auth.origin);
+    }
+
     if (!orderType || !['opt-in', 'redeem'].includes(orderType)) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST,OPTIONS',
-        },
-        body: JSON.stringify({ error: 'Invalid or missing orderType' }),
-      };
+      return jsonResponse(400, { error: 'Invalid or missing orderType' }, auth.origin);
     }
 
     if (!walletAddress || !walletVK || !tokenName || amount <= 0) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST,OPTIONS',
-        },
-        body: JSON.stringify({
+      return jsonResponse(
+        400,
+        {
           error:
             'Missing or invalid fields: walletAddress, walletVK, tokenName, amount',
-        }),
-      };
+        },
+        auth.origin
+      );
     }
 
     const maestroKey = process.env.MAESTRO_API_KEY;
@@ -245,27 +243,15 @@ export const handler = async (
 
     const unsignedTx = await builder.complete();
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST,OPTIONS',
-      },
-      body: JSON.stringify({ unsignedTx }),
-    };
+    return jsonResponse(200, { unsignedTx }, auth.origin);
   } catch (error) {
     console.error('Build user order tx error:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST,OPTIONS',
-      },
-      body: JSON.stringify({
+    return jsonResponse(
+      500,
+      {
         error: error instanceof Error ? error.message : 'Internal server error',
-      }),
-    };
+      },
+      auth.origin
+    );
   }
 };

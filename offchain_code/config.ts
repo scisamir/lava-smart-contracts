@@ -74,6 +74,15 @@ export const CONFIG = {
       "66ec634b007c666a96a8e4b89c621a6dfebf29390948f8ecc047faf2",
     ],
 
+    // Keeper address used by external staking datum validators.
+    // Defaulting this to an admin-controlled wallet avoids coupling keeper
+    // privileges to the first batcher key.
+    frostAddress: ADMIN_WALLET_ADDRESSES[0],
+
+    // Withdrawal validator hashes authorized to perform reward swaps.
+    // Configure these explicitly before deploying.
+    authorizedSwapScripts: [] as string[],
+
     // Minimum lovelace required for pool UTxOs
     minPoolLovelace: 5_000_000,
   },

@@ -1,29 +1,35 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { MaestroProvider, MeshTxBuilder, UTxO } from '@meshsdk/core';
 import { setupE2e } from './e2e/setup';
+import { jsonResponse, normalizeCardanoAddress, parseJsonBody, verifyAccessToken } from './security';
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  const auth = await verifyAccessToken(event);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
-    const body = event.body ? JSON.parse(event.body) : {};
+    const body = parseJsonBody<Record<string, unknown>>(event) ?? {};
 
     const walletAddress = String(body?.walletAddress ?? '');
     const walletCollateral = (body?.walletCollateral ?? null) as UTxO | null;
     const walletUtxos = (body?.walletUtxos ?? []) as UTxO[];
 
+    if (normalizeCardanoAddress(walletAddress) !== auth.address) {
+      return jsonResponse(403, { error: 'Wallet address does not match authorization token' }, auth.origin);
+    }
+
     if (!walletAddress || !walletCollateral) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST,OPTIONS',
-        },
-        body: JSON.stringify({
+      return jsonResponse(
+        400,
+        {
           error: 'Missing required fields: walletAddress, walletCollateral',
-        }),
-      };
+        },
+        auth.origin
+      );
     }
 
     const maestroKey = process.env.MAESTRO_API_KEY;
@@ -40,7 +46,7 @@ export const handler = async (
       fetcher: provider,
       submitter: provider,
       evaluator: provider,
-      verbose: true,
+      verbose: false,
     });
     txBuilder.setNetwork('mainnet');
 
@@ -69,27 +75,15 @@ export const handler = async (
       .selectUtxosFrom(walletUtxos)
       .complete();
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST,OPTIONS',
-      },
-      body: JSON.stringify({ unsignedTx }),
-    };
+    return jsonResponse(200, { unsignedTx }, auth.origin);
   } catch (error) {
     console.error('Build mint test tokens tx error:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST,OPTIONS',
-      },
-      body: JSON.stringify({
+    return jsonResponse(
+      500,
+      {
         error: error instanceof Error ? error.message : 'Internal server error',
-      }),
-    };
+      },
+      auth.origin
+    );
   }
 };

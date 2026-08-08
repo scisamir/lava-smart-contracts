@@ -7,6 +7,8 @@ import { toast } from "react-toastify";
 import { OrderListProps, UserOrderType } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
+import { fetchBackend } from "@/lib/backendClient";
+import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 
 export const OrderList = ({ orders }: OrderListProps) => {
   const [pendingCancelKeys, setPendingCancelKeys] = useState<Record<string, true>>({});
@@ -95,14 +97,15 @@ export const OrderList = ({ orders }: OrderListProps) => {
 
     let txHash = "";
     try {
-      const backendBaseUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL
-          ?.replace(/\/lava-vaults\/?$/, "")
-          .replace(/\/+$/, "") ||
-        "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
+      const session = await ensureWalletAuthSession(
+        wallet as WalletSigner,
+        walletAddress,
+        walletAddress
+      );
 
-      const response = await fetch(`${backendBaseUrl}/build-cancel-order-tx`, {
+      const response = await fetchBackend("/build-cancel-order-tx", {
         method: "POST",
+        token: session.token,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           walletAddress,

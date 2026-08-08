@@ -4,6 +4,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { OrderValidatorAddr } from './e2e/order/validator';
 import { OrderDatumType } from './e2e/types';
+import { jsonResponse, verifyOriginRequest } from './security';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -69,19 +70,15 @@ let batchStatsCache:
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  const originCheck = await verifyOriginRequest(event);
+  if (!originCheck.ok) {
+    return originCheck.response;
+  }
+
   try {
     const now = Date.now();
     if (batchStatsCache && batchStatsCache.expiresAt > now) {
-      return {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'GET',
-          'Cache-Control': 'public, max-age=30',
-        },
-        body: JSON.stringify(batchStatsCache.payload),
-      };
+      return jsonResponse(200, batchStatsCache.payload, originCheck.origin);
     }
 
     const tableName = process.env.TABLE_NAME;
@@ -155,26 +152,9 @@ export const handler = async (
       payload,
     };
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET',
-        'Cache-Control': 'public, max-age=30',
-      },
-      body: JSON.stringify(payload),
-    };
+    return jsonResponse(200, payload, originCheck.origin);
   } catch (error) {
     console.error(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET',
-      },
-      body: JSON.stringify({ error: 'Internal server error' }),
-    };
+    return jsonResponse(500, { error: 'Internal server error' }, originCheck.origin);
   }
 };

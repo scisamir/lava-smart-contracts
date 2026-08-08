@@ -12,11 +12,13 @@ import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { UserOrderType } from "@/lib/types";
 import { BatchOrders } from "@/components/stake/BatchOrders";
 import { BG_BEHIND } from "@/lib/images";
+import { fetchBackend } from "@/lib/backendClient";
+import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 
 const HOME_DATA_REFRESH_EVENT = "lava:refresh-home-data";
 
 const Index = () => {
-  const { walletAddress } = useCardanoWallet();
+  const { wallet, walletAddress } = useCardanoWallet();
   const [orders, setOrders] = useState<UserOrderType[]>([]);
   const [totalOrder, setTotalOrder] = useState({});
   const showBatchButtons = false;
@@ -24,14 +26,15 @@ const Index = () => {
   useEffect(() => {
     const awaitFetchData = async () => {
       try {
-        const backendBaseUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-          "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
-
-        if (walletAddress) {
-          const ordersRes = await fetch(
-            `${backendBaseUrl}/user-orders?address=${encodeURIComponent(walletAddress)}`
+        if (walletAddress && wallet) {
+          const session = await ensureWalletAuthSession(
+            wallet as WalletSigner,
+            walletAddress,
+            walletAddress
           );
+          const ordersRes = await fetchBackend("/user-orders", {
+            token: session.token,
+          });
 
           if (!ordersRes.ok) {
             throw new Error(`Failed to fetch user orders: ${ordersRes.status}`);
@@ -44,7 +47,7 @@ const Index = () => {
         }
 
         if (showBatchButtons) {
-          const batchStatsRes = await fetch(`${backendBaseUrl}/batch-stats`);
+          const batchStatsRes = await fetchBackend("/batch-stats");
           if (!batchStatsRes.ok) {
             throw new Error(`Failed to fetch batch stats: ${batchStatsRes.status}`);
           }
@@ -73,7 +76,7 @@ const Index = () => {
       clearInterval(interval);
       window.removeEventListener(HOME_DATA_REFRESH_EVENT, refreshHandler);
     };
-  }, [walletAddress, showBatchButtons]);
+  }, [wallet, walletAddress, showBatchButtons]);
 
   return (
     <div

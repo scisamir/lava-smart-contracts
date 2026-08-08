@@ -8,6 +8,8 @@ import { ADA_LOGO, LAVA_LOGO, STRIKETOKENS_LOGO, SPLASH_LOGO, FLUIDTOKENS_LOGO }
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
 import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
+import { fetchBackend } from "@/lib/backendClient";
+import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 
 // PixelCorner removed — unused decorative element
 
@@ -219,12 +221,15 @@ export const StakingCard = () => {
 
     let txHash = "";
     try {
-      const backendBaseUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-        "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
+      const session = await ensureWalletAuthSession(
+        wallet as WalletSigner,
+        walletAddress,
+        walletAddress
+      );
 
-      const response = await fetch(`${backendBaseUrl}/build-user-order-tx`, {
+      const response = await fetchBackend("/build-user-order-tx", {
         method: "POST",
+        token: session.token,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderType: "opt-in",
@@ -269,12 +274,15 @@ export const StakingCard = () => {
 
     let txHash = "";
     try {
-      const backendBaseUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-        "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
+      const session = await ensureWalletAuthSession(
+        wallet as WalletSigner,
+        walletAddress,
+        walletAddress
+      );
 
-      const response = await fetch(`${backendBaseUrl}/build-user-order-tx`, {
+      const response = await fetchBackend("/build-user-order-tx", {
         method: "POST",
+        token: session.token,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderType: "redeem",

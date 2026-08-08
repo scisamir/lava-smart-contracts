@@ -9,6 +9,7 @@ import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { setupE2e } from './e2e/setup';
 import { OrderDatumType } from './e2e/types';
 import { OrderValidatorAddr } from './e2e/order/validator';
+import { jsonResponse, normalizeCardanoAddress, verifyAccessToken } from './security';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -69,20 +70,13 @@ type UserOrder = {
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  try {
-    const address = event.queryStringParameters?.address;
+  const auth = await verifyAccessToken(event);
+  if (!auth.ok) {
+    return auth.response;
+  }
 
-    if (!address) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'GET,OPTIONS',
-        },
-        body: JSON.stringify({ error: 'Missing required query param: address' }),
-      };
-    }
+  try {
+    const address = auth.address;
 
     const maestroKey = process.env.MAESTRO_API_KEY;
     const tableName = process.env.TABLE_NAME;
@@ -127,7 +121,7 @@ export const handler = async (
       const orderDatum = deserializeDatum<OrderDatumType>(orderPlutusData);
       const orderReceiverAddr = serializeAddressObj(orderDatum.fields[1], NETWORK_ID as 0 | 1);
 
-      if (orderReceiverAddr !== address) {
+      if (normalizeCardanoAddress(orderReceiverAddr) !== address) {
         return;
       }
 
@@ -149,27 +143,15 @@ export const handler = async (
       });
     });
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET,OPTIONS',
-      },
-      body: JSON.stringify({ orders: userOrders }),
-    };
+    return jsonResponse(200, { orders: userOrders }, auth.origin);
   } catch (error) {
     console.error('Get user orders error:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET,OPTIONS',
-      },
-      body: JSON.stringify({
+    return jsonResponse(
+      500,
+      {
         error: error instanceof Error ? error.message : 'Internal server error',
-      }),
-    };
+      },
+      auth.origin
+    );
   }
 };

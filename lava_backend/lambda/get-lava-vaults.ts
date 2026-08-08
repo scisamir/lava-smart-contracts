@@ -1,4 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { MaestroProvider, deserializeDatum, hexToString, applyParamsToScript, builtinByteString, resolveScriptHash, serializePlutusScript, NativeScript, resolveNativeScriptHash, serializeNativeScript, outputReference } from '@meshsdk/core';
+import blueprint from '../plutus.json';
+import { jsonResponse, verifyOriginRequest } from './security';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
@@ -44,6 +47,11 @@ type VaultSnapshotItem = {
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  const auth = await verifyOriginRequest(event);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const tableName = process.env.TABLE_NAME;
     if (!tableName) {
@@ -85,21 +93,10 @@ export const handler = async (
         updatedAt: item.updatedAt ?? null,
       }));
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET',
-      },
-      body: JSON.stringify({ vaults }),
-    };
+    return jsonResponse(200, { vaults }, auth.origin);
   } catch (error) {
     console.error(error);
 
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' }),
-    };
+    return jsonResponse(500, { error: 'Internal server error' }, auth.origin);
   }
 };

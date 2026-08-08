@@ -1,0 +1,343 @@
+<mxfile host="Electron" agent="GPT-5.3-Codex">
+  <diagram id="lava-all-in-one" name="Lava All-In-One Reference">
+    <mxGraphModel dx="2551" dy="1044" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="4000" pageHeight="3300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="actorHeader" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontStyle=1;fontColor=#000000;" value="Actors" vertex="1">
+          <mxGeometry height="40" width="280" x="60" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="actUser" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fillColor=#86efac;strokeColor=#15803d;fontColor=#FFFFFF;" value="User" vertex="1">
+          <mxGeometry height="110" width="120" x="140" y="352" as="geometry" />
+        </mxCell>
+        <mxCell id="actBatcher" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fillColor=#fde68a;strokeColor=#b45309;fontColor=#FFFFFF;" value="Authorized&#xa;Batcher" vertex="1">
+          <mxGeometry height="110" width="120" x="140" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="actSwap" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fillColor=#fecaca;strokeColor=#FFFFFF;fontColor=#FFFFFF;" value="Authorized&#xa;Swap Script" vertex="1">
+          <mxGeometry height="110" width="140" x="1590" y="1030" as="geometry" />
+        </mxCell>
+        <mxCell id="actExternal" parent="1" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#b91c1c;fontColor=#000000;" value="External Staking&#xa;Protocols" vertex="1">
+          <mxGeometry height="100" width="130" x="135" y="877" as="geometry" />
+        </mxCell>
+        <mxCell id="mainHeader" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5d0fe;strokeColor=#a21caf;fontStyle=1;fontColor=#000000;" value="Flow" vertex="1">
+          <mxGeometry height="40" width="1400" x="420" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="n1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7e22ce;fontColor=#000000;" value="1) global_settings.mint&lt;br&gt;Create settings UTxO with exactly one GSN" vertex="1">
+          <mxGeometry height="74" width="450" x="550" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="n2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7e22ce;fontColor=#000000;dashed=1;" value="2) global_settings.spend (optional)&lt;br&gt;Update config, keep same GSN; admin auth (old+new if admin changes)" vertex="1">
+          <mxGeometry height="74" width="450" x="1140" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="n3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7e22ce;fontColor=#000000;" value="3) pool_validator.mint&lt;br&gt;Create pool NFT and initial PoolDatum" vertex="1">
+          <mxGeometry height="74" width="450" x="550" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="n4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7e22ce;fontColor=#000000;" value="4) order_validator.mint (MintOrder)&lt;br&gt;User creates OptIn or Redeem order" vertex="1">
+          <mxGeometry height="74" width="450" x="550" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="n5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7e22ce;fontColor=#000000;" value="5) pool_batching.withdraw&lt;br&gt;Authorized batcher processes many orders against one pool" vertex="1">
+          <mxGeometry height="74" width="450" x="550" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="n6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7e22ce;fontColor=#000000;" value="6) minting.mint&amp;nbsp;&lt;br&gt;Mint/burn stake tokens must match expected batch delta and policy" vertex="1">
+          <mxGeometry height="74" width="450" x="550" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="n7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7e22ce;fontColor=#000000;" value="7) pool.spend(StakePool) + stake.withdraw&amp;nbsp;&lt;br&gt;Move pool-held assets to selected external stake address" vertex="1">
+          <mxGeometry height="74" width="450" x="550" y="760" as="geometry" />
+        </mxCell>
+        <mxCell id="n8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#b91c1c;fontColor=#000000;" value="8) stake_datums/* withdraw&lt;br&gt;Integration-specific datum/mint invariants" vertex="1">
+          <mxGeometry height="74" width="450" x="550" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="decision" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#111827;fontColor=#000000;" value="9) Rewards handling path" vertex="1">
+          <mxGeometry height="120" width="420" x="565" y="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="addPath" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7e22ce;fontColor=#000000;" value="10A) rewards.spend(AddRewards)&lt;br&gt;Authorized batcher required" vertex="1">
+          <mxGeometry height="74" width="450" x="100" y="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="swapPath" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#b91c1c;fontColor=#000000;" value="10B) rewards.spend(SwapRewards) + swap_validators/*&amp;nbsp;&lt;br&gt;Requires authorized swap script withdrawal" vertex="1">
+          <mxGeometry height="74" width="450" x="1000" y="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="swapBack" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#111827;fontColor=#000000;" value="11B) Swapped rewards return to rewards UTxO\n(then can follow AddRewards reintegration)" vertex="1">
+          <mxGeometry height="74" width="450" x="1000" y="1330" as="geometry" />
+        </mxCell>
+        <mxCell id="n9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7e22ce;fontColor=#000000;" value="12) pool.spend(AddRewardsPool / ClaimAdaRewards) + pool.withdraw&lt;br&gt;Pool accounting update (totals + exchange rate)" vertex="1">
+          <mxGeometry height="74" width="450" x="100" y="1330" as="geometry" />
+        </mxCell>
+        <mxCell id="n10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#15803d;fontColor=#000000;" value="13) Pool active state&lt;br&gt;New orders can be created and cycle repeats" vertex="1">
+          <mxGeometry height="74" width="450" x="100" y="1460" as="geometry" />
+        </mxCell>
+        <mxCell id="cancelOpt" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#111827;dashed=1;fontColor=#000000;" value="Optional: order_validator.spend(CancelOrder) + BurnOrder [C3]" vertex="1">
+          <mxGeometry height="74" width="450" x="1140" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" edge="1" parent="1" source="n1" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;" target="n3" value="default">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c1b" edge="1" parent="1" source="n1" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;" target="n2" value="optional">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c1c" edge="1" parent="1" source="n2" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;" target="n3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1365" y="277" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c2" edge="1" parent="1" source="n3" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;" target="n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" edge="1" parent="1" source="n4" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;" target="n5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" edge="1" parent="1" source="n5" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;" target="n6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c5" edge="1" parent="1" source="n6" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;" target="n7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c6" edge="1" parent="1" source="n7" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;" target="n8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c7" edge="1" parent="1" source="n8" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;" target="decision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c8a" edge="1" parent="1" source="decision" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;" target="addPath" value="AddRewards">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c8b" edge="1" parent="1" source="decision" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;" target="swapPath" value="SwapRewards">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c9a" edge="1" parent="1" source="addPath" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;" target="n9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c9b" edge="1" parent="1" source="swapPath" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;" target="swapBack">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c9c" edge="1" parent="1" source="swapBack" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;" target="addPath" value="later reintegration">
+          <mxGeometry relative="1" x="-0.16" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1225" y="1450" />
+              <mxPoint x="780" y="1450" />
+              <mxPoint x="780" y="1240" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="c10" edge="1" parent="1" source="n9" style="endArrow=block;strokeWidth=2;strokeColor=#FFFFFF;fontColor=#000000;" target="n10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c11" edge="1" parent="1" source="n10" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;entryX=1;entryY=1;entryDx=0;entryDy=0;" target="n4" value="next cycle">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1820" y="1500" />
+              <mxPoint x="1820" y="490" />
+              <mxPoint x="1080" y="490" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cCancel" edge="1" parent="1" source="n4" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;" target="cancelOpt" value="optional">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="actorConn1" edge="1" parent="1" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fillColor=#0050ef;" target="n1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="147" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="actorConn3" edge="1" parent="1" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;" target="n3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="360" y="170" />
+              <mxPoint x="360" y="280" />
+            </Array>
+            <mxPoint x="260" y="170" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="actorConn4" edge="1" parent="1" source="actUser" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;" target="n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="actorConn5" edge="1" parent="1" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;" target="n5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="320" y="660" />
+              <mxPoint x="360" y="660" />
+              <mxPoint x="360" y="537" />
+            </Array>
+            <mxPoint x="260" y="660" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="actorConn6" edge="1" parent="1" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;" target="n7">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="360" y="680" />
+              <mxPoint x="360" y="800" />
+            </Array>
+            <mxPoint x="260" y="680" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="actorConn7" edge="1" parent="1" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;" target="addPath">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="40" y="690" />
+              <mxPoint x="40" y="1237" />
+            </Array>
+            <mxPoint x="130" y="690" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="actorConn8" edge="1" parent="1" source="actSwap" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;" target="swapPath">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1225" y="1085" />
+            </Array>
+            <mxPoint x="2155.896226415094" y="1090" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="actorConn9" edge="1" parent="1" source="actExternal" style="endArrow=block;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;" target="n8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" parent="1" style="shape=cylinder;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0369a1;fontColor=#000000;" value="Global Settings UTxO (GSN + GlobalSettingsDatum)" vertex="1">
+          <mxGeometry height="74" width="310" x="2700" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" parent="1" style="shape=cylinder;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0369a1;fontColor=#000000;" value="Pool UTxO (Pool NFT + PoolDatum)" vertex="1">
+          <mxGeometry height="74" width="310" x="2700" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" parent="1" style="shape=cylinder;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0369a1;fontColor=#000000;" value="Order UTxOs (OptIn / Redeem)" vertex="1">
+          <mxGeometry height="74" width="310" x="2700" y="431" as="geometry" />
+        </mxCell>
+        <mxCell id="s4" parent="1" style="shape=cylinder;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0369a1;fontColor=#000000;" value="Rewards UTxO (single reward asset + lovelace)" vertex="1">
+          <mxGeometry height="74" width="310" x="2700" y="1571" as="geometry" />
+        </mxCell>
+        <mxCell id="comp1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;fontColor=#000000;" value="C1 global_settings: mint(bootstrap), spend(update settings)" vertex="1">
+          <mxGeometry height="56" width="560" x="1960" y="119" as="geometry" />
+        </mxCell>
+        <mxCell id="comp2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;fontColor=#000000;" value="C2 pool_validator: mint(CreatePoolRedeemer), spend(ProcessPool|UpdatePoolProcessingState|StakePool|AddRewardsPool|ClaimAdaRewards), withdraw, publish" vertex="1">
+          <mxGeometry height="56" width="560" x="1960" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="comp3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;fontColor=#000000;" value="C3 order_validator: mint(MintOrder|BurnOrder), spend(CancelOrder|ProcessOrder)" vertex="1">
+          <mxGeometry height="56" width="560" x="1960" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="comp4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;fontColor=#000000;" value="C4 pool_batching: withdraw(BatchingRedeemer)" vertex="1">
+          <mxGeometry height="56" width="560" x="1960" y="509" as="geometry" />
+        </mxCell>
+        <mxCell id="comp5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;fontColor=#000000;" value="C5 minting: mint (requires policy id == mint_validator_hash and batching withdrawal)" vertex="1">
+          <mxGeometry height="56" width="560" x="1960" y="639" as="geometry" />
+        </mxCell>
+        <mxCell id="comp6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;fontColor=#000000;" value="C6 stake_validator: withdraw(StakeRedeemer)" vertex="1">
+          <mxGeometry height="56" width="560" x="1960" y="769" as="geometry" />
+        </mxCell>
+        <mxCell id="comp7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;fontColor=#000000;" value="C10-C14 stake_datums/*: withdraw(ExternalStakeRedeemer)&lt;br&gt;min, iag, palm, strike, atrium" vertex="1">
+          <mxGeometry height="56" width="560" x="1960" y="899" as="geometry" />
+        </mxCell>
+        <mxCell id="comp8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;fontColor=#000000;" value="C7 rewards_validator: spend(AddRewards|SwapRewards)" vertex="1">
+          <mxGeometry height="56" width="560" x="1960" y="1580" as="geometry" />
+        </mxCell>
+        <mxCell id="comp9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;fontColor=#000000;" value="C8 swap_validators/minswap: withdraw(SwapRedeemer)" vertex="1">
+          <mxGeometry height="56" width="560" x="1960" y="1190" as="geometry" />
+        </mxCell>
+        <mxCell id="comp10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;fontColor=#000000;" value="C9 swap_validators/atrium_swap: withdraw(Void)" vertex="1">
+          <mxGeometry height="56" width="560" x="1960" y="1260" as="geometry" />
+        </mxCell>
+        <mxCell id="ref1" edge="1" parent="1" source="n1" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;dashPattern=8 8;endFill=0;" target="comp1" value="ref">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1080" y="100" />
+              <mxPoint x="1800" y="100" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ref2" edge="1" parent="1" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;dashPattern=8 8;endFill=0;" value="ref">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1000" y="290" as="sourcePoint" />
+            <mxPoint x="1960" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ref3" edge="1" parent="1" source="n4" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;exitX=1;exitY=0.75;exitDx=0;exitDy=0;dashPattern=8 8;endFill=0;" target="comp3" value="ref">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1080" y="470" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ref4" edge="1" parent="1" source="n5" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;dashPattern=8 8;endFill=0;" target="comp4" value="ref">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ref5" edge="1" parent="1" source="n6" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;dashPattern=8 8;endFill=0;" target="comp5" value="ref">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ref6" edge="1" parent="1" source="n7" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;dashPattern=8 8;endFill=0;" target="comp6" value="ref">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ref7" edge="1" parent="1" source="n8" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;dashPattern=8 8;endFill=0;" target="comp7" value="ref">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ref8" edge="1" parent="1" source="addPath" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;exitX=-0.007;exitY=0.818;exitDx=0;exitDy=0;exitPerimeter=0;dashPattern=8 8;endFill=0;" value="ref">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="40" y="1260" />
+              <mxPoint x="40" y="1610" />
+              <mxPoint x="1730" y="1610" />
+            </Array>
+            <mxPoint x="90" y="1260" as="sourcePoint" />
+            <mxPoint x="1960" y="1610" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ref9" edge="1" parent="1" source="swapPath" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;dashPattern=8 8;endFill=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;" target="comp9" value="ref">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ref10" edge="1" parent="1" source="swapPath" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;exitX=1.001;exitY=0.54;exitDx=0;exitDy=0;dashPattern=8 8;endFill=0;entryX=-0.006;entryY=0.54;entryDx=0;entryDy=0;entryPerimeter=0;exitPerimeter=0;" target="comp10" value="atrium path ref">
+          <mxGeometry relative="1" x="-0.0374" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1700" y="1240" />
+              <mxPoint x="1700" y="1290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="actAdmin" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fillColor=#93c5fd;strokeColor=#2563eb;fontColor=#FFFFFF;" value="Admin" vertex="1">
+          <mxGeometry height="110" width="120" x="140" y="92" as="geometry" />
+        </mxCell>
+        <mxCell id="rJKtWoKIRg7_iCLczDMs-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontStyle=1;fontColor=#000000;" value="Contracts" vertex="1">
+          <mxGeometry height="40" width="680" x="1900" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="g4dBUyW4ifv0nomX0DH--10" edge="1" parent="1" source="swapPath" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;exitX=1;exitY=0.75;exitDx=0;exitDy=0;dashPattern=8 8;endFill=0;" value="ref">
+          <mxGeometry relative="1" x="-0.0374" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1640" y="1256" />
+              <mxPoint x="1640" y="1610" />
+            </Array>
+            <mxPoint x="1710" y="1290" as="sourcePoint" />
+            <mxPoint x="1960" y="1610" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="g4dBUyW4ifv0nomX0DH--11" edge="1" parent="1" source="n7" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;dashPattern=8 8;endFill=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;" value="ref">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1760" y="780" />
+              <mxPoint x="1760" y="300" />
+            </Array>
+            <mxPoint x="1070" y="790" as="sourcePoint" />
+            <mxPoint x="1960" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="g4dBUyW4ifv0nomX0DH--12" edge="1" parent="1" source="n9" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;dashPattern=8 8;endFill=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" target="comp2" value="ref">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="880" y="1160" />
+              <mxPoint x="1120" y="1160" />
+              <mxPoint x="1120" y="1000" />
+              <mxPoint x="1790" y="1000" />
+              <mxPoint x="1790" y="314" />
+            </Array>
+            <mxPoint x="810" y="1300" as="sourcePoint" />
+            <mxPoint x="1900" y="410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="g4dBUyW4ifv0nomX0DH--13" edge="1" parent="1" source="n2" style="endArrow=none;strokeWidth=1;dashed=1;strokeColor=#FFFFFF;fontColor=#FFFFFF;dashPattern=8 8;endFill=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="comp1" value="ref">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1360" y="230" as="sourcePoint" />
+            <mxPoint x="2320" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

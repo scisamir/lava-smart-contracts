@@ -51,14 +51,11 @@ export const handler = async (_event: ScheduledEvent) => {
     throw new Error('MAESTRO_API_KEY is missing');
   }
 
-  const batcherWalletPassphrase =
-    process.env.BATCHER_WALLET_PASSPHRASE || process.env.NEXT_PUBLIC_WALLET_PASSPHRASE_ONE;
+  const batcherWalletPassphrase = process.env.BATCHER_WALLET_PASSPHRASE;
 
   if (!batcherWalletPassphrase) {
     throw new Error('BATCHER_WALLET_PASSPHRASE is missing');
   }
-
-  process.env.NEXT_PUBLIC_WALLET_PASSPHRASE_ONE = batcherWalletPassphrase;
 
   const blockchainProvider = new MaestroProvider({
     network: 'Mainnet',

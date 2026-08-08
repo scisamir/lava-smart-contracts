@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Button } from "../ui/button"
 import { toast } from "react-toastify";
+import { useCardanoWallet } from "@/hooks/useCardanoWallet";
+import { fetchBackend } from "@/lib/backendClient";
+import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 
 export const BatchOrders = ({ totalOrder }: any) => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const { wallet, walletAddress } = useCardanoWallet();
 
   // Toast
   const toastSuccess = (txHash: string) => {
@@ -26,12 +30,15 @@ export const BatchOrders = ({ totalOrder }: any) => {
       setIsProcessing(true);
 
       try {
-        const backendBaseUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-          "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
+        const session = await ensureWalletAuthSession(
+          wallet as WalletSigner,
+          walletAddress,
+          walletAddress
+        );
 
-        const response = await fetch(`${backendBaseUrl}/batch-orders`, {
+        const response = await fetchBackend('/batch-orders', {
           method: "POST",
+          token: session.token,
           headers: {
             "Content-Type": "application/json",
           },
