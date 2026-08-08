@@ -151,7 +151,7 @@ export const handler = async (
     }
 
     const provider = new MaestroProvider({
-      network: 'Mainnet',
+      network: 'Preprod',
       apiKey: maestroKey,
     });
 
@@ -161,7 +161,7 @@ export const handler = async (
       evaluator: provider,
       verbose: true,
     });
-    txBuilder.setNetwork('mainnet');
+    txBuilder.setNetwork('preprod');
 
     const defaultConfig = resolvePoolConfig(tokenName);
     const poolStakeAssetName = requestedPoolStakeAssetName || defaultConfig?.poolStakeAssetName;

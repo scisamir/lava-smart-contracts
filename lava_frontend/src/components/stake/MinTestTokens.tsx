@@ -24,7 +24,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
         Success!
         <br />
         <a
-          href={`https://cardanoscan.io/transaction/${txHash}`}
+          href={`https://preprod.cardanoscan.io/transaction/${txHash}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#61dafb", textDecoration: "underline" }}
@@ -43,8 +43,8 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
     // New: Check network ID first to prevent generic errors
     try {
       const networkId = await wallet.getNetworkId();
-      if (networkId !== 1) {
-        toastFailure("Use mainnet network");
+      if (networkId !== 0) {
+        toastFailure("Use preprod network");
         setIsProcessing(false);
         return;
       }

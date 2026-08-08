@@ -84,7 +84,7 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
     }
 
     const maestro = new MaestroProvider({
-      network: 'Mainnet',
+      network: 'Preprod',
       apiKey: maestroApiKey,
     });
 

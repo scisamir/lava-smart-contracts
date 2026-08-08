@@ -58,7 +58,7 @@ export const handler = async (_event: ScheduledEvent) => {
   }
 
   const blockchainProvider = new MaestroProvider({
-    network: 'Mainnet',
+    network: 'Preprod',
     apiKey: maestroKey,
   });
 
@@ -92,7 +92,7 @@ export const handler = async (_event: ScheduledEvent) => {
           evaluator: blockchainProvider,
           verbose: false,
         });
-        txBuilder.setNetwork('mainnet');
+        txBuilder.setNetwork('preprod');
 
         successTxHash = await runBatch(poolStakeAssetNameHex, blockchainProvider, txBuilder);
         break;

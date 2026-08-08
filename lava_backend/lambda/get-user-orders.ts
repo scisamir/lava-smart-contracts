@@ -88,7 +88,7 @@ export const handler = async (
     }
 
     const provider = new MaestroProvider({
-      network: 'Mainnet',
+      network: 'Preprod',
       apiKey: maestroKey,
     });
 

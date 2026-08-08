@@ -292,7 +292,7 @@ export class LavaBackendStack extends cdk.Stack {
     table.grantReadWriteData(getMarketsLambda);
     table.grantReadWriteData(getLavaVaultsLambda);
     table.grantReadWriteData(syncLavaVaultsLambda);
-    table.grantReadWriteData(upsertTokenMetadataLambda);
+    table.grantReadData(upsertTokenMetadataLambda);
     table.grantReadWriteData(getBatchStatsLambda);
     table.grantReadWriteData(postBatchOrdersLambda);
     table.grantReadWriteData(buildUserOrderTxLambda);
@@ -430,23 +430,6 @@ export class LavaBackendStack extends cdk.Stack {
     const tokenMetadataResource = api.root.addResource("token-metadata");
     tokenMetadataResource.addMethod(
       "GET",
-      new apigateway.LambdaIntegration(upsertTokenMetadataLambda),
-      {
-        methodResponses: [
-          {
-            statusCode: "200",
-            responseParameters: {
-              "method.response.header.Access-Control-Allow-Origin": true,
-              "method.response.header.Access-Control-Allow-Headers": true,
-              "method.response.header.Access-Control-Allow-Methods": true,
-            },
-          },
-        ],
-      },
-    );
-
-    tokenMetadataResource.addMethod(
-      "POST",
       new apigateway.LambdaIntegration(upsertTokenMetadataLambda),
       {
         methodResponses: [

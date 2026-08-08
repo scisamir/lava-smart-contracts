@@ -71,7 +71,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
         Success!
         <br />
         <a
-          href={`https://cardanoscan.io/transaction/${txHash}`}
+          href={`https://preprod.cardanoscan.io/transaction/${txHash}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#61dafb", textDecoration: "underline" }}
@@ -174,7 +174,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
                 </span>
               </p>
               <a
-                href={`https://cardanoscan.io/transaction/${order.txHash}`}
+                href={`https://preprod.cardanoscan.io/transaction/${order.txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-blue-400 underline"

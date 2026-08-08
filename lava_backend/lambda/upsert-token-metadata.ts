@@ -33,7 +33,7 @@ const corsHeaders = {
 const isAuthorized = (event: APIGatewayProxyEvent): boolean => {
   const configuredKey = process.env.TOKEN_METADATA_ADMIN_KEY;
   if (!configuredKey) {
-    return true;
+    return false;
   }
 
   const headerKey =

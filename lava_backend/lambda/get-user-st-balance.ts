@@ -47,7 +47,7 @@ export const handler = async (
     const address = auth.address;
 
     const maestro = new MaestroProvider({
-      network: "Mainnet",
+      network: "Preprod",
       apiKey: process.env.MAESTRO_API_KEY!,
     });
 

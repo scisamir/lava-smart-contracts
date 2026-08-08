@@ -1,5 +1,4 @@
 import {
-  BlockfrostProvider,
   MaestroProvider,
   MeshTxBuilder,
   MeshWallet,
@@ -16,24 +15,17 @@ import dotenv from "dotenv";
 dotenv.config();
 import blueprint from "../smart_contract/plutus.json" with { type: "json" };
 
-const NETWORK_ID = 1;
+const NETWORK_ID = 0;
 
 // Setup blockhain provider as Maestro
 const maestroKey = process.env.MAESTRO_KEY;
 if (!maestroKey) {
   throw new Error("MAESTRO_KEY does not exist");
 }
-// const blockchainProvider = new MaestroProvider({
-//   network: "Mainnet",
-//   apiKey: maestroKey,
-// });
-
-// Setup blockhain provider as Blockfrost
-const blockfrostId = process.env.BLOCKFROST_ID;
-if (!blockfrostId) {
-  throw new Error("BLOCKFROST_ID does not exist");
-}
-const blockchainProvider = new BlockfrostProvider(blockfrostId);
+const blockchainProvider = new MaestroProvider({
+  network: "Preprod",
+  apiKey: maestroKey,
+});
 
 // import admin's wallet passphrase and initialize the wallet
 const wallet1Passphrase = process.env.WALLET_PASSPHRASE_ONE;
@@ -159,7 +151,7 @@ const txBuilder = new MeshTxBuilder({
   // evaluator: blockfrostProvider,
   verbose: false,
 });
-txBuilder.setNetwork("mainnet");
+txBuilder.setNetwork("preprod");
 // txBuilder.txEvaluationMultiplier = 1.6
 
 // test mint

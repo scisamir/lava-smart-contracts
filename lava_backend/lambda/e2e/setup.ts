@@ -9,7 +9,7 @@ import {
 import blueprint from "../../../smart_contract/plutus.json";
 
 export const setupE2e = () => {
-  const NETWORK_ID = 1;
+  const NETWORK_ID = 0;
 
   const wallet1VK = "1cf3f4f03d7246a72f07b23d3300378f8f2e159716b11ed6f95f73f3";
   const wallet2VK = "f7dd4a3c0dd50061eaa9b83b9ee1a9ddcd2cf4dc17357940db5a231e";

@@ -62,7 +62,7 @@ export const handler = async (
     }
 
     const blockchainProvider = new MaestroProvider({
-      network: 'Mainnet',
+      network: 'Preprod',
       apiKey: maestroKey,
     });
 
@@ -72,7 +72,7 @@ export const handler = async (
       evaluator: blockchainProvider,
       verbose: true,
     });
-    txBuilder.setNetwork('mainnet');
+    txBuilder.setNetwork('preprod');
 
     const txHash = await batchingTx(
       blockchainProvider,

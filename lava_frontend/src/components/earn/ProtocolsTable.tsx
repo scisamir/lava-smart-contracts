@@ -12,6 +12,7 @@ import {
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { fetchBackend } from "@/lib/backendClient";
 
 type Market = {
   name: string;
@@ -28,11 +29,7 @@ export const ProtocolsTable = () => {
   const { data: markets = [] } = useQuery<Market[]>({
     queryKey: ["markets"],
     queryFn: async () => {
-      const backendBaseUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/lava-vaults\/?$/, "") ||
-        "https://xk00c9isg3.execute-api.us-east-1.amazonaws.com/prod";
-
-      const response = await fetch(`${backendBaseUrl}/markets`);
+      const response = await fetchBackend("/markets");
       if (!response.ok) {
         throw new Error(`Failed to fetch markets: ${response.status}`);
       }
