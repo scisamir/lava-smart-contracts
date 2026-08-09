@@ -1,7 +1,11 @@
 import { BlockfrostProvider, MeshWallet, type UTxO } from "@meshsdk/core";
 import dotenv from "dotenv";
-import { BASKET_TOKEN_UNIT, CONFIG } from "./src/config.js";
+import {
+  BASKET_TOKEN_UNIT,
+  getAtriumBlockfrostApiKey,
+} from "./src/config.js";
 import { buildWithdrawTx } from "./src/transactions.js";
+import { NETWORK_ID } from "../network.js";
 
 dotenv.config();
 
@@ -48,15 +52,11 @@ async function main(): Promise<void> {
     );
   }
 
-  const blockfrostApiKey =
-    process.env.ATRIUM_BLOCKFROST_API_KEY ??
-    process.env.BLOCKFROST_API_KEY ??
-    process.env.BLOCKFROST_ID ??
-    CONFIG.blockfrostApiKey;
+  const blockfrostApiKey = getAtriumBlockfrostApiKey();
 
   const provider = new BlockfrostProvider(blockfrostApiKey);
   const wallet = new MeshWallet({
-    networkId: 1,
+    networkId: NETWORK_ID,
     fetcher: provider,
     submitter: provider,
     key: {

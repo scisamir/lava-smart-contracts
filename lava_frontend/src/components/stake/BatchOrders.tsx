@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
 import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+import { getTransactionExplorerUrl } from "@/lib/networkConfig";
 
 export const BatchOrders = ({ totalOrder }: any) => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -15,7 +16,7 @@ export const BatchOrders = ({ totalOrder }: any) => {
       Success!  
       <br />
       <a
-        href={`https://preprod.cardanoscan.io/transaction/${txHash}`}
+        href={getTransactionExplorerUrl(txHash)}
         target="_blank"
         rel="noopener noreferrer"
         style={{ color: "#61dafb", textDecoration: "underline" }}

@@ -5,10 +5,10 @@ import {
   serializePlutusScript,
 } from "@meshsdk/core";
 import { blueprint, NETWORK_ID } from "../setup.js";
+import { NETWORK_CONFIG } from "../network.js";
 
-const gsParamTxHash =
-  "9d225cd31ee8b47b9782a2b1a9308a02d129f919e562dd492d4accb5b25311ab";
-const gsParamTxIdx = 4;
+const gsParamTxHash = NETWORK_CONFIG.globalSettingsSeed.txHash;
+const gsParamTxIdx = NETWORK_CONFIG.globalSettingsSeed.outputIndex;
 
 const GlobalSettingsValidator = blueprint.validators.filter((v) =>
   v.title.includes("global_settings.global_settings.spend"),

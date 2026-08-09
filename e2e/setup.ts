@@ -11,19 +11,20 @@ import {
   serializeNativeScript,
   stringToHex,
 } from "@meshsdk/core";
-import dotenv from "dotenv";
-dotenv.config();
 import blueprint from "../smart_contract/plutus.json" with { type: "json" };
+import {
+  LAVA_NETWORK,
+  NETWORK_CONFIG,
+  NETWORK_ID,
+} from "./network.js";
 
-const NETWORK_ID = 0;
-
-// Setup blockhain provider as Maestro
+// Setup blockchain provider as Maestro
 const maestroKey = process.env.MAESTRO_KEY;
 if (!maestroKey) {
   throw new Error("MAESTRO_KEY does not exist");
 }
 const blockchainProvider = new MaestroProvider({
-  network: "Preprod",
+  network: NETWORK_CONFIG.maestroNetwork,
   apiKey: maestroKey,
 });
 
@@ -151,7 +152,7 @@ const txBuilder = new MeshTxBuilder({
   // evaluator: blockfrostProvider,
   verbose: false,
 });
-txBuilder.setNetwork("preprod");
+txBuilder.setNetwork(NETWORK_CONFIG.meshNetwork);
 // txBuilder.txEvaluationMultiplier = 1.6
 
 // test mint
@@ -190,12 +191,10 @@ const tPulsePoolStakeAssetName = stringToHex("LPulse");
 const ATRIUM_POOL_STAKE_ASSET_NAME = stringToHex("LADA"); // LADA
 
 // Reference scripts
-const batchingScriptTxHash =
-  "f268168603dc31abf523acabb72b8c47662a9e33efd5a44f7f1f6f4358ef247d";
-const batchingScriptTxIdx = 0;
-const poolScriptTxHash =
-  "6dd8752d81233d08afe8193116c051eed24b83d5b3747f1eac3511dba4e1b3d8";
-const poolScriptTxIdx = 0;
+const batchingScriptTxHash = NETWORK_CONFIG.batchingReference.txHash;
+const batchingScriptTxIdx = NETWORK_CONFIG.batchingReference.outputIndex;
+const poolScriptTxHash = NETWORK_CONFIG.poolReference.txHash;
+const poolScriptTxIdx = NETWORK_CONFIG.poolReference.outputIndex;
 
 export {
   blueprint,
@@ -219,6 +218,8 @@ export {
   alwaysSuccessValidatorMintScript,
   alwaysSuccessMintValidatorHash,
   // Constants
+  LAVA_NETWORK,
+  NETWORK_CONFIG,
   NETWORK_ID,
   GlobalSettingsNft,
   LavaPoolNftName,

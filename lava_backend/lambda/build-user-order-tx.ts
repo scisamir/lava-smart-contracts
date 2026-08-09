@@ -4,8 +4,7 @@ import {
   deserializeDatum,
   mConStr0,
   mPubKeyAddress,
-  MaestroProvider,
-  MeshTxBuilder,
+  type MaestroProvider,
   UTxO,
 } from '@meshsdk/core';
 import { setupE2e } from './e2e/setup';
@@ -29,6 +28,7 @@ import {
 import { PoolValidatorAddr } from './e2e/pool/validator';
 import { PoolDatumType } from './e2e/types';
 import { jsonResponse, normalizeCardanoAddress, parseJsonBody, verifyAccessToken } from './security';
+import { createMaestroProvider, createMeshTxBuilder } from './cardano';
 
 type OrderKind = 'opt-in' | 'redeem';
 
@@ -150,18 +150,8 @@ export const handler = async (
       throw new Error('MAESTRO_API_KEY is missing');
     }
 
-    const provider = new MaestroProvider({
-      network: 'Preprod',
-      apiKey: maestroKey,
-    });
-
-    const txBuilder = new MeshTxBuilder({
-      fetcher: provider,
-      submitter: provider,
-      evaluator: provider,
-      verbose: true,
-    });
-    txBuilder.setNetwork('preprod');
+    const provider = createMaestroProvider(maestroKey);
+    const txBuilder = createMeshTxBuilder(provider, true);
 
     const defaultConfig = resolvePoolConfig(tokenName);
     const poolStakeAssetName = requestedPoolStakeAssetName || defaultConfig?.poolStakeAssetName;

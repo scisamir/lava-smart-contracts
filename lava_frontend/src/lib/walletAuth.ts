@@ -1,5 +1,6 @@
 import { stringToHex } from '@meshsdk/core';
 import { fetchBackend } from '@/lib/backendClient';
+import { networkConfig } from '@/lib/networkConfig';
 
 type WalletSignature = {
   key: string;
@@ -7,10 +8,25 @@ type WalletSignature = {
 };
 
 export type WalletSigner = {
+  getNetworkId: () => Promise<number>;
   signData: (payload: string, address?: string) => Promise<WalletSignature>;
   walletInstance?: {
     signData?: (address: string, payload: string) => Promise<WalletSignature>;
   };
+};
+
+const assertWalletNetwork = async (wallet: WalletSigner): Promise<void> => {
+  let walletNetworkId: number;
+
+  try {
+    walletNetworkId = await wallet.getNetworkId();
+  } catch {
+    throw new Error('Unable to verify wallet network. Please try again.');
+  }
+
+  if (walletNetworkId !== networkConfig.networkId) {
+    throw new Error(`Switch your wallet to ${networkConfig.label}`);
+  }
 };
 
 type WalletChallengeResponse = {
@@ -25,7 +41,7 @@ export type WalletAuthSession = {
   expiresAt: string;
 };
 
-const AUTH_STORAGE_KEY = 'lavaWalletAuth';
+const AUTH_STORAGE_KEY = `lavaWalletAuth:${networkConfig.name}`;
 
 let inFlightAddress: string | null = null;
 let inFlightAuth: Promise<WalletAuthSession> | null = null;
@@ -171,6 +187,8 @@ export const ensureWalletAuthSession = async (
   address: string,
   signerAddress?: string
 ): Promise<WalletAuthSession> => {
+  await assertWalletNetwork(wallet);
+
   const stored = loadWalletAuthSession(address);
   if (stored) {
     return stored;

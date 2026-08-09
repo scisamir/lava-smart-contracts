@@ -1,12 +1,13 @@
 import { ScheduledEvent } from 'aws-lambda';
 import {
-  MaestroProvider,
-  MeshTxBuilder,
   deserializeDatum,
+  type MaestroProvider,
+  type MeshTxBuilder,
 } from '@meshsdk/core';
 import { batchingTx } from './e2e/batching/batching';
 import { OrderValidatorAddr } from './e2e/order/validator';
 import { OrderDatumType } from './e2e/types';
+import { createMaestroProvider, createMeshTxBuilder } from './cardano';
 
 type PendingCounts = Record<string, number>;
 
@@ -57,10 +58,7 @@ export const handler = async (_event: ScheduledEvent) => {
     throw new Error('BATCHER_WALLET_PASSPHRASE is missing');
   }
 
-  const blockchainProvider = new MaestroProvider({
-    network: 'Preprod',
-    apiKey: maestroKey,
-  });
+  const blockchainProvider = createMaestroProvider(maestroKey);
 
   const pending = await getPendingCounts(blockchainProvider);
 
@@ -86,13 +84,7 @@ export const handler = async (_event: ScheduledEvent) => {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const txBuilder = new MeshTxBuilder({
-          fetcher: blockchainProvider,
-          submitter: blockchainProvider,
-          evaluator: blockchainProvider,
-          verbose: false,
-        });
-        txBuilder.setNetwork('preprod');
+        const txBuilder = createMeshTxBuilder(blockchainProvider);
 
         successTxHash = await runBatch(poolStakeAssetNameHex, blockchainProvider, txBuilder);
         break;

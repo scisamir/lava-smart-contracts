@@ -4,9 +4,15 @@
 // Wraps the Mesh/Blockfrost fetcher calls.
 
 import type { UTxO } from "@meshsdk/core";
-import { CONFIG, BASKET_STATE_UNIT, STAKE_POOL_UNIT } from "./config.js";
+import {
+  CONFIG,
+  BASKET_STATE_UNIT,
+  STAKE_POOL_UNIT,
+  getAtriumBlockfrostApiKey,
+} from "./config.js";
 import { decodeBasketState, getStakePoolDatumFromUtxo, parseDatum } from "./datum.js";
 import type { BasketState, StakePoolDatum, PlutusData } from "./types.js";
+import { NETWORK_CONFIG } from "../../network.js";
 
 export interface BasketStateUtxo {
   utxo: UTxO;
@@ -68,18 +74,22 @@ export async function fetchBasketUtxos(
     basketStateDatum = decodeBasketState(parseDatum(rawDatumCbor));
   } else if (bsUtxo.output.dataHash) {
     // Fetch the datum JSON from Blockfrost using the datum hash
-    const jsonUrl = `https://cardano-mainnet.blockfrost.io/api/v0/scripts/datum/${bsUtxo.output.dataHash}`;
+    const jsonUrl = `${NETWORK_CONFIG.blockfrostBaseUrl}/scripts/datum/${bsUtxo.output.dataHash}`;
     const jsonResponse = fetcher.get
       ? await fetcher.get(jsonUrl)
-      : await fetch(jsonUrl, { headers: { project_id: CONFIG.blockfrostApiKey } }).then((r) => r.json());
+      : await fetch(jsonUrl, {
+          headers: { project_id: getAtriumBlockfrostApiKey() },
+        }).then((r) => r.json());
     const jsonValue = jsonResponse?.json_value ?? jsonResponse;
     basketStateDatum = decodeBasketState(jsonValue as PlutusData);
 
     // Also fetch the raw CBOR so we can add it to tx datum witnesses
-    const cborUrl = `https://cardano-mainnet.blockfrost.io/api/v0/scripts/datum/${bsUtxo.output.dataHash}/cbor`;
+    const cborUrl = `${NETWORK_CONFIG.blockfrostBaseUrl}/scripts/datum/${bsUtxo.output.dataHash}/cbor`;
     const cborResponse = fetcher.get
       ? await fetcher.get(cborUrl)
-      : await fetch(cborUrl, { headers: { project_id: CONFIG.blockfrostApiKey } }).then((r) => r.json());
+      : await fetch(cborUrl, {
+          headers: { project_id: getAtriumBlockfrostApiKey() },
+        }).then((r) => r.json());
     rawDatumCbor = cborResponse?.cbor ?? cborResponse;
   } else {
     throw new Error(

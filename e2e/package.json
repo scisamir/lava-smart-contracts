@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "atrium:build": "node ./node_modules/typescript/bin/tsc -p ./atrium_mainnet/tsconfig.deposit.json",
-    "atrium:deposit": "npm run atrium:build && node ./dist/atrium_mainnet/deposit.js"
+    "atrium:deposit": "npm run atrium:build && node ./dist/e2e/atrium_mainnet/depositToAtrium.js",
+    "atrium:withdraw": "npm run atrium:build && node ./dist/e2e/atrium_mainnet/withdrawFromAtrium.js"
   },
   "author": "",
   "license": "ISC",

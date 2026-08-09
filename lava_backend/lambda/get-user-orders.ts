@@ -3,13 +3,13 @@ import {
   deserializeDatum,
   serializeAddressObj,
 } from '@meshsdk/core';
-import { MaestroProvider } from '@meshsdk/core';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { setupE2e } from './e2e/setup';
 import { OrderDatumType } from './e2e/types';
 import { OrderValidatorAddr } from './e2e/order/validator';
 import { jsonResponse, normalizeCardanoAddress, verifyAccessToken } from './security';
+import { createMaestroProvider } from './cardano';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -87,10 +87,7 @@ export const handler = async (
       throw new Error('TABLE_NAME is missing');
     }
 
-    const provider = new MaestroProvider({
-      network: 'Preprod',
-      apiKey: maestroKey,
-    });
+    const provider = createMaestroProvider(maestroKey);
 
     const {
       NETWORK_ID,

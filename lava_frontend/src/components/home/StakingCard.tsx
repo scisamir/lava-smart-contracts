@@ -10,6 +10,7 @@ import { toast } from "react-toastify";
 import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
 import { fetchBackend } from "@/lib/backendClient";
 import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+import { getTransactionExplorerUrl } from "@/lib/networkConfig";
 
 // PixelCorner removed — unused decorative element
 
@@ -203,7 +204,7 @@ export const StakingCard = () => {
         Success!
         <br />
         <a
-          href={`https://preprod.cardanoscan.io/transaction/${txHash}`}
+          href={getTransactionExplorerUrl(txHash)}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#61dafb", textDecoration: "underline" }}

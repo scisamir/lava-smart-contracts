@@ -1,10 +1,8 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import {
   deserializeDatum,
-  MaestroProvider,
   mConStr0,
   mConStr1,
-  MeshTxBuilder,
   serializeAddressObj,
   UTxO,
 } from '@meshsdk/core';
@@ -15,6 +13,7 @@ import {
 import { OrderDatumType } from './e2e/types';
 import { setupE2e } from './e2e/setup';
 import { jsonResponse, normalizeCardanoAddress, parseJsonBody, verifyAccessToken } from './security';
+import { createMaestroProvider, createMeshTxBuilder } from './cardano';
 
 export const handler = async (
   event: APIGatewayProxyEvent
@@ -58,18 +57,8 @@ export const handler = async (
       throw new Error('MAESTRO_API_KEY is missing');
     }
 
-    const provider = new MaestroProvider({
-      network: 'Preprod',
-      apiKey: maestroKey,
-    });
-
-    const txBuilder = new MeshTxBuilder({
-      fetcher: provider,
-      submitter: provider,
-      evaluator: provider,
-      verbose: true,
-    });
-    txBuilder.setNetwork('preprod');
+    const provider = createMaestroProvider(maestroKey);
+    const txBuilder = createMeshTxBuilder(provider, true);
 
     const { NETWORK_ID } = setupE2e();
 

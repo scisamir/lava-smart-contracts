@@ -6,10 +6,18 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as events from "aws-cdk-lib/aws-events";
 import * as targets from "aws-cdk-lib/aws-events-targets";
+import type { LavaNetwork } from "../lambda/cardano";
+
+export interface LavaBackendStackProps extends cdk.StackProps {
+  lavaNetwork: LavaNetwork;
+}
 
 export class LavaBackendStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+  constructor(scope: Construct, id: string, props: LavaBackendStackProps) {
+    const { lavaNetwork, ...stackProps } = props;
+    super(scope, id, stackProps);
+
+    const ssmPrefix = lavaNetwork === "preprod" ? "/lava" : "/lava/mainnet";
 
     const allowedOrigins = (
       process.env.ALLOWED_ORIGINS ?? "http://localhost:3000"
@@ -20,7 +28,7 @@ export class LavaBackendStack extends cdk.Stack {
 
     const jwtSharedSecret = ssm.StringParameter.valueForStringParameter(
       this,
-      "/lava/backend-jwt-shared-secret",
+      `${ssmPrefix}/backend-jwt-shared-secret`,
     );
 
     const jwtIssuer = process.env.JWT_ISSUER ?? "lava-backend";
@@ -30,13 +38,18 @@ export class LavaBackendStack extends cdk.Stack {
     // Retrieve Maestro API key from SSM Parameter Store
     const maestroApiKey = ssm.StringParameter.valueForStringParameter(
       this,
-      "/lava/maestro-api-key",
+      `${ssmPrefix}/maestro-api-key`,
     );
 
     const batcherWalletPassphrase = ssm.StringParameter.valueForStringParameter(
       this,
-      "/lava/batcher-wallet-passphrase-string",
+      `${ssmPrefix}/batcher-wallet-passphrase-string`,
     );
+
+    const cardanoEnvironment = {
+      LAVA_NETWORK: lavaNetwork,
+      MAESTRO_API_KEY: maestroApiKey,
+    };
 
     // DynamoDB table
     const table = new dynamodb.Table(this, "LavaDataTable", {
@@ -95,7 +108,7 @@ export class LavaBackendStack extends cdk.Stack {
         handler: "get-user-st-balance.handler",
         // layers: [backendLayer],
         environment: {
-          MAESTRO_API_KEY: maestroApiKey,
+          ...cardanoEnvironment,
           TABLE_NAME: table.tableName,
           ALLOWED_ORIGINS: allowedOrigins.join(","),
           JWT_SHARED_SECRET: jwtSharedSecret,
@@ -141,7 +154,7 @@ export class LavaBackendStack extends cdk.Stack {
         timeout: cdk.Duration.seconds(60),
         memorySize: 1024,
         environment: {
-          MAESTRO_API_KEY: maestroApiKey,
+          ...cardanoEnvironment,
           TABLE_NAME: table.tableName,
         },
       },
@@ -168,7 +181,7 @@ export class LavaBackendStack extends cdk.Stack {
         code: lambda.Code.fromAsset("lambda/dist"),
         handler: "get-batch-stats.handler",
         environment: {
-          MAESTRO_API_KEY: maestroApiKey,
+          ...cardanoEnvironment,
           TABLE_NAME: table.tableName,
           ALLOWED_ORIGINS: allowedOrigins.join(","),
         },
@@ -185,7 +198,7 @@ export class LavaBackendStack extends cdk.Stack {
         timeout: cdk.Duration.seconds(60),
         memorySize: 1024,
         environment: {
-          MAESTRO_API_KEY: maestroApiKey,
+          ...cardanoEnvironment,
           TABLE_NAME: table.tableName,
           ALLOWED_ORIGINS: allowedOrigins.join(","),
           JWT_SHARED_SECRET: jwtSharedSecret,
@@ -206,7 +219,7 @@ export class LavaBackendStack extends cdk.Stack {
         timeout: cdk.Duration.seconds(120),
         memorySize: 1024,
         environment: {
-          MAESTRO_API_KEY: maestroApiKey,
+          ...cardanoEnvironment,
           TABLE_NAME: table.tableName,
           BATCHER_WALLET_PASSPHRASE: batcherWalletPassphrase,
         },
@@ -221,7 +234,7 @@ export class LavaBackendStack extends cdk.Stack {
         code: lambda.Code.fromAsset("lambda/dist"),
         handler: "build-user-order-tx.handler",
         environment: {
-          MAESTRO_API_KEY: maestroApiKey,
+          ...cardanoEnvironment,
           TABLE_NAME: table.tableName,
           ALLOWED_ORIGINS: allowedOrigins.join(","),
           JWT_SHARED_SECRET: jwtSharedSecret,
@@ -239,7 +252,7 @@ export class LavaBackendStack extends cdk.Stack {
         code: lambda.Code.fromAsset("lambda/dist"),
         handler: "build-mint-test-tokens-tx.handler",
         environment: {
-          MAESTRO_API_KEY: maestroApiKey,
+          ...cardanoEnvironment,
           TABLE_NAME: table.tableName,
           ALLOWED_ORIGINS: allowedOrigins.join(","),
           JWT_SHARED_SECRET: jwtSharedSecret,
@@ -257,7 +270,7 @@ export class LavaBackendStack extends cdk.Stack {
         code: lambda.Code.fromAsset("lambda/dist"),
         handler: "get-user-orders.handler",
         environment: {
-          MAESTRO_API_KEY: maestroApiKey,
+          ...cardanoEnvironment,
           TABLE_NAME: table.tableName,
           ALLOWED_ORIGINS: allowedOrigins.join(","),
           JWT_SHARED_SECRET: jwtSharedSecret,
@@ -277,7 +290,7 @@ export class LavaBackendStack extends cdk.Stack {
         timeout: cdk.Duration.seconds(30),
         memorySize: 1024,
         environment: {
-          MAESTRO_API_KEY: maestroApiKey,
+          ...cardanoEnvironment,
           TABLE_NAME: table.tableName,
           ALLOWED_ORIGINS: allowedOrigins.join(","),
           JWT_SHARED_SECRET: jwtSharedSecret,

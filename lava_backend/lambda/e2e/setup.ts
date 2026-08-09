@@ -7,9 +7,10 @@ import {
   stringToHex,
 } from "@meshsdk/core";
 import blueprint from "../../../smart_contract/plutus.json";
+import { cardanoConfig } from "../cardano";
 
 export const setupE2e = () => {
-  const NETWORK_ID = 0;
+  const NETWORK_ID = cardanoConfig.networkId;
 
   const wallet1VK = "1cf3f4f03d7246a72f07b23d3300378f8f2e159716b11ed6f95f73f3";
   const wallet2VK = "f7dd4a3c0dd50061eaa9b83b9ee1a9ddcd2cf4dc17357940db5a231e";
@@ -59,12 +60,12 @@ export const setupE2e = () => {
 
   const ATRIUM_POOL_STAKE_ASSET_NAME = stringToHex("LADA");
 
-  const batchingScriptTxHash =
-    "f268168603dc31abf523acabb72b8c47662a9e33efd5a44f7f1f6f4358ef247d";
-  const batchingScriptTxIdx = 0;
-  const poolScriptTxHash =
-    "6dd8752d81233d08afe8193116c051eed24b83d5b3747f1eac3511dba4e1b3d8";
-  const poolScriptTxIdx = 0;
+  const gsParamTxHash = cardanoConfig.globalSettingsSeed.txHash;
+  const gsParamTxIdx = cardanoConfig.globalSettingsSeed.outputIndex;
+  const batchingScriptTxHash = cardanoConfig.batchingReference.txHash;
+  const batchingScriptTxIdx = cardanoConfig.batchingReference.outputIndex;
+  const poolScriptTxHash = cardanoConfig.poolReference.txHash;
+  const poolScriptTxIdx = cardanoConfig.poolReference.outputIndex;
 
   return {
     blueprint,
@@ -90,6 +91,8 @@ export const setupE2e = () => {
     tPulseUnit,
     tPulsePoolStakeAssetName,
     ATRIUM_POOL_STAKE_ASSET_NAME,
+    gsParamTxHash,
+    gsParamTxIdx,
     batchingScriptTxHash,
     batchingScriptTxIdx,
     poolScriptTxHash,

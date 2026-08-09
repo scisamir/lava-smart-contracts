@@ -1,10 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { MaestroProvider, deserializeDatum } from '@meshsdk/core';
+import { deserializeDatum } from '@meshsdk/core';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { OrderValidatorAddr } from './e2e/order/validator';
 import { OrderDatumType } from './e2e/types';
 import { jsonResponse, verifyOriginRequest } from './security';
+import { createMaestroProvider } from './cardano';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -86,10 +87,7 @@ export const handler = async (
       throw new Error('TABLE_NAME is missing');
     }
 
-    const maestro = new MaestroProvider({
-      network: 'Preprod',
-      apiKey: process.env.MAESTRO_API_KEY!,
-    });
+    const maestro = createMaestroProvider(process.env.MAESTRO_API_KEY!);
 
     const orderUtxos = await maestro.fetchAddressUTxOs(OrderValidatorAddr);
     const labelsByPool = await loadSnapshotLabels(tableName);

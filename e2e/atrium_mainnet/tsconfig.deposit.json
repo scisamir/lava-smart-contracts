@@ -1,12 +1,13 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "rootDir": ".",
-    "outDir": "../dist/atrium_mainnet"
+    "rootDir": "../..",
+    "outDir": "../dist"
   },
   "include": [
-    "deposit.ts",
-    "runtime.ts",
-    "src/config.ts"
+    "depositToAtrium.ts",
+    "withdrawFromAtrium.ts",
+    "src/**/*.ts",
+    "../network.ts"
   ]
 }

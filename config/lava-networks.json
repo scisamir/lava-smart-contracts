@@ -1,0 +1,40 @@
+{
+  "preprod": {
+    "networkId": 0,
+    "meshNetwork": "preprod",
+    "maestroNetwork": "Preprod",
+    "explorerBaseUrl": "https://preprod.cardanoscan.io",
+    "blockfrostBaseUrl": "https://cardano-preprod.blockfrost.io/api/v0",
+    "globalSettingsSeed": {
+      "txHash": "eacb3b737d595e749e50b5d5e5aa5059dd60eb4c4403d46c1af203819be88913",
+      "outputIndex": 0
+    },
+    "batchingReference": {
+      "txHash": "8fdab4023d695d356810bb8ddbadb0afb2043692d68f306ad51e6e0141622a29",
+      "outputIndex": 0
+    },
+    "poolReference": {
+      "txHash": "20bd8c588dca842f8a4248f67344d5bba175ea5f7ce82e2531837ec2000dbc4b",
+      "outputIndex": 0
+    }
+  },
+  "mainnet": {
+    "networkId": 1,
+    "meshNetwork": "mainnet",
+    "maestroNetwork": "Mainnet",
+    "explorerBaseUrl": "https://cardanoscan.io",
+    "blockfrostBaseUrl": "https://cardano-mainnet.blockfrost.io/api/v0",
+    "globalSettingsSeed": {
+      "txHash": "9d225cd31ee8b47b9782a2b1a9308a02d129f919e562dd492d4accb5b25311ab",
+      "outputIndex": 4
+    },
+    "batchingReference": {
+      "txHash": "f268168603dc31abf523acabb72b8c47662a9e33efd5a44f7f1f6f4358ef247d",
+      "outputIndex": 0
+    },
+    "poolReference": {
+      "txHash": "6dd8752d81233d08afe8193116c051eed24b83d5b3747f1eac3511dba4e1b3d8",
+      "outputIndex": 0
+    }
+  }
+}

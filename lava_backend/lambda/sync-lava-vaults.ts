@@ -1,9 +1,5 @@
 import { ScheduledEvent } from 'aws-lambda';
-import {
-  MaestroProvider,
-  deserializeDatum,
-  hexToString,
-} from '@meshsdk/core';
+import { deserializeDatum, hexToString } from '@meshsdk/core';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DeleteCommand,
@@ -12,6 +8,7 @@ import {
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { PoolValidatorAddr } from './e2e/pool/validator';
+import { createMaestroProvider } from './cardano';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -83,10 +80,7 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
       throw new Error('TABLE_NAME is not configured');
     }
 
-    const maestro = new MaestroProvider({
-      network: 'Preprod',
-      apiKey: maestroApiKey,
-    });
+    const maestro = createMaestroProvider(maestroApiKey);
 
     const tokenRegistry = await loadTokenRegistry(tableName);
     const utxos = await maestro.fetchAddressUTxOs(PoolValidatorAddr);

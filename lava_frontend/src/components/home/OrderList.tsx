@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
 import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+import { getTransactionExplorerUrl } from "@/lib/networkConfig";
 
 export const OrderList = ({ orders }: OrderListProps) => {
   const [pendingCancelKeys, setPendingCancelKeys] = useState<Record<string, true>>({});
@@ -71,7 +72,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
         Success!
         <br />
         <a
-          href={`https://preprod.cardanoscan.io/transaction/${txHash}`}
+          href={getTransactionExplorerUrl(txHash)}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#61dafb", textDecoration: "underline" }}
@@ -174,7 +175,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
                 </span>
               </p>
               <a
-                href={`https://preprod.cardanoscan.io/transaction/${order.txHash}`}
+                href={getTransactionExplorerUrl(order.txHash)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-blue-400 underline"

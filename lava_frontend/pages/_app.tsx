@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { MeshProvider, CardanoWallet } from "@meshsdk/react";
 import { ToastContainer } from "react-toastify";
 import { CardanoWalletProvider } from "@/hooks/useCardanoWallet";
+import { networkConfig } from "@/lib/networkConfig";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,7 +34,7 @@ const persister =
   typeof window !== "undefined"
     ? createSyncStoragePersister({
         storage: window.localStorage,
-        key: "lava-react-query-cache-v1",
+        key: `lava-react-query-cache-v1:${networkConfig.name}`,
       })
     : noopPersister;
 

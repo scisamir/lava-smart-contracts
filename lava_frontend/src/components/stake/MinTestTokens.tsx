@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
 import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
 
 export const MintTestTokens = ({ variant = "default", className = "" }: { variant?: "default" | "mobile"; className?: string }) => {
 
@@ -24,7 +25,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
         Success!
         <br />
         <a
-          href={`https://preprod.cardanoscan.io/transaction/${txHash}`}
+          href={getTransactionExplorerUrl(txHash)}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#61dafb", textDecoration: "underline" }}
@@ -43,8 +44,8 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
     // New: Check network ID first to prevent generic errors
     try {
       const networkId = await wallet.getNetworkId();
-      if (networkId !== 0) {
-        toastFailure("Use preprod network");
+      if (networkId !== networkConfig.networkId) {
+        toastFailure(`Use ${networkConfig.label} network`);
         setIsProcessing(false);
         return;
       }

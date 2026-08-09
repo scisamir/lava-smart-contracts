@@ -1,8 +1,8 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { MaestroProvider, MeshTxBuilder } from '@meshsdk/core';
 import { batchingTx } from './e2e/batching/batching';
 import { setupE2e } from './e2e/setup';
 import { jsonResponse, parseJsonBody, verifyAccessToken } from './security';
+import { createMaestroProvider, createMeshTxBuilder } from './cardano';
 
 const resolvePoolStakeAssetNameHex = (batchTypeOrPoolKey: string): string => {
   const key = batchTypeOrPoolKey.trim();
@@ -61,18 +61,8 @@ export const handler = async (
       throw new Error('BATCHER_WALLET_PASSPHRASE is missing');
     }
 
-    const blockchainProvider = new MaestroProvider({
-      network: 'Preprod',
-      apiKey: maestroKey,
-    });
-
-    const txBuilder = new MeshTxBuilder({
-      fetcher: blockchainProvider,
-      submitter: blockchainProvider,
-      evaluator: blockchainProvider,
-      verbose: true,
-    });
-    txBuilder.setNetwork('preprod');
+    const blockchainProvider = createMaestroProvider(maestroKey);
+    const txBuilder = createMeshTxBuilder(blockchainProvider, true);
 
     const txHash = await batchingTx(
       blockchainProvider,
