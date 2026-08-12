@@ -9,10 +9,11 @@ import {
   resolveScriptHash,
   serializeRewardAddress,
   PlutusScript,
-  applyCborEncoding
+  applyCborEncoding,
+  applyParamsToScript as applyParamsToScriptCore,
+  outputReference,
 } from "@meshsdk/core";
 import { applyParamsToScript } from "@meshsdk/core-csl";
-import { OfflineEvaluator } from "@meshsdk/core-csl";
 
 // Import the plutus.json blueprint
 import blueprint from "../smart_contract/plutus.json";
@@ -23,8 +24,6 @@ const NETWORK_ID = 0; // 0 = testnet, 1 = mainnet
 
 // Setup Blockfrost provider - UPDATE WITH YOUR API KEY
 export const blockchainProvider = new BlockfrostProvider("YOUR_BLOCKFROST_API_KEY");
-
-const tester = new OfflineEvaluator(blockchainProvider, NETWORK);
 
 // Setup Maestro (optional) - UPDATE WITH YOUR API KEY
 export const maestroProvider = new MaestroProvider({
@@ -107,15 +106,10 @@ export const VALIDATORS = {
  * Parameters: utxo_ref (OutputReference)
  */
 export function getGlobalSettings(utxoRef: { txHash: string; index: number }) {
-  const scriptCbor = applyParamsToScript(
+  const scriptCbor = applyParamsToScriptCore(
     blueprint.validators[VALIDATORS.GLOBAL_SETTINGS_SPEND].compiledCode,
-    [
-      {
-        alternative: 0,
-        fields: [utxoRef.txHash, utxoRef.index]
-      }
-    ],
-    "Mesh"
+    [outputReference(utxoRef.txHash, utxoRef.index)],
+    "JSON"
   );
 
   const scriptAddr = serializePlutusScript(

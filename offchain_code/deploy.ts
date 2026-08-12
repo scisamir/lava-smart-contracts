@@ -6,7 +6,7 @@ import {
   mConStr1,
   stringToHex,
   Asset,
-  mPubKeyAddress,
+  mScriptAddress,
 } from "@meshsdk/core";
 import {
   getTxBuilder,
@@ -28,6 +28,8 @@ import {
   CONFIG,
   ADMIN_CONFIG,
   buildAuthorizedBatchers,
+  buildAssetType,
+  buildReceiptTokens,
 } from "./config";
 
 const DEPLOYMENT_FILE = "deployment.json";
@@ -164,6 +166,17 @@ async function main() {
   const authorizedBatchers = buildAuthorizedBatchers(
     CONFIG.globalSettingsDatum.authorizedBatchers
   );
+  const { frostAddress, authorizedSwapScripts } = CONFIG.globalSettingsDatum;
+
+  if (!frostAddress) {
+    throw new Error("CONFIG.globalSettingsDatum.frostAddress must be set before deployment");
+  }
+
+  if (authorizedSwapScripts.length === 0) {
+    throw new Error(
+      "CONFIG.globalSettingsDatum.authorizedSwapScripts must contain at least one swap withdrawal validator hash"
+    );
+  }
 
   // Staked token config from deploy.ts (currently hardcoded IAG)
   const stakedTokenConfig = {
@@ -173,20 +186,22 @@ async function main() {
     multiplier: 1_000_000,
   };
 
-  const stakedToken = mConStr0([
-    stakedTokenConfig.isStable ? mConStr0([]) : mConStr0([]),
+  const stakedToken = buildAssetType(
+    stakedTokenConfig.isStable,
     stakedTokenConfig.policyId,
     stakedTokenConfig.assetName,
     BigInt(stakedTokenConfig.multiplier),
-  ]);
+  );
 
+  // Match the e2e global settings setup: frost_address points to rewards script address.
+  const frostAddressForDatum = mScriptAddress(rewards.scriptHash);
 
-  const stakeType=mConStr0([
+  const stakeType = buildReceiptTokens(
     stakedToken,
     "4c2d494147", // "L-IAG" in hex - pool_stake_asset_name
-    mConStr1([]), // None - address
-    mConStr1([]), // None - datum_verifier_hash
-  ]);
+    null,
+    null
+  );
 
   // SignerType:
   // VerificationKeySigner = Constr0 [pubKeyHash]
@@ -205,8 +220,8 @@ async function main() {
     [stakedToken],
     minting.policyId,
     [stakeType],  // stake_details
-    mPubKeyAddress(CONFIG.globalSettingsDatum.authorizedBatchers[0]),
-    [minting.policyId],
+    frostAddressForDatum,
+    authorizedSwapScripts,
     stake.scriptHash,
     rewards.scriptHash,
     BigInt(CONFIG.globalSettingsDatum.minPoolLovelace),
@@ -254,9 +269,17 @@ async function main() {
       authorizedBatchers: CONFIG.globalSettingsDatum.authorizedBatchers,
       allowedAssets: [stakedTokenConfig],
       mintValidatorHash: minting.policyId,
-      stakeDetails: [],
-      frostAddress: CONFIG.globalSettingsDatum.authorizedBatchers[0],
-      authorizedSwapScripts: [minting.policyId],
+      stakeDetails: [
+        {
+          assetType: stakedTokenConfig,
+          poolStakeAssetName: "4c2d494147",
+          address: null,
+          datumVerifierHash: null,
+          rewardsValidatorHash: rewards.scriptHash,
+        },
+      ],
+      frostAddress: frostAddressForDatum,
+      authorizedSwapScripts,
       stakeValidatorHash: stake.scriptHash,
       rewardsValidatorHash: rewards.scriptHash,
       minPoolLovelace: CONFIG.globalSettingsDatum.minPoolLovelace,
@@ -320,8 +343,8 @@ async function main() {
     (utxo) =>
       utxo.output.amount.length === 1 &&
       utxo.output.amount[0].unit === "lovelace" &&
-      BigInt(utxo.output.amount[0].quantity) >= 5_000_000n //&&
-     // (utxo.input.txHash !== seedUtxo.txHash || utxo.input.outputIndex !== seedUtxo.index)
+      BigInt(utxo.output.amount[0].quantity) >= 5_000_000n &&
+      (utxo.input.txHash !== seedUtxo.txHash || utxo.input.outputIndex !== seedUtxo.index)
   );
 
   if (!collateralUtxo) {
@@ -343,6 +366,7 @@ async function main() {
 
   const adminUtxo = adminUtxos[0];
   console.log("Using Admin UTxO:", adminUtxo.input.txHash + "#" + adminUtxo.input.outputIndex);
+  console.log("Preserving Admin UTxO Value:", JSON.stringify(adminUtxo.output.amount, null, 2));
 
   // Output value for GlobalSettings UTxO
   const gsOutputValue: Asset[] = [
@@ -377,8 +401,8 @@ async function main() {
     .txOut(globalSettings.scriptAddr, gsOutputValue)
     .txOutInlineDatumValue(gsDatum)
 
-    // Return funds to admin multisig
-    .txOut(ADMIN_CONFIG.scriptAddress, [{ unit: "lovelace", quantity: "10000000" }])
+    // Preserve the entire consumed admin UTxO value at the multisig.
+    .txOut(ADMIN_CONFIG.scriptAddress, adminUtxo.output.amount)
 
     // Collateral
     .txInCollateral(collateralUtxo.input.txHash, collateralUtxo.input.outputIndex)

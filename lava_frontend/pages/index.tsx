@@ -8,39 +8,75 @@ import { CTASection } from "@/components/home/CTASection";
 import appBg from "@/assets/app-bg.png";
 import { OrderList } from "@/components/home/OrderList";
 import { useEffect, useState } from "react";
-import { fetchUserOrders, getTotalOrderNumbers } from "@/e2e/utils";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { UserOrderType } from "@/lib/types";
 import { BatchOrders } from "@/components/stake/BatchOrders";
 import { BG_BEHIND } from "@/lib/images";
+import { fetchBackend } from "@/lib/backendClient";
+import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+
+const HOME_DATA_REFRESH_EVENT = "lava:refresh-home-data";
 
 const Index = () => {
-  const { blockchainProvider, walletAddress, walletUtxos, wallet } =
-    useCardanoWallet();
+  const { wallet, walletAddress } = useCardanoWallet();
   const [orders, setOrders] = useState<UserOrderType[]>([]);
   const [totalOrder, setTotalOrder] = useState({});
+  const showBatchButtons = false;
 
   useEffect(() => {
-    if (blockchainProvider) {
-      const awaitFetchUserOrders = async () => {
-        const userOrders = await fetchUserOrders(
-          blockchainProvider,
-          walletAddress
-        );
-        setOrders(userOrders);
-        console.log("userOrders:", userOrders);
+    const awaitFetchData = async () => {
+      try {
+        if (walletAddress && wallet) {
+          const session = await ensureWalletAuthSession(
+            wallet as WalletSigner,
+            walletAddress,
+            walletAddress
+          );
+          const ordersRes = await fetchBackend("/user-orders", {
+            token: session.token,
+          });
 
-        const orderTotals = await getTotalOrderNumbers(blockchainProvider);
-        setTotalOrder(orderTotals);
-      };
+          if (!ordersRes.ok) {
+            throw new Error(`Failed to fetch user orders: ${ordersRes.status}`);
+          }
 
-      awaitFetchUserOrders();
+          const ordersData = await ordersRes.json();
+          setOrders((ordersData?.orders ?? []) as UserOrderType[]);
+        } else {
+          setOrders([]);
+        }
 
-      const interval = setInterval(awaitFetchUserOrders, 10000);
+        if (showBatchButtons) {
+          const batchStatsRes = await fetchBackend("/batch-stats");
+          if (!batchStatsRes.ok) {
+            throw new Error(`Failed to fetch batch stats: ${batchStatsRes.status}`);
+          }
 
-      return () => clearInterval(interval);
-    }
-  }, [blockchainProvider, walletAddress]);
+          const batchStatsData = await batchStatsRes.json();
+          setTotalOrder(batchStatsData?.totalOrders ?? {});
+        }
+      } catch (error) {
+        console.error("Failed to fetch home page data:", error);
+      }
+    };
+
+    awaitFetchData();
+
+    const refreshHandler = () => {
+      void awaitFetchData();
+    };
+
+    window.addEventListener(HOME_DATA_REFRESH_EVENT, refreshHandler);
+
+    const interval = setInterval(() => {
+      void awaitFetchData();
+    }, 1_800_000);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener(HOME_DATA_REFRESH_EVENT, refreshHandler);
+    };
+  }, [wallet, walletAddress, showBatchButtons]);
 
   return (
     <div
@@ -100,7 +136,7 @@ const Index = () => {
                   </div>
 
                   <OrderList orders={orders} />
-                  <BatchOrders totalOrder={totalOrder} />
+                  {showBatchButtons && <BatchOrders totalOrder={totalOrder} />}
                 </div>
         </section>
 

@@ -1,5 +1,4 @@
 import {
-  BlockfrostProvider,
   MaestroProvider,
   MeshTxBuilder,
   MeshWallet,
@@ -12,26 +11,22 @@ import {
   serializeNativeScript,
   stringToHex,
 } from "@meshsdk/core";
-import dotenv from "dotenv";
-dotenv.config();
 import blueprint from "../smart_contract/plutus.json" with { type: "json" };
+import {
+  LAVA_NETWORK,
+  NETWORK_CONFIG,
+  NETWORK_ID,
+} from "./network.js";
 
-// Setup blockhain provider as Maestro
+// Setup blockchain provider as Maestro
 const maestroKey = process.env.MAESTRO_KEY;
 if (!maestroKey) {
   throw new Error("MAESTRO_KEY does not exist");
 }
 const blockchainProvider = new MaestroProvider({
-  network: "Preprod",
+  network: NETWORK_CONFIG.maestroNetwork,
   apiKey: maestroKey,
 });
-
-// Setup blockhain provider as Blockfrost
-// const blockfrostId = process.env.BLOCKFROST_ID;
-// if (!blockfrostId) {
-//     throw new Error("BLOCKFROST_ID does not exist");
-// }
-// const blockfrostProvider = new BlockfrostProvider(blockfrostId);
 
 // import admin's wallet passphrase and initialize the wallet
 const wallet1Passphrase = process.env.WALLET_PASSPHRASE_ONE;
@@ -39,7 +34,7 @@ if (!wallet1Passphrase) {
   throw new Error("WALLET_PASSPHRASE_ONE does not exist");
 }
 const wallet1 = new MeshWallet({
-  networkId: 0,
+  networkId: NETWORK_ID,
   fetcher: blockchainProvider,
   submitter: blockchainProvider,
   key: {
@@ -52,14 +47,49 @@ const wallet1Address = await wallet1.getChangeAddress();
 
 const wallet1Utxos = await wallet1.getUtxos();
 
-const wallet1Collateral: UTxO = wallet1Utxos.filter(
-  (utxo) =>
-    Number(utxo.output.amount[0].quantity) >= 12000000 &&
-    utxo.output.amount.length <= 4,
-)[0];
-if (!wallet1Collateral) {
-  throw new Error("No collateral utxo found");
-}
+const MIN_COLLATERAL_LOVELACE = 8_000_000n;
+
+const getUtxoLovelace = (utxo: UTxO): bigint =>
+  BigInt(
+    utxo.output.amount.find((asset) => asset.unit === "lovelace")?.quantity ??
+      "0",
+  );
+
+const isPureAdaUtxo = (utxo: UTxO): boolean =>
+  utxo.output.amount.length === 1 && utxo.output.amount[0]?.unit === "lovelace";
+
+const pickPreferredCollateral = (utxos: UTxO[]): UTxO | undefined =>
+  (() => {
+    const eligibleUtxos = utxos.filter(
+      (utxo) => getUtxoLovelace(utxo) >= MIN_COLLATERAL_LOVELACE,
+    );
+    const preferredUtxos = eligibleUtxos.some(isPureAdaUtxo)
+      ? eligibleUtxos.filter(isPureAdaUtxo)
+      : eligibleUtxos;
+
+    return [...preferredUtxos].sort((left, right) => {
+      const leftLovelace = getUtxoLovelace(left);
+      const rightLovelace = getUtxoLovelace(right);
+
+      return leftLovelace === rightLovelace
+        ? 0
+        : leftLovelace < rightLovelace
+          ? -1
+          : 1;
+    })[0];
+  })();
+
+const wallet1Collateral = pickPreferredCollateral(wallet1Utxos);
+
+const requireWallet1Collateral = (): UTxO => {
+  if (!wallet1Collateral) {
+    throw new Error(
+      `No collateral UTxO found with at least ${MIN_COLLATERAL_LOVELACE} ADA. Pure ADA UTxOs are preferred, but any wallet UTxO with enough lovelace is eligible.,`,
+    );
+  }
+
+  return wallet1Collateral;
+};
 
 const { pubKeyHash: wallet1VK, stakeCredentialHash: wallet1SK } =
   deserializeAddress(wallet1Address);
@@ -70,7 +100,7 @@ if (!wallet2Passphrase) {
   throw new Error("WALLET_PASSPHRASE_TWO does not exist");
 }
 const wallet2 = new MeshWallet({
-  networkId: 0,
+  networkId: NETWORK_ID,
   fetcher: blockchainProvider,
   submitter: blockchainProvider,
   key: {
@@ -97,7 +127,7 @@ const nativeScript: NativeScript = {
   ],
 };
 const { address: multiSigAddress, scriptCbor: multiSigCbor } =
-  serializeNativeScript(nativeScript);
+  serializeNativeScript(nativeScript, undefined, NETWORK_ID);
 const multisigHash = resolveNativeScriptHash(nativeScript);
 const multiSigUtxos =
   await blockchainProvider.fetchAddressUTxOs(multiSigAddress);
@@ -122,7 +152,7 @@ const txBuilder = new MeshTxBuilder({
   // evaluator: blockfrostProvider,
   verbose: false,
 });
-txBuilder.setNetwork("preprod");
+txBuilder.setNetwork(NETWORK_CONFIG.meshNetwork);
 // txBuilder.txEvaluationMultiplier = 1.6
 
 // test mint
@@ -158,13 +188,13 @@ const tPulseAssetName = stringToHex("tPulse");
 const tPulseUnit = alwaysSuccessMintValidatorHash + tPulseAssetName;
 const tPulsePoolStakeAssetName = stringToHex("LPulse");
 
+const ATRIUM_POOL_STAKE_ASSET_NAME = stringToHex("LADA"); // LADA
+
 // Reference scripts
-const batchingScriptTxHash =
-  "8fdab4023d695d356810bb8ddbadb0afb2043692d68f306ad51e6e0141622a29";
-const batchingScriptTxIdx = 0;
-const poolScriptTxHash =
-  "20bd8c588dca842f8a4248f67344d5bba175ea5f7ce82e2531837ec2000dbc4b";
-const poolScriptTxIdx = 0;
+const batchingScriptTxHash = NETWORK_CONFIG.batchingReference.txHash;
+const batchingScriptTxIdx = NETWORK_CONFIG.batchingReference.outputIndex;
+const poolScriptTxHash = NETWORK_CONFIG.poolReference.txHash;
+const poolScriptTxIdx = NETWORK_CONFIG.poolReference.outputIndex;
 
 export {
   blueprint,
@@ -176,6 +206,7 @@ export {
   wallet1SK,
   wallet1Utxos,
   wallet1Collateral,
+  requireWallet1Collateral,
   wallet2,
   wallet2Address,
   wallet2VK,
@@ -187,6 +218,9 @@ export {
   alwaysSuccessValidatorMintScript,
   alwaysSuccessMintValidatorHash,
   // Constants
+  LAVA_NETWORK,
+  NETWORK_CONFIG,
+  NETWORK_ID,
   GlobalSettingsNft,
   LavaPoolNftName,
   MinPoolLovelace,
@@ -200,6 +234,7 @@ export {
   tPulseAssetName,
   tPulseUnit,
   tPulsePoolStakeAssetName,
+  ATRIUM_POOL_STAKE_ASSET_NAME,
   // Ref scripts
   batchingScriptTxHash,
   batchingScriptTxIdx,

@@ -1,7 +1,11 @@
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import {
+  ADA_LOGO,
+  FLUIDTOKENS_LOGO,
   LAVA_LOGO,
+  SPLASH_LOGO,
+  STRIKETOKENS_LOGO,
 } from "@/lib/images";
 import {
   Table,
@@ -14,8 +18,31 @@ import {
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 
 export const VaultsTable = () => {
-  const { poolInfo } = useCardanoWallet();
+  const { poolInfo, vaultsLoading } = useCardanoWallet();
   const poolInfoExtended = poolInfo;
+
+  const getTokenIcon = (symbol?: string) => {
+    const token = String(symbol ?? "").trim();
+    const map: Record<string, string | undefined> = {
+      ADA: ADA_LOGO?.src,
+      tStrike: STRIKETOKENS_LOGO?.src,
+      tPulse: SPLASH_LOGO?.src,
+      test: FLUIDTOKENS_LOGO?.src,
+    };
+
+    return map[token] ?? LAVA_LOGO.src;
+  };
+
+  const normalizeAmount = (value: string | number, symbol?: string) => {
+    const raw = Number(String(value ?? "0").replace(/,/g, ""));
+    if (!Number.isFinite(raw)) return String(value ?? "0");
+
+    const normalized = symbol === "ADA" || symbol === "LADA" ? raw / 1_000_000 : raw;
+    return normalized.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -31,6 +58,12 @@ export const VaultsTable = () => {
 
       {/* TABLE WRAPPER */}
       <div className="border border-border bg-card/50 backdrop-blur-lg overflow-hidden rounded-none">
+        {vaultsLoading && (
+          <div className="px-4 py-3 text-sm text-muted-foreground border-b border-border">
+            Loading vaults...
+          </div>
+        )}
+
         <Table>
           {/* DESKTOP HEADER */}
           <TableHeader className="hidden md:table-header-group">
@@ -130,15 +163,13 @@ export const VaultsTable = () => {
 
                 <TableCell className="hidden md:table-cell">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-gradient-lava flex items-center justify-center p-1">
-                      <img
-                        src={LAVA_LOGO.src}
-                        alt="stADA"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
+                    <img
+                      src={getTokenIcon(vault.tokenPair?.derivative)}
+                      alt={vault.tokenPair?.derivative ?? "token"}
+                      className="w-5 h-5 object-contain"
+                    />
                     <span>
-                      {vault.stStake}{" "}
+                      {normalizeAmount(vault.stStake, vault.tokenPair?.derivative)}{" "}
                       <span className="text-muted-foreground">
                         {vault.tokenPair?.derivative ?? ""}
                       </span>
@@ -148,15 +179,13 @@ export const VaultsTable = () => {
 
                 <TableCell className="hidden md:table-cell">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-gradient-lava flex items-center justify-center p-1">
-                      <img
-                        src={LAVA_LOGO.src}
-                        alt="stADA"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
+                    <img
+                      src={getTokenIcon(vault.tokenPair?.base)}
+                      alt={vault.tokenPair?.base ?? "token"}
+                      className="w-5 h-5 object-contain"
+                    />
                     <span>
-                      {vault.staked}{" "}
+                      {normalizeAmount(vault.staked, vault.tokenPair?.base)}{" "}
                       <span className="text-muted-foreground">
                         {vault.tokenPair?.base ?? ""}
                       </span>
@@ -197,14 +226,14 @@ export const VaultsTable = () => {
                       <div>
                         <p className="text-xs text-muted-foreground">stStake</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <div className="w-5 h-5 rounded-full bg-gradient-lava flex items-center justify-center p-1">
-                            <img
-                              src={LAVA_LOGO.src}
-                              alt="stADA"
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                          <span>{vault.stStake} stADA</span>
+                          <img
+                            src={getTokenIcon(vault.tokenPair?.derivative)}
+                            alt={vault.tokenPair?.derivative ?? "token"}
+                            className="w-5 h-5 object-contain"
+                          />
+                          <span>
+                            {normalizeAmount(vault.stStake, vault.tokenPair?.derivative)} {vault.tokenPair?.derivative ?? ""}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -229,14 +258,14 @@ export const VaultsTable = () => {
                       <div>
                         <p className="text-xs text-muted-foreground">Staked</p>
                         <div className="flex justify-end items-center gap-1 mt-1">
-                          <div className="w-5 h-5 rounded-full bg-gradient-lava flex items-center justify-center p-1">
-                            <img
-                              src={LAVA_LOGO.src}
-                              alt="stADA"
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                          <span>{vault.staked} ADA</span>
+                          <img
+                            src={getTokenIcon(vault.tokenPair?.base)}
+                            alt={vault.tokenPair?.base ?? "token"}
+                            className="w-5 h-5 object-contain"
+                          />
+                          <span>
+                            {normalizeAmount(vault.staked, vault.tokenPair?.base)} {vault.tokenPair?.base ?? ""}
+                          </span>
                         </div>
                       </div>
                     </div>

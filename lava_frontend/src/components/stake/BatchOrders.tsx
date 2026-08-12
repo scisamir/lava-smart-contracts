@@ -1,17 +1,14 @@
 import { useState } from "react";
 import { Button } from "../ui/button"
-import { batchingTx } from "@/e2e/batching/batching";
 import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
-import { OrderListProps } from "@/lib/types";
-import { batchingTxTest } from "@/e2e/batching/batchingTest";
-import { batchingTxStrike } from "@/e2e/batching/batchingStrike";
-import { batchingTxPulse } from "@/e2e/batching/batchingPulse";
+import { fetchBackend } from "@/lib/backendClient";
+import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+import { getTransactionExplorerUrl } from "@/lib/networkConfig";
 
 export const BatchOrders = ({ totalOrder }: any) => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  
-  const { txBuilder, blockchainProvider } = useCardanoWallet();
+  const { wallet, walletAddress } = useCardanoWallet();
 
   // Toast
   const toastSuccess = (txHash: string) => {
@@ -19,7 +16,7 @@ export const BatchOrders = ({ totalOrder }: any) => {
       Success!  
       <br />
       <a
-        href={`https://preprod.cardanoscan.io/transaction/${txHash}`} 
+        href={getTransactionExplorerUrl(txHash)}
         target="_blank"
         rel="noopener noreferrer"
         style={{ color: "#61dafb", textDecoration: "underline" }}
@@ -32,46 +29,44 @@ export const BatchOrders = ({ totalOrder }: any) => {
 
   const handleBatching = async (batchType: "test" | "tStrike" | "tPulse") => {
       setIsProcessing(true);
-      console.log("txBuilder:", txBuilder);
-      console.log("blockchainProvider:", blockchainProvider);
 
-      if (!txBuilder || !blockchainProvider) {
-        toastFailure("Error: Check collateral");
-        setIsProcessing(false);
-        return;
-      }
-
-      let txHash = "";
       try {
-        txHash = batchType === "test" ? await batchingTxTest(
-          blockchainProvider,
-          txBuilder,
-        ) : batchType === "tStrike" ?
-          await batchingTxStrike(
-            blockchainProvider,
-            txBuilder,
-          ) : batchType === "tPulse" ?
-          await batchingTxPulse(
-            blockchainProvider,
-            txBuilder,
-          ) : "";
+        const session = await ensureWalletAuthSession(
+          wallet as WalletSigner,
+          walletAddress,
+          walletAddress
+        );
 
-        txBuilder.reset();
+        const response = await fetchBackend('/batch-orders', {
+          method: "POST",
+          token: session.token,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ batchType }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.error || `Batching failed: ${response.status}`);
+        }
+
+        const txHash = data?.txHash;
+        if (!txHash) {
+          throw new Error("No tx hash returned from backend");
+        }
+
+        toastSuccess(txHash);
+        console.log("batching tx hash:", txHash);
       } catch (e) {
-        txBuilder.reset();
         setIsProcessing(false);
         toastFailure(e);
         console.error("e tx:", e);
         console.log("Err in handle batching");
         return;
       }
-  
-      blockchainProvider.onTxConfirmed(txHash, () => {
-        txBuilder.reset();
-        setIsProcessing(false);
-        toastSuccess(txHash);
-        console.log("batching tx hash:", txHash);
-      });
+
+      setIsProcessing(false);
     }
 
   return (

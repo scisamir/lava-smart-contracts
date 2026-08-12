@@ -1,14 +1,11 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { MaestroProvider, UTxO, stringToHex } from '@meshsdk/core';
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { UTxO } from "@meshsdk/core";
+import { jsonResponse, verifyAccessToken } from './security';
+import { setupE2e } from "./e2e/setup";
+import { MintingHash } from "./e2e/mint/validator";
+import { createMaestroProvider } from "./cardano";
 
-const getTokenBalance = (
-  utxos: UTxO[],
-  policyId: string,
-  assetName: string
-): number => {
-  const assetHex = stringToHex(assetName);
-  const unit = policyId + assetHex;
-
+const getAssetBalanceByUnit = (utxos: UTxO[], unit: string): number => {
   let total = 0;
 
   utxos.forEach((utxo) => {
@@ -22,23 +19,35 @@ const getTokenBalance = (
   return total;
 };
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
-  try {
-    const address = event.queryStringParameters?.address;
+const getAssetBalanceByNameSuffix = (
+  utxos: UTxO[],
+  assetNameHex: string,
+): number => {
+  let total = 0;
 
-    if (!address) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Address parameter is required' }),
-      };
-    }
-
-    const maestro = new MaestroProvider({
-      network: 'Preprod',
-      apiKey: process.env.MAESTRO_API_KEY!,
+  utxos.forEach((utxo) => {
+    utxo.output.amount.forEach((asset) => {
+      if (asset.unit !== "lovelace" && asset.unit.endsWith(assetNameHex)) {
+        total += Number(asset.quantity);
+      }
     });
+  });
+
+  return total;
+};
+
+export const handler = async (
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> => {
+  const auth = await verifyAccessToken(event);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  try {
+    const address = auth.address;
+
+    const maestro = createMaestroProvider(process.env.MAESTRO_API_KEY!);
 
     const utxos = await maestro.fetchAddressUTxOs(address);
 
@@ -46,7 +55,7 @@ export const handler = async (
 
     utxos.forEach((utxo) => {
       utxo.output.amount.forEach((asset) => {
-        if (asset.unit === 'lovelace') {
+        if (asset.unit === "lovelace") {
           adaBalance += Number(asset.quantity);
         }
       });
@@ -54,78 +63,66 @@ export const handler = async (
 
     adaBalance /= 1_000_000;
 
-    const test = getTokenBalance(
-      utxos,
-      "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea",
-      "test"
-    );
-
-    const stTest = getTokenBalance(
-      utxos,
-      "9c1dd9791eba86728634ec4d1531ff3f7ace179c3f8b1e75bfbf1906",
-      "stTest"
-    );
-
-    const tStrike = getTokenBalance(
-      utxos,
-      "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea",
-      "tStrike"
-    );
-
-    const LStrike = getTokenBalance(
-      utxos,
-      "9c1dd9791eba86728634ec4d1531ff3f7ace179c3f8b1e75bfbf1906",
-      "LStrike"
-    );
-
-    const tPulse = getTokenBalance(
-      utxos,
-      "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea",
-      "tPulse"
-    );
-
-    const LPulse = getTokenBalance(
-      utxos,
-      "9c1dd9791eba86728634ec4d1531ff3f7ace179c3f8b1e75bfbf1906",
-      "LPulse"
+    const { ATRIUM_POOL_STAKE_ASSET_NAME } = setupE2e();
+    const atriumStakeUnit = MintingHash + ATRIUM_POOL_STAKE_ASSET_NAME;
+    const LADA = Math.max(
+      getAssetBalanceByUnit(utxos, atriumStakeUnit),
+      getAssetBalanceByNameSuffix(utxos, ATRIUM_POOL_STAKE_ASSET_NAME),
     );
 
     const tokenBalances = {
-      test,
-      stTest,
-      tStrike,
-      LStrike,
-      tPulse,
-      LPulse,
+      ADA: adaBalance,
+      LADA,
     };
 
-    const collateral =
-      utxos.find(
-        (utxo) =>
-          Number(utxo.output.amount[0]?.quantity ?? 0) >= 7_000_000 &&
-          utxo.output.amount.length <= 4
-      ) ?? null;
+    const MIN_COLLATERAL_LOVELACE = 7_000_000n;
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET',
-      },
-      body: JSON.stringify({
+    const getUtxoLovelace = (utxo: UTxO): bigint =>
+      BigInt(
+        utxo.output.amount.find((asset) => asset.unit === "lovelace")
+          ?.quantity ?? "0",
+      );
+
+    const isPureAdaUtxo = (utxo: UTxO): boolean =>
+      utxo.output.amount.length === 1 &&
+      utxo.output.amount[0]?.unit === "lovelace";
+
+    const pickPreferredCollateral = (utxos: UTxO[]): UTxO | undefined =>
+      (() => {
+        const eligibleUtxos = utxos.filter(
+          (utxo) => getUtxoLovelace(utxo) >= MIN_COLLATERAL_LOVELACE,
+        );
+        const preferredUtxos = eligibleUtxos.some(isPureAdaUtxo)
+          ? eligibleUtxos.filter(isPureAdaUtxo)
+          : eligibleUtxos;
+
+        return [...preferredUtxos].sort((left, right) => {
+          const leftLovelace = getUtxoLovelace(left);
+          const rightLovelace = getUtxoLovelace(right);
+
+          return leftLovelace === rightLovelace
+            ? 0
+            : leftLovelace < rightLovelace
+              ? -1
+              : 1;
+        })[0];
+      })();
+
+    const collateral = pickPreferredCollateral(utxos);
+
+    return jsonResponse(
+      200,
+      {
         balance: adaBalance,
         tokenBalances,
         walletUtxos: utxos,
         collateral,
-      }),
-    };
+      },
+      auth.origin
+    );
   } catch (error) {
     console.error(error);
 
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' }),
-    };
+    return jsonResponse(500, { error: 'Internal server error' }, auth.origin);
   }
 };

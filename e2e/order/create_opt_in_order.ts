@@ -1,31 +1,59 @@
 import { mConStr0, mPubKeyAddress } from "@meshsdk/core";
-import { testUnit, tStrikeUnit, txBuilder, wallet1, wallet1Address, wallet1SK, wallet1Utxos, wallet1VK } from "../setup.js";
-import { OrderValidatorAddr } from "./validator.js";
+import {
+  blockchainProvider,
+  txBuilder,
+  wallet1,
+  wallet1Address,
+  wallet1SK,
+  wallet1Utxos,
+  wallet1VK,
+  requireWallet1Collateral,
+  ATRIUM_POOL_STAKE_ASSET_NAME,
+} from "../setup.js";
+import { optInOrderType, orderDatum, verificationKeySigner } from "../data.js";
+import { GlobalSettingsAddr } from "../global_settings/validator.js";
+import {
+  OrderValidatorAddr,
+  OrderValidatorHash,
+  OrderValidatorScript,
+} from "./validator.js";
 
-const depositAmount = 200;
-const orderType = mConStr0([ depositAmount ]);
+const DEPOSIT_LOVELACE = 7_000_000n;
 
-const orderDatum = mConStr0([
-    orderType,
-    mPubKeyAddress(wallet1VK, wallet1SK), // receiver address
-    wallet1VK, // canceller
-]);
+const orderData = orderDatum(
+  optInOrderType(DEPOSIT_LOVELACE),
+  mPubKeyAddress(wallet1VK, wallet1SK),
+  verificationKeySigner(wallet1VK),
+  ATRIUM_POOL_STAKE_ASSET_NAME,
+);
+
+const wallet1Collateral = requireWallet1Collateral();
+const gsUtxo = (
+  await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr)
+)[0];
 
 const unsignedTx = await txBuilder
-    .txOut(
-        OrderValidatorAddr,
-        [
-            { unit: "lovelace", quantity: "2000000" }, // 2 ADA min UTxO input
-            // { unit: tStrikeUnit, quantity: String(depositAmount) },
-            { unit: testUnit, quantity: String(depositAmount) },
-        ]
-    )
-    .txOutInlineDatumValue(orderDatum)
-    .changeAddress(wallet1Address)
-    .selectUtxosFrom(wallet1Utxos)
-    .complete()
+  .readOnlyTxInReference(gsUtxo.input.txHash, gsUtxo.input.outputIndex)
+  .mintPlutusScriptV3()
+  .mint("1", OrderValidatorHash, "")
+  .mintingScript(OrderValidatorScript)
+  .mintRedeemerValue(mConStr0([]))
+  .txOut(OrderValidatorAddr, [
+    { unit: "lovelace", quantity: (DEPOSIT_LOVELACE + 2_000_000n).toString() },
+    { unit: OrderValidatorHash, quantity: "1" },
+  ])
+  .txOutInlineDatumValue(orderData)
+  .txInCollateral(
+    wallet1Collateral.input.txHash,
+    wallet1Collateral.input.outputIndex,
+  )
+  .setTotalCollateral("5000000")
+  .requiredSignerHash(wallet1VK)
+  .changeAddress(wallet1Address)
+  .selectUtxosFrom(wallet1Utxos)
+  .complete();
 
 const signedTx = await wallet1.signTx(unsignedTx);
 const txHash = await wallet1.submitTx(signedTx);
 
-console.log("Create optin order tx hash:", txHash);
+console.log("Create Atrium opt-in order tx hash:", txHash);

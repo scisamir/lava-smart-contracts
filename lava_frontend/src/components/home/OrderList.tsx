@@ -4,27 +4,64 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
 import { toast } from "react-toastify";
-import { cancelOrder } from "@/e2e/order/cancel_order";
 import { OrderListProps, UserOrderType } from "@/lib/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
-import { tokenName } from "@meshsdk/core";
+import { fetchBackend } from "@/lib/backendClient";
+import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+import { getTransactionExplorerUrl } from "@/lib/networkConfig";
 
 export const OrderList = ({ orders }: OrderListProps) => {
-  if (orders.length === 0) return null;
+  const [pendingCancelKeys, setPendingCancelKeys] = useState<Record<string, true>>({});
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submittingOrderKey, setSubmittingOrderKey] = useState<string>("");
 
   const {
     connected,
-    txBuilder,
-    blockchainProvider,
     walletCollateral,
     wallet,
     walletAddress,
     walletVK,
     walletUtxos,
+    refreshWalletStateAfterTx,
   } = useCardanoWallet();
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [txHash, setTxHash] = useState<string>("");
+
+  useEffect(() => {
+    if (Object.keys(pendingCancelKeys).length === 0) {
+      return;
+    }
+
+    const liveOrderKeys = new Set(
+      orders.map((order) => `${order.txHash}-${order.outputIndex ?? 0}`)
+    );
+
+    setPendingCancelKeys((previous) => {
+      const next = { ...previous };
+      let changed = false;
+
+      Object.keys(next).forEach((key) => {
+        if (!liveOrderKeys.has(key)) {
+          delete next[key];
+          changed = true;
+        }
+      });
+
+      return changed ? next : previous;
+    });
+  }, [orders, pendingCancelKeys]);
+
+  const hasVisibleOrders =
+    orders.length > 0 || Object.keys(pendingCancelKeys).length > 0;
+  if (!hasVisibleOrders) return null;
+
+  const formatOrderAmount = (order: UserOrderType) => {
+    const token = String(order.tokenName ?? "").toUpperCase();
+    if (token === "ADA" || token === "LADA") {
+      return (order.amount / 1_000_000).toFixed(2);
+    }
+
+    return order.amount.toFixed(2);
+  };
 
   if (!connected) return null;
 
@@ -35,7 +72,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
         Success!
         <br />
         <a
-          href={`https://preprod.cardanoscan.io/transaction/${txHash}`}
+          href={getTransactionExplorerUrl(txHash)}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#61dafb", textDecoration: "underline" }}
@@ -48,50 +85,77 @@ export const OrderList = ({ orders }: OrderListProps) => {
   const toastFailure = (err: any) =>
     toast.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
 
-  const handleCancelOrder = async (orderTxHash: string) => {
-    setIsProcessing(true);
-    setTxHash(orderTxHash);
+  const handleCancelOrder = async (order: UserOrderType) => {
+    const orderOutputIndex = order.outputIndex ?? 0;
+    const orderKey = `${order.txHash}-${orderOutputIndex}`;
 
-    console.log("txBuilder:", txBuilder);
-    console.log("walletCollateral:", walletCollateral);
-    console.log("blockchainProvider:", blockchainProvider);
-
-    if (!txBuilder || !walletCollateral || !blockchainProvider) {
-      toastFailure("Error: Check collateral");
-      setIsProcessing(false);
+    if (pendingCancelKeys[orderKey] || isSubmitting) {
       return;
     }
 
+    setIsSubmitting(true);
+    setSubmittingOrderKey(orderKey);
+
     let txHash = "";
     try {
-      txHash = await cancelOrder(
-        blockchainProvider,
-        txBuilder,
-        wallet,
+      const session = await ensureWalletAuthSession(
+        wallet as WalletSigner,
         walletAddress,
-        walletCollateral,
-        walletUtxos,
-        walletVK,
-        orderTxHash
+        walletAddress
       );
-      txBuilder.reset();
+
+      const response = await fetchBackend("/build-cancel-order-tx", {
+        method: "POST",
+        token: session.token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress,
+          walletVK,
+          walletCollateral,
+          walletUtxos,
+          orderTxHash: order.txHash,
+          orderOutputIndex,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const message = String(errorData?.error ?? `Failed to build cancel tx: ${response.status}`);
+
+        if (response.status === 409 || /already batched|already cancelled|not found/i.test(message)) {
+          toast.info("Order is already processed. Refreshing list...");
+          await refreshWalletStateAfterTx();
+          window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
+          setSubmittingOrderKey("");
+          setIsSubmitting(false);
+          return;
+        }
+
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
-      txBuilder.reset();
-      setTxHash("");
-      setIsProcessing(false);
+      setSubmittingOrderKey("");
+      setIsSubmitting(false);
       toastFailure(e);
       console.error("e tx:", e);
       console.log("Err in handle cancel order");
       return;
     }
 
-    blockchainProvider.onTxConfirmed(txHash, () => {
-      txBuilder.reset();
-      setTxHash("");
-      setIsProcessing(false);
-      toastSuccess(txHash);
-      console.log("Cancel order tx hash:", txHash);
-    });
+    setPendingCancelKeys((previous) => ({
+      ...previous,
+      [orderKey]: true,
+    }));
+    setSubmittingOrderKey("");
+    setIsSubmitting(false);
+    toastSuccess(txHash);
+    await refreshWalletStateAfterTx();
+    window.dispatchEvent(new CustomEvent("lava:refresh-home-data"));
+    console.log("Cancel order tx hash:", txHash);
   };
 
   return (
@@ -100,18 +164,18 @@ export const OrderList = ({ orders }: OrderListProps) => {
       <div className="space-y-3">
         {orders.map((order) => (
           <div
-            key={order.txHash}
+            key={`${order.txHash}-${order.outputIndex ?? 0}`}
             className="flex items-center justify-between bg-muted/40 rounded-lg p-3"
           >
             <div>
               <p className="font-semibold">
-                {order.amount.toFixed(2)} {order.tokenName}{" "}
+                {formatOrderAmount(order)} {order.tokenName}{" "}
                 <span className="text-gray-400">
                   ({order.isOptIn ? "OptIn Order" : "Redeem Order"})
                 </span>
               </p>
               <a
-                href={`https://preprod.cardanoscan.io/transaction/${order.txHash}`}
+                href={getTransactionExplorerUrl(order.txHash)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-blue-400 underline"
@@ -123,11 +187,12 @@ export const OrderList = ({ orders }: OrderListProps) => {
               variant="destructive"
               size="sm"
               className="bg-red-600 hover:bg-red-700"
-              onClick={async () => await handleCancelOrder(order.txHash)}
-              disabled={isProcessing}
+              onClick={async () => await handleCancelOrder(order)}
+              disabled={isSubmitting || !!pendingCancelKeys[`${order.txHash}-${order.outputIndex ?? 0}`]}
             >
               <XCircle className="w-4 h-4 mr-1" />{" "}
-              {isProcessing && txHash === order.txHash
+              {(isSubmitting && submittingOrderKey === `${order.txHash}-${order.outputIndex ?? 0}`) ||
+              pendingCancelKeys[`${order.txHash}-${order.outputIndex ?? 0}`]
                 ? "Processing..."
                 : "Cancel"}
             </Button>

@@ -2,15 +2,15 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
-import { mintTestTokens } from "@/e2e/utils/mintTestTokens";
+import { fetchBackend } from "@/lib/backendClient";
+import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
 
 export const MintTestTokens = ({ variant = "default", className = "" }: { variant?: "default" | "mobile"; className?: string }) => {
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
   const {
-    txBuilder,
-    blockchainProvider,
     wallet,
     walletAddress,
     walletCollateral,
@@ -25,7 +25,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
         Success!
         <br />
         <a
-          href={`https://preprod.cardanoscan.io/transaction/${txHash}`}
+          href={getTransactionExplorerUrl(txHash)}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#61dafb", textDecoration: "underline" }}
@@ -40,14 +40,12 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
 
   const handleMintTestTokens = async () => {
     setIsProcessing(true);
-    console.log("txBuilder:", txBuilder);
-    console.log("blockchainProvider:", blockchainProvider);
 
     // New: Check network ID first to prevent generic errors
     try {
       const networkId = await wallet.getNetworkId();
-      if (networkId !== 0) { // 1 = Preprod testnet
-        toastFailure("Use prepod network");
+      if (networkId !== networkConfig.networkId) {
+        toastFailure(`Use ${networkConfig.label} network`);
         setIsProcessing(false);
         return;
       }
@@ -57,24 +55,39 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
       return;
     }
 
-    if (!txBuilder || !blockchainProvider || !walletCollateral) {
-      toastFailure("Error: Blockchain provider/txBuilder not initialized");
+    if (!walletCollateral) {
+      toastFailure("Error: Missing wallet collateral");
       setIsProcessing(false);
       return;
     }
 
     let txHash = "";
     try {
-      txHash = await mintTestTokens(
-        txBuilder,
-        wallet,
+      const session = await ensureWalletAuthSession(
+        wallet as WalletSigner,
         walletAddress,
-        walletCollateral,
-        walletUtxos
+        walletAddress
       );
-      txBuilder.reset();
+
+      const response = await fetchBackend('/build-mint-test-tokens-tx', {
+        method: "POST",
+        token: session.token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress,
+          walletCollateral,
+          walletUtxos,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to build mint tx: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
-      txBuilder.reset();
       setIsProcessing(false);
       toastFailure(e);
       console.error("e tx:", e);
@@ -82,13 +95,10 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
       return;
     }
 
-    blockchainProvider.onTxConfirmed(txHash, async () => {
-      txBuilder.reset();
-      setIsProcessing(false);
-      toastSuccess(txHash);
-      await reloadWalletState();
-      console.log(`Mint test tokens tx hash:`, txHash);
-    });
+    setIsProcessing(false);
+    toastSuccess(txHash);
+    await reloadWalletState();
+    console.log(`Mint test tokens tx hash:`, txHash);
   };
 
   const defaultMobileClass = `bg-transparent text-white px-3 py-2 text-[16px] leading-[100%] tracking-[-0.02em] hover:opacity-80 shadow-none`;
