@@ -9,7 +9,6 @@ import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
 import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
 import { fetchBackend } from "@/lib/backendClient";
-import { retryWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 import { getTransactionExplorerUrl } from "@/lib/networkConfig";
 
 // PixelCorner removed — unused decorative element
@@ -62,9 +61,9 @@ export const StakingCard = () => {
     walletAddress,
     walletVK,
     walletSK,
-    walletUtxos,
     tokenBalances,
     poolInfo,
+    retryWalletAccess,
     refreshWalletStateAfterTx,
   } = useCardanoWallet();
 
@@ -102,15 +101,27 @@ export const StakingCard = () => {
     selectedVault?.tokenDetails?.derivative?.assetNameHex ||
     "";
 
+  const selectedUnderlyingPolicyId =
+    selectedVault?.tokenDetails?.base?.policyId ?? "";
+  const selectedUnderlyingAssetNameHex =
+    selectedVault?.tokenDetails?.base?.assetNameHex ?? "";
+  const isAdaVault = selectedVault?.tokenPair?.base === "ADA";
+
   const selectedUnderlyingUnit = (() => {
-    const policyId = selectedVault?.tokenDetails?.base?.policyId ?? "";
-    const assetNameHex = selectedVault?.tokenDetails?.base?.assetNameHex ?? "";
-    if (!policyId && !assetNameHex) {
+    if (isAdaVault) {
       return "lovelace";
     }
-    return `${policyId}${assetNameHex}`;
+
+    return `${selectedUnderlyingPolicyId}${selectedUnderlyingAssetNameHex}`;
   })();
-  const isVaultReady = Boolean(selectedVault && selectedPoolStakeAssetNameHex);
+  const hasValidUnderlyingAsset = isAdaVault
+    ? !selectedUnderlyingPolicyId && !selectedUnderlyingAssetNameHex
+    : Boolean(selectedUnderlyingPolicyId && selectedUnderlyingAssetNameHex);
+  const isVaultReady = Boolean(
+    selectedVault?.status === "Open" &&
+    selectedPoolStakeAssetNameHex &&
+    hasValidUnderlyingAsset
+  );
 
   useEffect(() => {
     const selectedStillExists = availableTokenPairs.some(
@@ -228,10 +239,7 @@ export const StakingCard = () => {
 
     let txHash = "";
     try {
-      const session = await retryWalletAuthSession(
-        wallet as WalletSigner,
-        walletAddress
-      );
+      const { session, walletData } = await retryWalletAccess();
 
       const response = await fetchBackend("/build-user-order-tx", {
         method: "POST",
@@ -246,7 +254,8 @@ export const StakingCard = () => {
           walletAddress,
           walletVK,
           walletSK,
-          walletUtxos,
+          walletCollateral: walletData.collateral ?? null,
+          walletUtxos: walletData.walletUtxos ?? [],
         }),
       });
 
@@ -285,10 +294,7 @@ export const StakingCard = () => {
 
     let txHash = "";
     try {
-      const session = await retryWalletAuthSession(
-        wallet as WalletSigner,
-        walletAddress
-      );
+      const { session, walletData } = await retryWalletAccess();
 
       const response = await fetchBackend("/build-user-order-tx", {
         method: "POST",
@@ -303,7 +309,8 @@ export const StakingCard = () => {
           walletAddress,
           walletVK,
           walletSK,
-          walletUtxos,
+          walletCollateral: walletData.collateral ?? null,
+          walletUtxos: walletData.walletUtxos ?? [],
         }),
       });
 
@@ -587,7 +594,14 @@ export const StakingCard = () => {
 
     {/* ACTION BUTTON */}
     <Button
-      disabled={!connected || !isVaultReady || isProcessing || numAmount === 0}
+      disabled={
+        !connected ||
+        !walletAddress ||
+        !walletVK ||
+        !isVaultReady ||
+        isProcessing ||
+        numAmount === 0
+      }
       onClick={async () =>
         isSwapped
           ? await handleCreateRedeemOrder(numAmount, selectedToken.derivative)

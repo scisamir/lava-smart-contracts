@@ -26,6 +26,7 @@ import {
   clearWalletAuthSession,
   ensureWalletAuthSession,
   loadWalletAuthSession,
+  retryWalletAuthSession,
   type WalletSigner,
 } from "@/lib/walletAuth";
 
@@ -292,6 +293,23 @@ function useCardanoWalletState() {
     ]);
   };
 
+  const retryWalletAccess = async () => {
+    if (!wallet || !walletAddress) {
+      throw new Error("Wallet is not connected");
+    }
+
+    const walletSigner = wallet as WalletSigner;
+    const session = await retryWalletAuthSession(walletSigner, walletAddress);
+    const walletData = await fetchWalletBalance(walletSigner, walletAddress);
+
+    queryClient.setQueryData(
+      ["wallet-balance", walletAddress],
+      walletData
+    );
+
+    return { session, walletData };
+  };
+
   const refreshWalletStateAfterTx = async () => {
     await reloadWalletState();
 
@@ -315,6 +333,7 @@ function useCardanoWalletState() {
     connect: connectWallet,
     disconnect: disconnectWallet,
     reloadWalletState,
+    retryWalletAccess,
     refreshWalletStateAfterTx,
     blockchainProvider,
     txBuilder,

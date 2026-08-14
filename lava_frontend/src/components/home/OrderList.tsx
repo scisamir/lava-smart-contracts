@@ -8,7 +8,6 @@ import { OrderListProps, UserOrderType } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
-import { retryWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 import { getTransactionExplorerUrl } from "@/lib/networkConfig";
 
 export const OrderList = ({ orders }: OrderListProps) => {
@@ -18,11 +17,10 @@ export const OrderList = ({ orders }: OrderListProps) => {
 
   const {
     connected,
-    walletCollateral,
     wallet,
     walletAddress,
     walletVK,
-    walletUtxos,
+    retryWalletAccess,
     refreshWalletStateAfterTx,
   } = useCardanoWallet();
 
@@ -98,10 +96,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
 
     let txHash = "";
     try {
-      const session = await retryWalletAuthSession(
-        wallet as WalletSigner,
-        walletAddress
-      );
+      const { session, walletData } = await retryWalletAccess();
 
       const response = await fetchBackend("/build-cancel-order-tx", {
         method: "POST",
@@ -110,8 +105,8 @@ export const OrderList = ({ orders }: OrderListProps) => {
         body: JSON.stringify({
           walletAddress,
           walletVK,
-          walletCollateral,
-          walletUtxos,
+          walletCollateral: walletData.collateral ?? null,
+          walletUtxos: walletData.walletUtxos ?? [],
           orderTxHash: order.txHash,
           orderOutputIndex,
         }),
@@ -187,7 +182,12 @@ export const OrderList = ({ orders }: OrderListProps) => {
               size="sm"
               className="bg-red-600 hover:bg-red-700"
               onClick={async () => await handleCancelOrder(order)}
-              disabled={isSubmitting || !!pendingCancelKeys[`${order.txHash}-${order.outputIndex ?? 0}`]}
+              disabled={
+                !walletAddress ||
+                !walletVK ||
+                isSubmitting ||
+                !!pendingCancelKeys[`${order.txHash}-${order.outputIndex ?? 0}`]
+              }
             >
               <XCircle className="w-4 h-4 mr-1" />{" "}
               {(isSubmitting && submittingOrderKey === `${order.txHash}-${order.outputIndex ?? 0}`) ||

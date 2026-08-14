@@ -3,7 +3,6 @@ import { Button } from "../ui/button";
 import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
-import { retryWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
 
 export const MintTestTokens = ({ variant = "default", className = "" }: { variant?: "default" | "mobile"; className?: string }) => {
@@ -14,8 +13,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
     connected,
     wallet,
     walletAddress,
-    walletCollateral,
-    walletUtxos,
+    retryWalletAccess,
     reloadWalletState,
   } = useCardanoWallet();
 
@@ -56,18 +54,14 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
       return;
     }
 
-    if (!walletCollateral) {
-      toastFailure("Error: Missing wallet collateral");
-      setIsProcessing(false);
-      return;
-    }
-
     let txHash = "";
     try {
-      const session = await retryWalletAuthSession(
-        wallet as WalletSigner,
-        walletAddress
-      );
+      const { session, walletData } = await retryWalletAccess();
+      const walletCollateral = walletData.collateral ?? null;
+
+      if (!walletCollateral) {
+        throw new Error("Missing wallet collateral");
+      }
 
       const response = await fetchBackend('/build-mint-test-tokens-tx', {
         method: "POST",
@@ -76,7 +70,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
         body: JSON.stringify({
           walletAddress,
           walletCollateral,
-          walletUtxos,
+          walletUtxos: walletData.walletUtxos ?? [],
         }),
       });
 
