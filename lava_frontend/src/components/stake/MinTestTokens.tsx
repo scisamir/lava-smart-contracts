@@ -3,7 +3,7 @@ import { Button } from "../ui/button";
 import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
-import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+import { retryWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
 
 export const MintTestTokens = ({ variant = "default", className = "" }: { variant?: "default" | "mobile"; className?: string }) => {
@@ -11,6 +11,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
   const {
+    connected,
     wallet,
     walletAddress,
     walletCollateral,
@@ -63,9 +64,8 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
 
     let txHash = "";
     try {
-      const session = await ensureWalletAuthSession(
+      const session = await retryWalletAuthSession(
         wallet as WalletSigner,
-        walletAddress,
         walletAddress
       );
 
@@ -85,7 +85,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
       }
 
       const data = await response.json();
-      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      const signedTx = await wallet.signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setIsProcessing(false);
@@ -107,7 +107,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
   const btnClass = className ? className : variant === "mobile" ? defaultMobileClass : defaultDesktopClass;
 
   return (
-    <Button disabled={isProcessing} onClick={handleMintTestTokens} className={`${btnClass} ${variant === "mobile" ? "" : "btn-lava"}`}>
+    <Button disabled={!connected || !walletAddress || isProcessing} onClick={handleMintTestTokens} className={`${btnClass} ${variant === "mobile" ? "" : "btn-lava"}`}>
       {isProcessing ? "Processing..." : "Mint Test Tokens"}
     </Button>
   );

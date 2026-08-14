@@ -9,7 +9,7 @@ import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
 import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
 import { fetchBackend } from "@/lib/backendClient";
-import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+import { retryWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 import { getTransactionExplorerUrl } from "@/lib/networkConfig";
 
 // PixelCorner removed — unused decorative element
@@ -110,6 +110,7 @@ export const StakingCard = () => {
     }
     return `${policyId}${assetNameHex}`;
   })();
+  const isVaultReady = Boolean(selectedVault && selectedPoolStakeAssetNameHex);
 
   useEffect(() => {
     const selectedStillExists = availableTokenPairs.some(
@@ -218,13 +219,17 @@ export const StakingCard = () => {
     toast.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
 
   const handleCreateOptInOrder = async (amount: number, tokenName: string) => {
+    if (!isVaultReady) {
+      toastFailure("Vault configuration is unavailable. Please try again after backend sync.");
+      return;
+    }
+
     setIsProcessing(true);
 
     let txHash = "";
     try {
-      const session = await ensureWalletAuthSession(
+      const session = await retryWalletAuthSession(
         wallet as WalletSigner,
-        walletAddress,
         walletAddress
       );
 
@@ -251,7 +256,7 @@ export const StakingCard = () => {
       }
 
       const data = await response.json();
-      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      const signedTx = await wallet.signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setIsProcessing(false);
@@ -269,15 +274,19 @@ export const StakingCard = () => {
   };
 
   const handleCreateRedeemOrder = async (amount: number, tokenName: string) => {
+    if (!isVaultReady) {
+      toastFailure("Vault configuration is unavailable. Please try again after backend sync.");
+      return;
+    }
+
     setIsProcessing(true);
 
     const requestAmount = tokenName === "LADA" ? Math.trunc(amount * 1_000_000) : amount;
 
     let txHash = "";
     try {
-      const session = await ensureWalletAuthSession(
+      const session = await retryWalletAuthSession(
         wallet as WalletSigner,
-        walletAddress,
         walletAddress
       );
 
@@ -304,7 +313,7 @@ export const StakingCard = () => {
       }
 
       const data = await response.json();
-      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      const signedTx = await wallet.signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setIsProcessing(false);
@@ -349,6 +358,13 @@ export const StakingCard = () => {
 
     setAmount(displayedTokenBalance.toFixed(2));
   };
+
+  let actionLabel = isSwapped ? "Unstake" : "Stake Now";
+  if (!isVaultReady) {
+    actionLabel = "Vault unavailable";
+  } else if (isProcessing) {
+    actionLabel = "Processing...";
+  }
 
   return (
   <Card className="w-full max-w-[520px] h-[436px] bg-[#0D0D0D] p-6 flex flex-col gap-6 relative rounded-none">
@@ -571,7 +587,7 @@ export const StakingCard = () => {
 
     {/* ACTION BUTTON */}
     <Button
-      disabled={!connected || isProcessing || numAmount === 0}
+      disabled={!connected || !isVaultReady || isProcessing || numAmount === 0}
       onClick={async () =>
         isSwapped
           ? await handleCreateRedeemOrder(numAmount, selectedToken.derivative)
@@ -591,7 +607,7 @@ export const StakingCard = () => {
           textTransform: "uppercase",
         }}
       >
-        {isProcessing ? "Processing..." : isSwapped ? "Unstake" : "Stake Now"}
+        {actionLabel}
       </span>
 
       {/* Corner pixels — 4 corners */}

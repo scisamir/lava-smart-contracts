@@ -9,10 +9,8 @@ type WalletSignature = {
 
 export type WalletSigner = {
   getNetworkId: () => Promise<number>;
-  signData: (payload: string, address?: string) => Promise<WalletSignature>;
-  walletInstance?: {
-    signData?: (address: string, payload: string) => Promise<WalletSignature>;
-  };
+  getChangeAddress: () => Promise<string>;
+  signData: (address: string, payload: string) => Promise<WalletSignature>;
 };
 
 const assertWalletNetwork = async (wallet: WalletSigner): Promise<void> => {
@@ -45,6 +43,13 @@ const AUTH_STORAGE_KEY = `lavaWalletAuth:${networkConfig.name}`;
 
 let inFlightAddress: string | null = null;
 let inFlightAuth: Promise<WalletAuthSession> | null = null;
+let failedAuthAddress: string | null = null;
+let failedAuthError: Error | null = null;
+
+const clearWalletAuthFailure = () => {
+  failedAuthAddress = null;
+  failedAuthError = null;
+};
 
 const isSessionValid = (session: WalletAuthSession | null, address?: string): session is WalletAuthSession => {
   if (!session?.token || !session.address || !session.expiresAt) {
@@ -92,6 +97,7 @@ export const loadWalletAuthSession = (address?: string): WalletAuthSession | nul
 
 export const clearWalletAuthSession = () => {
   getAuthStorage()?.removeItem(AUTH_STORAGE_KEY);
+  clearWalletAuthFailure();
 };
 
 const parseJson = async <T>(response: Response): Promise<T> => {
@@ -156,21 +162,14 @@ const verifyWalletChallenge = async (
 
 const authenticateWallet = async (
   wallet: WalletSigner,
-  address: string,
-  signerAddress?: string
+  address: string
 ): Promise<WalletAuthSession> => {
   const challenge = await requestWalletChallenge(address);
   let signature: WalletSignature;
 
   try {
-    if (signerAddress && wallet.walletInstance?.signData) {
-      signature = await wallet.walletInstance.signData(
-        signerAddress,
-        stringToHex(challenge.message)
-      );
-    } else {
-      signature = await wallet.signData(challenge.message, address);
-    }
+    const signerAddress = await wallet.getChangeAddress();
+    signature = await wallet.signData(signerAddress, stringToHex(challenge.message));
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     throw new Error(`Wallet signature failed: ${reason || 'unknown error'}`);
@@ -184,8 +183,7 @@ const authenticateWallet = async (
 
 export const ensureWalletAuthSession = async (
   wallet: WalletSigner,
-  address: string,
-  signerAddress?: string
+  address: string
 ): Promise<WalletAuthSession> => {
   await assertWalletNetwork(wallet);
 
@@ -194,12 +192,26 @@ export const ensureWalletAuthSession = async (
     return stored;
   }
 
+  if (failedAuthAddress === address && failedAuthError) {
+    throw failedAuthError;
+  }
+
   if (inFlightAuth && inFlightAddress === address) {
     return inFlightAuth;
   }
 
   inFlightAddress = address;
-  inFlightAuth = authenticateWallet(wallet, address, signerAddress);
+  inFlightAuth = authenticateWallet(wallet, address)
+    .then((session) => {
+      clearWalletAuthFailure();
+      return session;
+    })
+    .catch((error: unknown) => {
+      const authError = error instanceof Error ? error : new Error(String(error));
+      failedAuthAddress = address;
+      failedAuthError = authError;
+      throw authError;
+    });
 
   try {
     return await inFlightAuth;
@@ -209,4 +221,12 @@ export const ensureWalletAuthSession = async (
       inFlightAuth = null;
     }
   }
+};
+
+export const retryWalletAuthSession = async (
+  wallet: WalletSigner,
+  address: string
+): Promise<WalletAuthSession> => {
+  clearWalletAuthFailure();
+  return ensureWalletAuthSession(wallet, address);
 };

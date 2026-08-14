@@ -29,7 +29,6 @@ const Index = () => {
         if (walletAddress && wallet) {
           const session = await ensureWalletAuthSession(
             wallet as WalletSigner,
-            walletAddress,
             walletAddress
           );
           const ordersRes = await fetchBackend("/user-orders", {
