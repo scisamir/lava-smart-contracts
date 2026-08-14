@@ -22,7 +22,13 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BackendVault } from "@/lib/types";
 import { fetchBackend, getBackendBaseUrl } from "@/lib/backendClient";
-import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+import {
+  clearWalletAuthSession,
+  ensureWalletAuthSession,
+  loadWalletAuthSession,
+  retryWalletAuthSession,
+  type WalletSigner,
+} from "@/lib/walletAuth";
 
 const LOCAL_STORAGE_KEY = "connectedWallet";
 
@@ -41,7 +47,7 @@ const fetchWalletBalance = async (
   wallet: WalletSigner,
   address: string
 ): Promise<WalletBalanceResponse> => {
-  const session = await ensureWalletAuthSession(wallet, address, address);
+  const session = await ensureWalletAuthSession(wallet, address);
   const balanceRes = await fetchBackend('/user-balance', {
     token: session.token,
   });
@@ -160,7 +166,7 @@ function useCardanoWalletState() {
       }
 
       try {
-        const addr = await wallet.getChangeAddress();
+        const addr = await wallet.getChangeAddressBech32();
         setWalletAddress(addr);
 
         const { pubKeyHash, stakeCredentialHash } = deserializeAddress(addr);
@@ -189,9 +195,14 @@ function useCardanoWalletState() {
     enabled: connected && !!walletAddress && !!wallet,
     staleTime: 30_000,
     gcTime: 30 * 60_000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchInterval: connected && !!walletAddress ? 30_000 : false,
+    retry: false,
+    retryOnMount: false,
+    refetchOnWindowFocus: () => Boolean(loadWalletAuthSession(walletAddress)),
+    refetchOnReconnect: () => Boolean(loadWalletAuthSession(walletAddress)),
+    refetchInterval: () =>
+      connected && walletAddress && loadWalletAuthSession(walletAddress)
+        ? 30_000
+        : false,
     refetchIntervalInBackground: false,
     placeholderData: (previousData) => previousData,
   });
@@ -270,6 +281,7 @@ function useCardanoWalletState() {
 
   const disconnectWallet = async () => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
+    clearWalletAuthSession();
     await disconnect();
     queryClient.removeQueries({ queryKey: ["wallet-balance"] });
   };
@@ -279,6 +291,23 @@ function useCardanoWalletState() {
       queryClient.invalidateQueries({ queryKey: ["wallet-balance", walletAddress] }),
       queryClient.invalidateQueries({ queryKey: ["lava-vaults"] }),
     ]);
+  };
+
+  const retryWalletAccess = async () => {
+    if (!wallet || !walletAddress) {
+      throw new Error("Wallet is not connected");
+    }
+
+    const walletSigner = wallet as WalletSigner;
+    const session = await retryWalletAuthSession(walletSigner, walletAddress);
+    const walletData = await fetchWalletBalance(walletSigner, walletAddress);
+
+    queryClient.setQueryData(
+      ["wallet-balance", walletAddress],
+      walletData
+    );
+
+    return { session, walletData };
   };
 
   const refreshWalletStateAfterTx = async () => {
@@ -304,6 +333,7 @@ function useCardanoWalletState() {
     connect: connectWallet,
     disconnect: disconnectWallet,
     reloadWalletState,
+    retryWalletAccess,
     refreshWalletStateAfterTx,
     blockchainProvider,
     txBuilder,

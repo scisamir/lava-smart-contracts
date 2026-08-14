@@ -3,7 +3,7 @@ import { Button } from "../ui/button"
 import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
-import { ensureWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
+import { retryWalletAuthSession, type WalletSigner } from "@/lib/walletAuth";
 import { getTransactionExplorerUrl } from "@/lib/networkConfig";
 
 export const BatchOrders = ({ totalOrder }: any) => {
@@ -31,9 +31,8 @@ export const BatchOrders = ({ totalOrder }: any) => {
       setIsProcessing(true);
 
       try {
-        const session = await ensureWalletAuthSession(
+        const session = await retryWalletAuthSession(
           wallet as WalletSigner,
-          walletAddress,
           walletAddress
         );
 

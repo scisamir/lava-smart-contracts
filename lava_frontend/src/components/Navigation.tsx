@@ -11,6 +11,8 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ConnectedWalletModal } from "./wallet/ConnectedWalletModal";
 import { LAVA_LOGO } from "@/lib/images";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
+import { networkConfig } from "@/lib/networkConfig";
+import { MintTestTokens } from "./stake/MinTestTokens";
 
 type DetectedWallet = {
   key: string;
@@ -59,6 +61,7 @@ const WalletOptions = ({ onConnect }: { onConnect: (name: string) => void }) => 
 const Navigation = () => {
   const router = useRouter();
   const { connected, connect, disconnect, walletAddress } = useCardanoWallet();
+  const showMintTestTokens = networkConfig.name === "preprod";
 
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -139,6 +142,12 @@ const Navigation = () => {
                 </Link>
               ))}
             </div>
+
+            {showMintTestTokens && (
+              <div className="hidden md:inline-block">
+                <MintTestTokens />
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -244,6 +253,15 @@ const Navigation = () => {
                         {item.label}
                       </button>
                     ))}
+
+                    {showMintTestTokens && (
+                      <div className="pt-2">
+                        <MintTestTokens
+                          variant="mobile"
+                          className="mobile-nav-item px-4 py-3 text-white text-[16px] leading-[100%] tracking-[-0.02em] hover:opacity-80 transition-opacity w-full text-left rounded-lg"
+                        />
+                      </div>
+                    )}
 
                   </div>
                 </SheetContent>
