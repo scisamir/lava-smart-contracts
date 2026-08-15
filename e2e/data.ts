@@ -43,14 +43,16 @@ const assetType = (
 const stakeType = (
   poolAsset: any,
   poolStakeAssetName: string,
-  address?: any,
-  datumVerifierHash?: string,
+  address: any | undefined,
+  datumVerifierHash: string | undefined,
+  rewardsValidatorHash: string,
 ) =>
   mConStr0([
     poolAsset,
     poolStakeAssetName,
     address ? some(address) : none(),
     datumVerifierHash ? some(datumVerifierHash) : none(),
+    rewardsValidatorHash,
   ]);
 
 const globalSettingsDatum = (
@@ -62,7 +64,6 @@ const globalSettingsDatum = (
   frostAddress: any,
   authorizedSwapScripts: string[],
   stakeValidatorHash: string,
-  rewardsValidatorHash: string,
   minPoolLovelace: number | bigint,
 ) =>
   mConStr0([
@@ -74,7 +75,6 @@ const globalSettingsDatum = (
     frostAddress,
     authorizedSwapScripts,
     stakeValidatorHash,
-    rewardsValidatorHash,
     minPoolLovelace,
   ]);
 

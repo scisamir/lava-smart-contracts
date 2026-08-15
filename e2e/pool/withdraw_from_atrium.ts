@@ -10,7 +10,6 @@ import {
   serializeRewardAddress,
   type Asset,
 } from "@meshsdk/core";
-import { applyParamsToScript as applyCslParamsToScript } from "@meshsdk/core-csl";
 import {
   BASKET_TOKEN_UNIT,
   CONFIG as ATRIUM_CONFIG,
@@ -144,18 +143,28 @@ const validateGlobalSettings = (
   expectedAtriumSwapValidatorHash: string,
 ) => {
   const gsDatum = deserializeDatum<any>(gsPlutusData);
-  const storedRewardsValidatorHash = getBytes(
-    gsDatum.fields[8],
-    "global settings rewards_validator_hash",
-  );
   const storedAuthorizedSwapScripts = getBytesList(
     gsDatum.fields[6],
     "global settings authorized_swap_scripts",
   );
 
+  const stakeDetails = gsDatum.fields[4].list as any[];
+  const atriumStakeDetail = stakeDetails.find(
+    (stakeDetail) =>
+      stakeDetail.fields[1].bytes === ATRIUM_POOL_STAKE_ASSET_NAME,
+  );
+  if (!atriumStakeDetail) {
+    throw new Error("Atrium stake_detail not found in global settings");
+  }
+
+  const storedRewardsValidatorHash = getBytes(
+    atriumStakeDetail.fields[4],
+    "atrium stake_detail rewards_validator_hash",
+  );
+
   if (storedRewardsValidatorHash !== expectedRewardsValidatorHash) {
     throw new Error(
-      "Global settings rewards_validator_hash does not match the live Atrium pool. Re-run e2e/global_settings/update_gs.ts with the current Atrium pool seed.",
+      "Atrium stake_detail rewards_validator_hash does not match the live Atrium pool. Re-run e2e/global_settings/update_gs.ts with the current Atrium pool seed.",
     );
   }
 
@@ -385,7 +394,7 @@ const main = async (): Promise<void> => {
       ATRIUM_CONFIG.basketTokenCS,
       ATRIUM_CONFIG.basketTokenTN,
     )
-    .mintingScript(applyCslParamsToScript(ATRIUM_CONFIG.basketTokenMPCbor, []))
+    .mintingScript(applyParamsToScript(ATRIUM_CONFIG.basketTokenMPCbor, []))
     .mintRedeemerValue({ constructor: 0, fields: [] }, "JSON")
     .txOut(atriumStakePool.utxo.output.address, [
       { unit: "lovelace", quantity: updatedAtriumLovelace.toString() },

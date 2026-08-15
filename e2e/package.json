@@ -4,6 +4,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "build": "tsc",
+    "bootstrap:check": "npm run build && node ./dist/e2e/utils/checkBootstrap.js",
+    "check": "tsc --noEmit",
+    "deployment:check": "npm run build && node ./dist/e2e/utils/checkDeployment.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "atrium:build": "node ./node_modules/typescript/bin/tsc -p ./atrium_mainnet/tsconfig.deposit.json",
     "atrium:deposit": "npm run atrium:build && node ./dist/e2e/atrium_mainnet/depositToAtrium.js",
@@ -13,8 +17,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@meshsdk/core": "^1.9.0-beta.87",
-    "@meshsdk/core-csl": "^1.9.0-beta.87",
+    "@meshsdk/core": "1.9.1",
     "blakejs": "^1.2.1",
     "dotenv": "^17.2.3",
     "typescript": "^5.9.3"
