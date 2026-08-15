@@ -15,8 +15,7 @@ use lava/constants.{precision_factor}
 use lava/types.{
   AddRewards, AddRewardsPool, AssetType, ClaimAdaRewards, CreatPoolRedeemer,
   GlobalSettingsDatum, PoolDatum, PoolRedeemer, ProcessPool, StakePool,
-  StakeType,
-  UpdatePoolProcessingState,
+  StakeType, UpdatePoolProcessingState,
 }
 use lava/utils.{
   find_pool_input, find_pool_output, get_global_settings, is_signed_by,

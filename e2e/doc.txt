@@ -5,6 +5,24 @@ GUIDE
 - Create and cancel order, or create and batch orders
 
 
+----------------------------------LATEST SMART CONTRACTS (Preprod)------------------------------------------
+Create global settings tx hash: c2e5d594db1254ede2e56a17e4e09f982049d9d406a3927141ad97dab5362019
+Update global settings tx hash: d5de03cb6acedf63f0563c9054b0155037ccc038a5072d79f6e260c2cd16b636
+
+Create atrium pool tx hash: edb3c63cd0807af81cffb78f70116200d1f933b4944b0fc46bbf5c2f670845ef
+
+Create Atrium opt-in order tx hash: c1683b6a089e3bcada69abb1f271a041a4af951ef54ea478ac5607a2784cd2ef
+batching tx hash: 323f6ac7ae52dd6af48b2b553f0e89985c1bb1b4f0b1725a753272cd3cfaba9a
+
+Create Atrium redeem order tx hash: 1c4f0813e6a7807ee23e1ccc2f43eaf4897a234d6c4b57038aac7ab9ec9dc8a3
+batching tx hash: d7c47305f87dba3c211bc370f158d827ff93e19e69b4bd019e398c4034e15b69
+
+
+
+
+
+
+
 
 ----------------------------------LATEST SMART CONTRACTS (Mainnet)------------------------------------------
 Create global settings tx hash: c7b4b43b751f46e185aa56bc98af4a442400b895dc74a8ef17b595b371ca642d

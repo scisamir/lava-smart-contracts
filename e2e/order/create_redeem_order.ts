@@ -19,7 +19,28 @@ import {
 } from "./validator.js";
 import { MintingHash } from "../mint/validator.js";
 
-const STAKE_ASSET_TO_REDEEM = 10_000_000n;
+const DEFAULT_STAKE_ASSET_TO_REDEEM = 10_000_000n;
+const stakeAssetUnit = MintingHash + ATRIUM_POOL_STAKE_ASSET_NAME;
+const availableStakeAsset = wallet1Utxos
+  .flatMap((utxo) => utxo.output.amount)
+  .filter((asset) => asset.unit === stakeAssetUnit)
+  .reduce((total, asset) => total + BigInt(asset.quantity), 0n);
+
+console.log(
+  "Available stake asset:",
+  stakeAssetUnit,
+  availableStakeAsset.toString(),
+);
+const STAKE_ASSET_TO_REDEEM =
+  availableStakeAsset < DEFAULT_STAKE_ASSET_TO_REDEEM
+    ? availableStakeAsset
+    : DEFAULT_STAKE_ASSET_TO_REDEEM;
+
+if (STAKE_ASSET_TO_REDEEM <= 0n) {
+  throw new Error(
+    `No ${ATRIUM_POOL_STAKE_ASSET_NAME} balance available to redeem`,
+  );
+}
 
 const orderData = orderDatum(
   redeemOrderType(STAKE_ASSET_TO_REDEEM),

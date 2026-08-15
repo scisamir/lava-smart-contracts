@@ -11,7 +11,6 @@ import {
   serializeRewardAddress,
   type Asset,
 } from "@meshsdk/core";
-import { applyParamsToScript as applyCslParamsToScript } from "@meshsdk/core-csl";
 import {
   CONFIG as ATRIUM_CONFIG,
   STAKE_POOL_UNIT,
@@ -177,20 +176,10 @@ const validateGlobalSettings = (
     gsDatum.fields[7],
     "global settings stake_validator_hash",
   );
-  const storedRewardsValidatorHash = getBytes(
-    gsDatum.fields[8],
-    "global settings rewards_validator_hash",
-  );
 
   if (storedStakeValidatorHash !== StakeValidatorHash) {
     throw new Error(
       "Global settings stake_validator_hash is stale. Re-run e2e/global_settings/update_gs.ts after rebuilding the contracts.",
-    );
-  }
-
-  if (storedRewardsValidatorHash !== expectedRewardsValidatorHash) {
-    throw new Error(
-      "Global settings rewards_validator_hash does not match the live Atrium pool. Re-run e2e/global_settings/update_gs.ts with the current Atrium pool seed.",
     );
   }
 
@@ -202,6 +191,16 @@ const validateGlobalSettings = (
 
   if (!atriumStakeDetail) {
     throw new Error("Atrium stake_detail not found in global settings");
+  }
+
+  const storedRewardsValidatorHash = getBytes(
+    atriumStakeDetail.fields[4],
+    "atrium stake_detail rewards_validator_hash",
+  );
+  if (storedRewardsValidatorHash !== expectedRewardsValidatorHash) {
+    throw new Error(
+      "Atrium stake_detail rewards_validator_hash does not match the live Atrium pool. Re-run e2e/global_settings/update_gs.ts with the current Atrium pool seed.",
+    );
   }
 
   const storedStakeAddressDatum = getOptionValue(
@@ -421,7 +420,7 @@ const main = async (): Promise<void> => {
       ATRIUM_CONFIG.basketTokenCS,
       ATRIUM_CONFIG.basketTokenTN,
     )
-    .mintingScript(applyCslParamsToScript(ATRIUM_CONFIG.basketTokenMPCbor, []))
+    .mintingScript(applyParamsToScript(ATRIUM_CONFIG.basketTokenMPCbor, []))
     .mintRedeemerValue(ATRIUM_DEPOSIT_REDEEMER, "JSON")
     .txOut(PoolValidatorAddr, [
       { unit: "lovelace", quantity: String(MinPoolLovelace) },

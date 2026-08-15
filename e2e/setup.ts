@@ -12,11 +12,7 @@ import {
   stringToHex,
 } from "@meshsdk/core";
 import blueprint from "../smart_contract/plutus.json" with { type: "json" };
-import {
-  LAVA_NETWORK,
-  NETWORK_CONFIG,
-  NETWORK_ID,
-} from "./network.js";
+import { LAVA_NETWORK, NETWORK_CONFIG, NETWORK_ID } from "./network.js";
 
 // Setup blockchain provider as Maestro
 const maestroKey = process.env.MAESTRO_KEY;
@@ -152,7 +148,7 @@ const txBuilder = new MeshTxBuilder({
   // evaluator: blockfrostProvider,
   verbose: false,
 });
-txBuilder.setNetwork(NETWORK_CONFIG.meshNetwork);
+txBuilder.setNetwork(await blockchainProvider.fetchCostModels());
 // txBuilder.txEvaluationMultiplier = 1.6
 
 // test mint

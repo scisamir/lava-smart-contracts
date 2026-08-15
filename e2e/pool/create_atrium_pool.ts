@@ -1,4 +1,4 @@
-import { mConStr0, stringToHex } from "@meshsdk/core";
+import { deserializeDatum, mConStr0, stringToHex } from "@meshsdk/core";
 import {
   multiSigAddress,
   multiSigCbor,
@@ -60,9 +60,24 @@ const createPoolRedeemer = mConStr0([
   outputReferenceData(seedUtxo.input.txHash, seedUtxo.input.outputIndex),
 ]);
 
-const gsUtxo = (
-  await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr)
-)[0];
+const gsUtxos = await blockchainProvider.fetchAddressUTxOs(GlobalSettingsAddr);
+if (gsUtxos.length !== 1) {
+  throw new Error(
+    `Expected one global settings UTxO, found ${gsUtxos.length}`,
+  );
+}
+
+const [gsUtxo] = gsUtxos;
+if (!gsUtxo.output.plutusData) {
+  throw new Error("Global settings datum not found");
+}
+
+const globalSettings = deserializeDatum<any>(gsUtxo.output.plutusData);
+if (globalSettings.fields?.length !== 9) {
+  throw new Error(
+    "Global settings uses a different schema. Recreate it with the current plutus.json before creating the pool.",
+  );
+}
 
 const unsignedTx = await txBuilder
   .txIn(

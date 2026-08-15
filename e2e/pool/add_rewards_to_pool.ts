@@ -75,6 +75,19 @@ const getList = (value: unknown, label: string): unknown[] => {
   throw new Error(`Expected list for ${label}`);
 };
 
+const getFields = (value: unknown, label: string): unknown[] => {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "fields" in value &&
+    Array.isArray((value as { fields: unknown[] }).fields)
+  ) {
+    return (value as { fields: unknown[] }).fields;
+  }
+
+  throw new Error(`Expected constructor fields for ${label}`);
+};
+
 const getConstructor = (value: unknown, label: string): number => {
   if (
     typeof value === "object" &&
@@ -186,18 +199,33 @@ const main = async (): Promise<void> => {
     );
   }
 
+  const stakeDetails = getList(
+    gsDatum.fields[4],
+    "global settings stake_details",
+  );
+  const configuredStakeDetail = stakeDetails.find((stakeDetail, index) => {
+    const fields = getFields(stakeDetail, `stake_details[${index}]`);
+    return (
+      getBytes(fields[1], `stake_details[${index}].pool_stake_asset_name`) ===
+      ATRIUM_POOL_STAKE_ASSET_NAME
+    );
+  });
+  if (!configuredStakeDetail) {
+    throw new Error("LADA stake_detail not found in global settings");
+  }
+
   const configuredRewardsValidatorHash = getBytes(
-    gsDatum.fields[8],
-    "global settings rewards_validator_hash",
+    getFields(configuredStakeDetail, "LADA stake_detail")[4],
+    "LADA stake_detail rewards_validator_hash",
   );
   if (configuredRewardsValidatorHash !== RewardsValidatorHash) {
     throw new Error(
-      "Global settings rewards_validator_hash does not match the live Atrium rewards validator. Re-run e2e/global_settings/update_gs.ts with the current Atrium pool seed.",
+      "LADA stake_detail rewards_validator_hash does not match the live rewards validator. Re-run e2e/global_settings/update_gs.ts with the current pool seed.",
     );
   }
 
   const minPoolLovelace = getInteger(
-    gsDatum.fields[9],
+    gsDatum.fields[8],
     "global settings min_pool_lovelace",
   );
 

@@ -1,9 +1,4 @@
-import {
-  deserializeAddress,
-  mConStr0,
-  mScriptAddress,
-  stringToHex,
-} from "@meshsdk/core";
+import { deserializeAddress, mConStr0, mScriptAddress } from "@meshsdk/core";
 import {
   blockchainProvider,
   GlobalSettingsNft,
@@ -24,7 +19,6 @@ import {
   assetType,
   globalSettingsDatum,
   spendScriptSigner,
-  stakeType,
   verificationKeySigner,
 } from "../data.js";
 import {
@@ -34,55 +28,35 @@ import {
   gsParamTxHash,
   gsParamTxIdx,
 } from "./validator.js";
-import { CONFIG as ATRIUM_CONFIG } from "../atrium_mainnet/src/config.js";
 import { MintingHash } from "../mint/validator.js";
-import {
-  AtriumPoolNftName,
-  AtriumPoolNftNameSource,
-  PredictedAtriumPoolNftName,
-  RewardsValidatorHash,
-} from "../rewards/validator.js";
 import { StakeValidatorHash } from "../stake/validator.js";
-import { AtriumStakeValidatorHash } from "../stake_datums/atrium/validator.js";
-import { AtriumSwapValidatorHash } from "../swap_validators/atrium/validator.js";
 
-const ATRIUM_POOL_STAKE_ASSET_NAME = stringToHex("LADA");
-
-const atriumAsset = assetType("", "", 1_000_000);
-
+const adaAsset = assetType("", "", 1_000_000);
 const {
-  scriptHash: atriumStakePoolPaymentHash,
-  stakeCredentialHash: atriumStakePoolStakeKeyHash,
-  stakeScriptCredentialHash: atriumStakePoolStakeScriptHash,
-} = deserializeAddress(ATRIUM_CONFIG.stakePoolAddress);
+  scriptHash: frostPaymentHash,
+  stakeCredentialHash: frostStakeKeyHash,
+  stakeScriptCredentialHash: frostStakeScriptHash,
+} = deserializeAddress(multiSigAddress);
 
-if (!atriumStakePoolPaymentHash) {
-  throw new Error("Atrium stakePoolAddress must be a script address");
+if (!frostPaymentHash) {
+  throw new Error("multiSigAddress must be a script address");
 }
 
-const atriumStakePoolAddress = mScriptAddress(
-  atriumStakePoolPaymentHash,
-  atriumStakePoolStakeScriptHash || atriumStakePoolStakeKeyHash || undefined,
-  Boolean(atriumStakePoolStakeScriptHash),
-);
-
-const atriumStakeDetail = stakeType(
-  atriumAsset,
-  ATRIUM_POOL_STAKE_ASSET_NAME,
-  atriumStakePoolAddress,
-  AtriumStakeValidatorHash,
+const frostAddress = mScriptAddress(
+  frostPaymentHash,
+  frostStakeScriptHash || frostStakeKeyHash || undefined,
+  Boolean(frostStakeScriptHash),
 );
 
 const GlobalSettingsDatum = globalSettingsDatum(
   spendScriptSigner(multisigHash), // admin
   [verificationKeySigner(wallet1VK)], // authorized_batchers
-  [atriumAsset], // allowed_assets
+  [adaAsset], // allowed_assets
   MintingHash, // mint_validator_hash
-  [atriumStakeDetail], // stake_details
-  mScriptAddress(RewardsValidatorHash), // frost_address
-  [AtriumSwapValidatorHash], // authorized_swap_scripts
+  [], // stake_details
+  frostAddress, // frost_address
+  [], // authorized_swap_scripts
   StakeValidatorHash, // stake_validator_hash
-  RewardsValidatorHash, // rewards_validator_hash
   MinPoolLovelace, // min_pool_lovelace
 );
 
@@ -103,14 +77,8 @@ if (!gsParamUtxo) {
   throw new Error("Global settings parameter UTxO not found");
 }
 
-console.log("Predicted Atrium pool NFT:", PredictedAtriumPoolNftName);
-console.log("Resolved Atrium pool NFT:", AtriumPoolNftName);
-console.log("Atrium pool NFT source:", AtriumPoolNftNameSource);
-console.log("Atrium minting policy:", ATRIUM_CONFIG.basketTokenCS);
-console.log("Atrium stake validator hash:", AtriumStakeValidatorHash);
-console.log("Atrium swap validator hash:", AtriumSwapValidatorHash);
 console.log("Stake validator hash:", StakeValidatorHash);
-console.log("Rewards validator hash:", RewardsValidatorHash);
+console.log("Creating bootstrap global settings");
 
 const unsignedTx = await txBuilder
   .txIn(

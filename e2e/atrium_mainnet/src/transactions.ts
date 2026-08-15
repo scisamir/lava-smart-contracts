@@ -5,8 +5,7 @@
 // Each function returns an unsigned transaction hex that can be signed
 // and submitted by the wallet.
 
-import { MeshTxBuilder, type UTxO } from "@meshsdk/core";
-import { applyParamsToScript } from "@meshsdk/core-csl";
+import { applyParamsToScript, MeshTxBuilder, type UTxO } from "@meshsdk/core";
 import { CONFIG, STAKE_POOL_UNIT } from "./config.js";
 import { encodeStakePoolDatum, encodeBasketState } from "./datum.js";
 import { lovelaceToBasketTokens, basketTokensToLovelace, formatExRate, formatLovelace } from "./math.js";
