@@ -13,7 +13,12 @@ import {
 import { OrderDatumType } from './e2e/types';
 import { setupE2e } from './e2e/setup';
 import { jsonResponse, normalizeCardanoAddress, parseJsonBody, verifyAccessToken } from './security';
-import { createMaestroProvider, createMeshTxBuilder } from './cardano';
+import {
+  applyLiveProtocolParams,
+  createMaestroProvider,
+  createMeshTxBuilder,
+  repairScriptIntegrityHash,
+} from './cardano';
 
 export const handler = async (
   event: APIGatewayProxyEvent
@@ -59,6 +64,7 @@ export const handler = async (
 
     const provider = createMaestroProvider(maestroKey);
     const txBuilder = createMeshTxBuilder(provider, true);
+    await applyLiveProtocolParams(txBuilder, provider);
 
     const { NETWORK_ID } = setupE2e();
 
@@ -126,7 +132,9 @@ export const handler = async (
       .requiredSignerHash(walletVK)
       .complete();
 
-    return jsonResponse(200, { unsignedTx }, auth.origin);
+    return jsonResponse(200, {
+      unsignedTx: await repairScriptIntegrityHash(unsignedTx, maestroKey),
+    }, auth.origin);
   } catch (error) {
     console.error('Build cancel order tx error:', error);
     return jsonResponse(

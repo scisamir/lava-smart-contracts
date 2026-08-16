@@ -2,7 +2,12 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { UTxO } from '@meshsdk/core';
 import { setupE2e } from './e2e/setup';
 import { jsonResponse, normalizeCardanoAddress, parseJsonBody, verifyAccessToken } from './security';
-import { createMaestroProvider, createMeshTxBuilder } from './cardano';
+import {
+  applyLiveProtocolParams,
+  createMaestroProvider,
+  createMeshTxBuilder,
+  repairScriptIntegrityHash,
+} from './cardano';
 
 export const handler = async (
   event: APIGatewayProxyEvent
@@ -40,6 +45,7 @@ export const handler = async (
 
     const provider = createMaestroProvider(maestroKey);
     const txBuilder = createMeshTxBuilder(provider);
+    await applyLiveProtocolParams(txBuilder, provider);
 
     const {
       alwaysSuccessMintValidatorHash,
@@ -66,7 +72,9 @@ export const handler = async (
       .selectUtxosFrom(walletUtxos)
       .complete();
 
-    return jsonResponse(200, { unsignedTx }, auth.origin);
+    return jsonResponse(200, {
+      unsignedTx: await repairScriptIntegrityHash(unsignedTx, maestroKey),
+    }, auth.origin);
   } catch (error) {
     console.error('Build mint test tokens tx error:', error);
     return jsonResponse(

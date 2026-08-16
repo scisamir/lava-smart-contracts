@@ -43,6 +43,22 @@ type WalletBalanceResponse = {
   collateral?: UTxO | null;
 };
 
+const getWalletChangeAddress = async (wallet: WalletSigner): Promise<string> => {
+  const walletWithBech32 = wallet as WalletSigner & {
+    getChangeAddressBech32?: () => Promise<string>;
+  };
+
+  if (typeof walletWithBech32.getChangeAddressBech32 === "function") {
+    try {
+      return await walletWithBech32.getChangeAddressBech32();
+    } catch (error) {
+      console.warn("getChangeAddressBech32 failed, falling back to getChangeAddress:", error);
+    }
+  }
+
+  return wallet.getChangeAddress();
+};
+
 const fetchWalletBalance = async (
   wallet: WalletSigner,
   address: string
@@ -166,7 +182,7 @@ function useCardanoWalletState() {
       }
 
       try {
-        const addr = await wallet.getChangeAddressBech32();
+        const addr = await getWalletChangeAddress(wallet as WalletSigner);
         setWalletAddress(addr);
 
         const { pubKeyHash, stakeCredentialHash } = deserializeAddress(addr);

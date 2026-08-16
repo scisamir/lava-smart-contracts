@@ -1,4 +1,14 @@
 import { MaestroProvider, MeshTxBuilder } from '@meshsdk/core';
+import {
+  blake2b,
+  CborWriter,
+  CostModel,
+  Costmdls,
+  Hash32ByteBase16,
+  HexBlob,
+  Transaction,
+  TxCBOR,
+} from '@meshsdk/core-cst';
 import networkConfigsJson from '../../config/lava-networks.json';
 
 export type LavaNetwork = 'preprod' | 'mainnet';
@@ -55,4 +65,235 @@ export const createMeshTxBuilder = (
 
   txBuilder.setNetwork(cardanoConfig.meshNetwork);
   return txBuilder;
+};
+
+type PlutusCostModels = {
+  PlutusV1?: number[];
+  PlutusV2?: number[];
+  PlutusV3?: number[];
+};
+
+const CBOR_EMPTY_MAP = new Uint8Array([160]);
+
+const normalizeCostModel = (value: unknown): number[] | undefined => {
+  if (Array.isArray(value) && value.every((item) => Number.isInteger(item))) {
+    return value;
+  }
+
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+
+  const entries = Object.entries(value);
+  if (!entries.every(([, item]) => Number.isInteger(item))) {
+    return undefined;
+  }
+
+  if (entries.every(([key]) => /^\d+$/.test(key))) {
+    return entries
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([, item]) => Number(item));
+  }
+
+  return entries.map(([, item]) => Number(item));
+};
+
+const pickCostModel = (
+  payload: unknown,
+  aliases: string[]
+): number[] | undefined => {
+  if (typeof payload === 'string') {
+    try {
+      return pickCostModel(JSON.parse(payload), aliases);
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (typeof payload !== 'object' || payload === null) {
+    return undefined;
+  }
+
+  const record = payload as Record<string, unknown>;
+  for (const alias of aliases) {
+    const model = normalizeCostModel(record[alias]);
+    if (model) {
+      return model;
+    }
+  }
+
+  for (const value of Object.values(record)) {
+    const nested = pickCostModel(value, aliases);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return undefined;
+};
+
+const extractCostModels = (payload: unknown): PlutusCostModels => ({
+  PlutusV1: pickCostModel(payload, [
+    'PlutusV1',
+    'plutus_v1',
+    'plutusv1',
+    'plutusV1',
+    'costModelsPlutusV1',
+    'v1',
+  ]),
+  PlutusV2: pickCostModel(payload, [
+    'PlutusV2',
+    'plutus_v2',
+    'plutusv2',
+    'plutusV2',
+    'costModelsPlutusV2',
+    'v2',
+  ]),
+  PlutusV3: pickCostModel(payload, [
+    'PlutusV3',
+    'plutus_v3',
+    'plutusv3',
+    'plutusV3',
+    'costModelsPlutusV3',
+    'v3',
+  ]),
+});
+
+const fetchJson = async (
+  url: string,
+  headers?: Record<string, string>
+): Promise<unknown> => {
+  const response = await fetch(url, { headers });
+  const body = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`${url} returned ${response.status}: ${body.slice(0, 200)}`);
+  }
+
+  return JSON.parse(body);
+};
+
+const fetchCurrentCostModels = async (maestroApiKey?: string): Promise<PlutusCostModels> => {
+  const maestroBaseUrl = `https://${cardanoConfig.maestroNetwork}.gomaestro-api.org/v1`;
+  const headers = maestroApiKey ? { 'api-key': maestroApiKey } : undefined;
+
+  for (const endpoint of ['protocol-parameters', 'protocol-params']) {
+    try {
+      const payload = await fetchJson(`${maestroBaseUrl}/${endpoint}`, headers);
+      const models = extractCostModels(payload);
+      if (models.PlutusV3) {
+        return models;
+      }
+    } catch (error) {
+      console.warn(`Unable to fetch Maestro ${endpoint}:`, error);
+    }
+  }
+
+  const koiosHost =
+    lavaNetwork === 'preprod'
+      ? 'https://preprod.koios.rest'
+      : 'https://api.koios.rest';
+  const koiosPayload = await fetchJson(
+    `${koiosHost}/api/v1/cli_protocol_params`,
+    { accept: 'application/json' }
+  );
+  const models = extractCostModels(koiosPayload);
+
+  if (!models.PlutusV3) {
+    throw new Error('Unable to resolve live Plutus V3 cost model');
+  }
+
+  return models;
+};
+
+const hasItems = (value: { size: () => number } | undefined): boolean =>
+  Boolean(value && value.size() > 0);
+
+const buildCostmdls = (witnessSet: ReturnType<Transaction['witnessSet']>, models: PlutusCostModels): Costmdls => {
+  const costmdls = new Costmdls();
+  const hasV1 = hasItems(witnessSet.plutusV1Scripts());
+  const hasV2 = hasItems(witnessSet.plutusV2Scripts());
+  const hasV3 = hasItems(witnessSet.plutusV3Scripts());
+
+  if (hasV1 && models.PlutusV1) {
+    costmdls.insert(CostModel.newPlutusV1(models.PlutusV1));
+  }
+  if (hasV2 && models.PlutusV2) {
+    costmdls.insert(CostModel.newPlutusV2(models.PlutusV2));
+  }
+  if ((hasV3 || (!hasV1 && !hasV2)) && models.PlutusV3) {
+    costmdls.insert(CostModel.newPlutusV3(models.PlutusV3));
+  }
+
+  return costmdls;
+};
+
+const computeScriptDataHash = (
+  costModels: Costmdls,
+  redeemers: ReturnType<ReturnType<Transaction['witnessSet']>['redeemers']>,
+  datums: ReturnType<ReturnType<Transaction['witnessSet']>['plutusData']>
+): string | undefined => {
+  const writer = new CborWriter();
+
+  if (datums && datums.size() > 0 && (!redeemers || redeemers.size() === 0)) {
+    writer.writeEncodedValue(CBOR_EMPTY_MAP);
+    writer.writeEncodedValue(Buffer.from(datums.toCbor(), 'hex'));
+    writer.writeEncodedValue(CBOR_EMPTY_MAP);
+  } else {
+    if (!redeemers || redeemers.size() === 0) {
+      return undefined;
+    }
+
+    writer.writeEncodedValue(Buffer.from(redeemers.toCbor(), 'hex'));
+    if (datums && datums.size() > 0) {
+      writer.writeEncodedValue(Buffer.from(datums.toCbor(), 'hex'));
+    }
+    writer.writeEncodedValue(Buffer.from(costModels.languageViewsEncoding(), 'hex'));
+  }
+
+  return blake2b.hash(
+    HexBlob(Buffer.from(writer.encode()).toString('hex')),
+    32
+  );
+};
+
+export const applyLiveProtocolParams = async (
+  txBuilder: MeshTxBuilder,
+  provider: MaestroProvider
+): Promise<void> => {
+  try {
+    txBuilder.protocolParams(await provider.fetchProtocolParameters());
+  } catch (error) {
+    console.warn('Unable to fetch live protocol parameters:', error);
+  }
+};
+
+export const repairScriptIntegrityHash = async (
+  txHex: string,
+  maestroApiKey?: string
+): Promise<string> => {
+  const tx = Transaction.fromCbor(TxCBOR(txHex));
+  const witnessSet = tx.witnessSet();
+  const redeemers = witnessSet.redeemers();
+
+  if (!redeemers || redeemers.size() === 0) {
+    return txHex;
+  }
+
+  const models = await fetchCurrentCostModels(maestroApiKey);
+  const scriptDataHash = computeScriptDataHash(
+    buildCostmdls(witnessSet, models),
+    redeemers,
+    witnessSet.plutusData()
+  );
+
+  if (!scriptDataHash) {
+    return txHex;
+  }
+
+  const body = tx.body();
+  body.setScriptDataHash(Hash32ByteBase16(scriptDataHash));
+  tx.setBody(body);
+
+  return tx.toCbor();
 };
