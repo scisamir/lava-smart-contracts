@@ -16,6 +16,7 @@ import { BatchingHash, BatchingRewardAddress } from "./validator";
 import { GlobalSettingsAddr } from "../global_settings/validator";
 import { BlockchainProviderType, OrderDatumType, PoolDatumType } from "../types";
 import { MintingHash, MintingValidatorScript } from "../mint/validator";
+import { repairScriptIntegrityHash } from "../../cardano";
 
 export const batchingTx = async (
   blockchainProvider: BlockchainProviderType,
@@ -50,15 +51,20 @@ export const batchingTx = async (
 
   const walletCollateral = [...walletUtxos]
     .filter((utxo) => {
-      if (utxo.output.amount.length !== 1) {
+      const lovelaceAsset = utxo.output.amount.find((asset) => asset.unit === "lovelace");
+      if (!lovelaceAsset) {
         return false;
       }
-      const [ada] = utxo.output.amount;
-      return ada?.unit === "lovelace" && BigInt(ada.quantity) >= 7_000_000n;
+
+      return BigInt(lovelaceAsset.quantity) >= 7_000_000n;
     })
     .sort((left, right) => {
-      const leftLovelace = BigInt(left.output.amount[0]?.quantity ?? "0");
-      const rightLovelace = BigInt(right.output.amount[0]?.quantity ?? "0");
+      const leftLovelace = BigInt(
+        left.output.amount.find((asset) => asset.unit === "lovelace")?.quantity ?? "0"
+      );
+      const rightLovelace = BigInt(
+        right.output.amount.find((asset) => asset.unit === "lovelace")?.quantity ?? "0"
+      );
       return leftLovelace === rightLovelace ? 0 : leftLovelace > rightLovelace ? -1 : 1;
     })[0];
 
@@ -308,7 +314,11 @@ export const batchingTx = async (
     .selectUtxosFrom(walletUtxos)
     .complete();
 
-  const signedTx = await wallet.signTx(unsignedTx);
+  const repairedTx = await repairScriptIntegrityHash(
+    unsignedTx,
+    process.env.MAESTRO_API_KEY,
+  );
+  const signedTx = await wallet.signTx(repairedTx);
   const txHash = await wallet.submitTx(signedTx);
 
   return txHash;

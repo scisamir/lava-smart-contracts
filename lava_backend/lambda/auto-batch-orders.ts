@@ -7,7 +7,11 @@ import {
 import { batchingTx } from './e2e/batching/batching';
 import { OrderValidatorAddr } from './e2e/order/validator';
 import { OrderDatumType } from './e2e/types';
-import { createMaestroProvider, createMeshTxBuilder } from './cardano';
+import {
+  applyLiveProtocolParams,
+  createMaestroProvider,
+  createMeshTxBuilder,
+} from './cardano';
 
 type PendingCounts = Record<string, number>;
 
@@ -85,6 +89,7 @@ export const handler = async (_event: ScheduledEvent) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const txBuilder = createMeshTxBuilder(blockchainProvider);
+        await applyLiveProtocolParams(txBuilder, blockchainProvider);
 
         successTxHash = await runBatch(poolStakeAssetNameHex, blockchainProvider, txBuilder);
         break;
