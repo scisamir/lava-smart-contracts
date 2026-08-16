@@ -79,7 +79,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
       }
 
       const data = await response.json();
-      const signedTx = await wallet.signTxReturnFullTx(String(data.unsignedTx), true);
+      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setIsProcessing(false);
