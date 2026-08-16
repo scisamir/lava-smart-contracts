@@ -9,7 +9,7 @@ import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
 import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
 import { fetchBackend } from "@/lib/backendClient";
-import { getTransactionExplorerUrl } from "@/lib/networkConfig";
+import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
 
 // PixelCorner removed — unused decorative element
 
@@ -235,6 +235,17 @@ export const StakingCard = () => {
       return;
     }
 
+    try {
+      const networkId = await wallet.getNetworkId();
+      if (networkId !== networkConfig.networkId) {
+        toastFailure(`Use ${networkConfig.label} network`);
+        return;
+      }
+    } catch {
+      toastFailure("Unable to verify network. Please try again.");
+      return;
+    }
+
     setIsProcessing(true);
 
     let txHash = "";
@@ -285,6 +296,17 @@ export const StakingCard = () => {
   const handleCreateRedeemOrder = async (amount: number, tokenName: string) => {
     if (!isVaultReady) {
       toastFailure("Vault configuration is unavailable. Please try again after backend sync.");
+      return;
+    }
+
+    try {
+      const networkId = await wallet.getNetworkId();
+      if (networkId !== networkConfig.networkId) {
+        toastFailure(`Use ${networkConfig.label} network`);
+        return;
+      }
+    } catch {
+      toastFailure("Unable to verify network. Please try again.");
       return;
     }
 

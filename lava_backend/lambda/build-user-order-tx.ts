@@ -151,7 +151,7 @@ export const handler = async (
     }
 
     const provider = createMaestroProvider(maestroKey);
-    const txBuilder = createMeshTxBuilder(provider, true);
+    const txBuilder = createMeshTxBuilder(provider);
 
     const defaultConfig = resolvePoolConfig(tokenName);
     const poolStakeAssetName = requestedPoolStakeAssetName || defaultConfig?.poolStakeAssetName;
@@ -209,27 +209,29 @@ export const handler = async (
       throw new Error('No collateral UTxO found');
     }
 
+    const gsReference = gsUtxo
+      ? { txHash: gsUtxo.input.txHash, outputIndex: gsUtxo.input.outputIndex }
+      : { txHash: gsParamTxHash, outputIndex: gsParamTxIdx };
+
+    if (!gsUtxo) {
+      console.warn(
+        'Global settings UTxO not found at derived address; falling back to configured output reference.'
+      );
+    }
+
     let builder = txBuilder
-      .txOut(OrderValidatorAddr, orderValue)
-      .txOutInlineDatumValue(datum)
+      .readOnlyTxInReference(gsReference.txHash, gsReference.outputIndex)
       .mintPlutusScriptV3()
       .mint('1', OrderValidatorHash, '')
       .mintingScript(OrderValidatorScript)
       .mintRedeemerValue(mConStr0([]))
+      .txOut(OrderValidatorAddr, orderValue)
+      .txOutInlineDatumValue(datum)
       .txInCollateral(collateral.input.txHash, collateral.input.outputIndex)
       .setTotalCollateral('5000000')
       .requiredSignerHash(walletVK)
       .changeAddress(walletAddress)
       .selectUtxosFrom(walletUtxos);
-
-    if (gsUtxo) {
-      builder = builder.readOnlyTxInReference(gsUtxo.input.txHash, gsUtxo.input.outputIndex);
-    } else {
-      console.warn(
-        'Global settings UTxO not found at derived address; falling back to configured output reference.'
-      );
-      builder = builder.readOnlyTxInReference(gsParamTxHash, gsParamTxIdx);
-    }
 
     const unsignedTx = await builder.complete();
 

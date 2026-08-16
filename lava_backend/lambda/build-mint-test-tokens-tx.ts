@@ -51,6 +51,9 @@ export const handler = async (
     const unsignedTx = await txBuilder
       .mintPlutusScriptV3()
       .mint('1000', alwaysSuccessMintValidatorHash, tStrikeAssetName)
+      .mintingScript(alwaysSuccessValidatorMintScript)
+      .mintRedeemerValue('')
+      .mintPlutusScriptV3()
       .mint('1000', alwaysSuccessMintValidatorHash, tPulseAssetName)
       .mintingScript(alwaysSuccessValidatorMintScript)
       .mintRedeemerValue('')
