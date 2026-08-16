@@ -1,10 +1,14 @@
 import {
+  hexToBytes,
   mConStr0,
   mConStr1,
   mConStr2,
   mConStr3,
   serializePlutusScript,
 } from "@meshsdk/core";
+import blakejs from "blakejs";
+
+const { blake2bHex } = blakejs;
 
 const falseData = () => mConStr0([]);
 const trueData = () => mConStr1([]);
@@ -109,6 +113,19 @@ const poolDatum = (
 const outputReferenceData = (txHash: string, outputIndex: number | bigint) =>
   mConStr0([txHash, outputIndex]);
 
+const computePoolNftName = (txHash: string, outputIndex: number) => {
+  const txHashBytes = hexToBytes(txHash);
+  const outputIndexBytes = Uint8Array.from(
+    Array.from(String(outputIndex)).map((char) => char.charCodeAt(0)),
+  );
+  const payload = new Uint8Array(txHashBytes.length + outputIndexBytes.length);
+
+  payload.set(txHashBytes);
+  payload.set(outputIndexBytes, txHashBytes.length);
+
+  return blake2bHex(payload, undefined, 28);
+};
+
 const serializeSelfStakedValidatorAddress = (
   script: string,
   scriptHash: string,
@@ -123,6 +140,7 @@ const serializeSelfStakedValidatorAddress = (
 
 export {
   assetType,
+  computePoolNftName,
   globalSettingsDatum,
   mintScriptSigner,
   none,

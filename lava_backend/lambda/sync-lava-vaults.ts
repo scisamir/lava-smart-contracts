@@ -99,7 +99,7 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
       const derivativeSymbol = hexToString(poolDatum.fields[6].bytes);
       const poolStakeAssetNameHex = String(poolDatum.fields[6].bytes ?? '');
 
-      const isPoolOpen = poolDatum.fields[7].constructor === 1;
+      const isPoolOpen = Number(poolDatum.fields[7].constructor) === 1;
       const totalUnderlying = Number(poolDatum.fields[2].int);
       const totalStAssetsMinted = Number(poolDatum.fields[1].int);
       const underlyingPolicyId = String(poolDatum.fields[5].fields[1].bytes ?? '');
