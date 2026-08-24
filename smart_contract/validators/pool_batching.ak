@@ -149,6 +149,8 @@ validator pool_batching(
           pool_stake_asset_name,
         )
       } else {
+        expect [] = mint |> assets.tokens(mint_validator_hash) |> dict.to_pairs
+
         True
       },
     }
@@ -203,9 +205,11 @@ fn process_orders(
 
       let is_ada_asset = policy_id == "" && asset_name == ""
 
-      let (order_amount, asset_amt_to_mint_or_burn) =
+      let (order_amount, asset_amt_to_mint_or_burn, remaining_outputs) =
         when order_type is {
           OptIn { deposit_amount } -> {
+            expect deposit_amount > 0
+
             let order_amount =
               if is_ada_asset {
                 lovelace_of(current_order.output.value)
@@ -245,7 +249,7 @@ fn process_orders(
                 |> assets.add(order_hash, nft_name, -quantity)
 
             // asset_amt_to_mint of pool_stake_asset_name should go to the user's address
-            expect Some(_) =
+            expect Some(user_output) =
               list.find(
                 outputs,
                 fn(output) {
@@ -256,9 +260,13 @@ fn process_orders(
                 },
               )
 
-            (deposit_amount, asset_amt_to_mint)
+            let remaining_outputs = list.delete(outputs, user_output)
+
+            (deposit_amount, asset_amt_to_mint, remaining_outputs)
           }
           Redeem { st_amount } -> {
+            expect st_amount > 0
+
             let st_amount_in_order =
               quantity_of(
                 current_order.output.value,
@@ -297,7 +305,7 @@ fn process_orders(
                 |> assets.add(order_hash, nft_name, -quantity)
 
             // order_amount should go to the user's address
-            expect Some(_) =
+            expect Some(user_output) =
               list.find(
                 outputs,
                 fn(output) {
@@ -308,7 +316,9 @@ fn process_orders(
                 },
               )
 
-            (-order_amount, -st_amount)
+            let remaining_outputs = list.delete(outputs, user_output)
+
+            (-order_amount, -st_amount, remaining_outputs)
           }
         }
 
@@ -321,7 +331,7 @@ fn process_orders(
         policy_id,
         asset_name,
         pool_stake_asset_name,
-        outputs,
+        remaining_outputs,
       )
     }
   }

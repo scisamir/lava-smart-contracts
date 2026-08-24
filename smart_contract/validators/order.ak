@@ -82,7 +82,9 @@ validator order_validator(
 
         let is_order_value_valid =
           when order_type is {
-            OptIn { deposit_amount } ->
+            OptIn { deposit_amount } -> {
+              expect deposit_amount > 0
+
               if is_ada_asset {
                 and {
                   without_lovelace(order_output.value) == from_asset(
@@ -98,7 +100,10 @@ validator order_validator(
                   from_asset(policy_id, order_nft_name, 1),
                 )
               }
-            Redeem { st_amount } ->
+            }
+            Redeem { st_amount } -> {
+              expect st_amount > 0
+
               without_lovelace(order_output.value) == assets.merge(
                 from_asset(
                   mint_validator_hash,
@@ -107,6 +112,7 @@ validator order_validator(
                 ),
                 from_asset(policy_id, order_nft_name, 1),
               )
+            }
           }
 
         and {
