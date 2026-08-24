@@ -24,6 +24,39 @@ const blockchainProvider = new MaestroProvider({
   apiKey: maestroKey,
 });
 
+const fetchProtocolParameters = async (attempts = 3): Promise<any> => {
+  try {
+    const response = await fetch(
+      `https://${NETWORK_CONFIG.maestroNetwork}.gomaestro-api.org/v1/protocol-parameters`,
+      { headers: { "api-key": maestroKey } },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch Maestro protocol parameters: ${response.status}`,
+      );
+    }
+    return response.json();
+  } catch (error) {
+    if (attempts === 1) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return fetchProtocolParameters(attempts - 1);
+  }
+};
+
+// Create transaction builder
+const txBuilder = new MeshTxBuilder({
+  fetcher: blockchainProvider,
+  submitter: blockchainProvider,
+  evaluator: blockchainProvider,
+  // evaluator: blockfrostProvider,
+  verbose: false,
+});
+const protocolParameters = await fetchProtocolParameters();
+const { plutus_v1, plutus_v2, plutus_v3 } =
+  protocolParameters.data.plutus_cost_models;
+txBuilder.setNetwork([plutus_v1, plutus_v2, plutus_v3]);
+// txBuilder.txEvaluationMultiplier = 1.6
+
 // import admin's wallet passphrase and initialize the wallet
 const wallet1Passphrase = process.env.WALLET_PASSPHRASE_ONE;
 if (!wallet1Passphrase) {
@@ -139,17 +172,6 @@ console.log(
       "def68337867cb4f1f95b6b811fedbfcdd7780d10a95cc072077088ea74657374",
   )?.quantity,
 );
-
-// Create transaction builder
-const txBuilder = new MeshTxBuilder({
-  fetcher: blockchainProvider,
-  submitter: blockchainProvider,
-  evaluator: blockchainProvider,
-  // evaluator: blockfrostProvider,
-  verbose: false,
-});
-txBuilder.setNetwork(await blockchainProvider.fetchCostModels());
-// txBuilder.txEvaluationMultiplier = 1.6
 
 // test mint
 // Always success mint validator
