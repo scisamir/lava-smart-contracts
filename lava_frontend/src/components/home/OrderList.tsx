@@ -1,7 +1,7 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Slug } from "@/components/layout/Section";
 import { XCircle } from "lucide-react";
 import { toast } from "react-toastify";
 import { OrderListProps, UserOrderType } from "@/lib/types";
@@ -129,7 +129,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
       }
 
       const data = await response.json();
-      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      const signedTx = await wallet.signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setSubmittingOrderKey("");
@@ -153,51 +153,57 @@ export const OrderList = ({ orders }: OrderListProps) => {
   };
 
   return (
-    <Card className="max-w-lg mx-auto p-6 bg-card/80 backdrop-blur-lg border-border shadow-glow-md mt-8">
-      <h2 className="text-xl font-semibold mb-4 text-center">Your Orders</h2>
-      <div className="space-y-3">
-        {orders.map((order) => (
-          <div
-            key={`${order.txHash}-${order.outputIndex ?? 0}`}
-            className="flex items-center justify-between bg-muted/40 rounded-lg p-3"
-          >
-            <div>
-              <p className="font-semibold">
-                {formatOrderAmount(order)} {order.tokenName}{" "}
-                <span className="text-gray-400">
-                  ({order.isOptIn ? "OptIn Order" : "Redeem Order"})
-                </span>
-              </p>
-              <a
-                href={getTransactionExplorerUrl(order.txHash)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-blue-400 underline"
+    <div data-reveal className="lava-panel mx-auto mt-8 w-full max-w-[520px] p-6">
+      <div className="relative z-[4]">
+        <div className="mb-4 flex items-center justify-between">
+          <Slug>/orders</Slug>
+          <span className="font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
+            {orders.length} pending
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {orders.map((order) => {
+            const orderKey = `${order.txHash}-${order.outputIndex ?? 0}`;
+            const isBusy =
+              (isSubmitting && submittingOrderKey === orderKey) || !!pendingCancelKeys[orderKey];
+
+            return (
+              <div
+                key={orderKey}
+                className="lava-well flex items-center justify-between gap-4 p-3.5"
               >
-                {order.txHash.slice(0, 10)}...
-              </a>
-            </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="bg-red-600 hover:bg-red-700"
-              onClick={async () => await handleCancelOrder(order)}
-              disabled={
-                !walletAddress ||
-                !walletVK ||
-                isSubmitting ||
-                !!pendingCancelKeys[`${order.txHash}-${order.outputIndex ?? 0}`]
-              }
-            >
-              <XCircle className="w-4 h-4 mr-1" />{" "}
-              {(isSubmitting && submittingOrderKey === `${order.txHash}-${order.outputIndex ?? 0}`) ||
-              pendingCancelKeys[`${order.txHash}-${order.outputIndex ?? 0}`]
-                ? "Processing..."
-                : "Cancel"}
-            </Button>
-          </div>
-        ))}
+                <div className="min-w-0">
+                  <p className="tabular truncate text-[15px] font-medium tracking-tighter">
+                    {formatOrderAmount(order)} {order.tokenName}
+                    <span className="ml-2 font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
+                      {order.isOptIn ? "opt-in" : "redeem"}
+                    </span>
+                  </p>
+                  <a
+                    href={getTransactionExplorerUrl(order.txHash)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono-lava text-[12px] text-dim transition-colors hover:text-[#ff9a4d]"
+                  >
+                    {order.txHash.slice(0, 10)}…
+                  </a>
+                </div>
+
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={async () => await handleCancelOrder(order)}
+                  disabled={!walletAddress || !walletVK || isSubmitting || isBusy}
+                >
+                  <XCircle className="h-4 w-4" />
+                  {isBusy ? "Processing…" : "Cancel"}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </Card>
+    </div>
   );
 };

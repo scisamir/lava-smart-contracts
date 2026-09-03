@@ -20,6 +20,17 @@ if (process.env.NODE_ENV === "production" && !backendUrl) {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // "/" serves the marketing landing page straight out of public/ — it ships its
+  // own WebGPU hero, importmap and ES modules, so it stays a static document
+  // rather than being rebuilt as a React page. beforeFiles runs ahead of the
+  // pages/ lookup, so no pages/index.tsx is needed (or wanted).
+  async rewrites() {
+    return {
+      beforeFiles: [{ source: "/", destination: "/landing.html" }],
+      afterFiles: [],
+      fallback: [],
+    };
+  },
   env: {
     LAVA_NETWORK: lavaNetwork,
   },

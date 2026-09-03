@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import { ChevronDown } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -9,13 +9,13 @@ const Accordion = AccordionPrimitive.Root;
 const AccordionItem = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
->(({ className, style, ...props }, ref) => (
+>(({ className, ...props }, ref) => (
   <AccordionPrimitive.Item
     ref={ref}
-    style={{ background: "var(--Color-2, #0D0D0D)", ...(style as any) }}
     className={cn(
-      "border-t", // add 1px top border per spec
-      className
+      "overflow-hidden rounded-[18px] bg-[#0d1116] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] transition-shadow",
+      "data-[state=open]:shadow-[inset_0_0_0_1px_rgba(255,154,77,0.28)]",
+      className,
     )}
     {...props}
   />
@@ -30,17 +30,14 @@ const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        // set requested dimensions, gap and paddings (units in px)
-        "flex flex-1 items-center justify-between gap-[24px] w-[768px] h-[72px] pt-[20px] pr-[24px] pb-[20px] pl-[24px] opacity-100 font-medium transition-all hover:underline",
+        "group flex flex-1 items-center justify-between gap-6 px-6 py-5 text-left text-[16px] font-medium tracking-tighter transition-colors hover:text-[#ff9a4d]",
         className,
       )}
       {...props}
     >
       {children}
-      <span className="ml-4 w-6 h-6 flex items-center justify-center accordion-toggle">
-        <span className="accordion-plus">+</span>
-        <span className="accordion-close">×</span>
-      </span>
+      {/* One glyph, rotated: the + becomes an × when the panel opens. */}
+      <Plus className="h-4 w-4 shrink-0 text-dim transition-transform duration-300 group-data-[state=open]:rotate-45 group-data-[state=open]:text-[#ff9a4d]" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));
@@ -52,13 +49,12 @@ const AccordionContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <AccordionPrimitive.Content
     ref={ref}
-    className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+    className="overflow-hidden text-[14px] leading-[1.6] text-dim data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
     {...props}
   >
-    <div className={cn("pb-4 pt-0", className)}>{children}</div>
+    <div className={cn("px-6 pb-5 pt-0", className)}>{children}</div>
   </AccordionPrimitive.Content>
 ));
-
 AccordionContent.displayName = AccordionPrimitive.Content.displayName;
 
 export { Accordion, AccordionItem, AccordionTrigger, AccordionContent };

@@ -52,7 +52,10 @@ const getWalletChangeAddress = async (wallet: WalletSigner): Promise<string> => 
     try {
       return await walletWithBech32.getChangeAddressBech32();
     } catch (error) {
-      console.warn("getChangeAddressBech32 failed, falling back to getChangeAddress:", error);
+      console.warn(
+        "getChangeAddressBech32 failed, falling back to getChangeAddress:",
+        error,
+      );
     }
   }
 
