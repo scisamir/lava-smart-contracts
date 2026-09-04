@@ -66,7 +66,6 @@ const Stake = () => {
 
     const refreshHandler = () => {
       void awaitFetchData();
-      // Follow-up fetches to catch on-chain indexing as blocks are minted
       [3000, 8000, 15000, 25000].forEach((delay) => {
         timeouts.push(setTimeout(() => void awaitFetchData(), delay));
       });
