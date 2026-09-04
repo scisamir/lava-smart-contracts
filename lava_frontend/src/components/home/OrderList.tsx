@@ -56,9 +56,25 @@ export const OrderList = ({ orders }: OrderListProps) => {
     });
   }, [orders, pendingCancelKeys]);
 
-  const hasVisibleOrders =
-    orders.length > 0 || Object.keys(pendingCancelKeys).length > 0;
-  if (!hasVisibleOrders) return null;
+  const getOptimisticOrders = (): UserOrderType[] => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = sessionStorage.getItem("lava_optimistic_orders");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as UserOrderType[];
+      const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+      return parsed.filter((o) => (o.firstSeenAt ?? 0) > tenMinutesAgo);
+    } catch {
+      return [];
+    }
+  };
+
+  const optimisticOrders = getOptimisticOrders();
+  const serverTxHashes = new Set(orders.map((o) => o.txHash));
+  const pendingOptimistic = optimisticOrders.filter(
+    (o) => !serverTxHashes.has(o.txHash) && !pendingCancelKeys[`${o.txHash}-${o.outputIndex ?? 0}`]
+  );
+  const displayOrders = [...pendingOptimistic, ...orders];
 
   const formatOrderAmount = (order: UserOrderType) => {
     const token = String(order.tokenName ?? "").toUpperCase();
@@ -68,8 +84,6 @@ export const OrderList = ({ orders }: OrderListProps) => {
 
     return order.amount.toFixed(2);
   };
-
-  if (!connected) return null;
 
   // Toast
   const toastSuccess = (txHash: string) => {
@@ -186,62 +200,76 @@ export const OrderList = ({ orders }: OrderListProps) => {
         <div className="mb-4 flex items-center justify-between">
           <Slug>/orders</Slug>
           <span className="font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
-            {orders.length} pending
+            {connected ? `${displayOrders.length} pending` : "0 pending"}
           </span>
         </div>
 
-        <div className="flex flex-col gap-2">
-          {orders.map((order) => {
-            const orderKey = `${order.txHash}-${order.outputIndex ?? 0}`;
-            const isBusy =
-              (isSubmitting && submittingOrderKey === orderKey) || !!pendingCancelKeys[orderKey];
-            const createdAt = getOrderCreatedAt(order);
-            const remainingSeconds = createdAt > 0
-              ? Math.max(0, 60 - Math.floor((now - createdAt) / 1000))
-              : 0;
+        {!connected ? (
+          <div className="lava-well flex items-center justify-center p-6 text-center">
+            <p className="font-mono-lava text-[12px] uppercase tracking-[0.02em] text-dim">
+              Connect wallet to view orders
+            </p>
+          </div>
+        ) : displayOrders.length === 0 ? (
+          <div className="lava-well flex items-center justify-center p-6 text-center">
+            <p className="font-mono-lava text-[12px] uppercase tracking-[0.02em] text-dim">
+              No pending orders
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {displayOrders.map((order) => {
+              const orderKey = `${order.txHash}-${order.outputIndex ?? 0}`;
+              const isBusy =
+                (isSubmitting && submittingOrderKey === orderKey) || !!pendingCancelKeys[orderKey];
+              const createdAt = getOrderCreatedAt(order);
+              const remainingSeconds = createdAt > 0
+                ? Math.max(0, 60 - Math.floor((now - createdAt) / 1000))
+                : 0;
 
-            return (
-              <div
-                key={orderKey}
-                className="lava-well flex items-center justify-between gap-4 p-3.5"
-              >
-                <div className="min-w-0">
-                  <p className="tabular truncate text-[15px] font-medium tracking-tighter">
-                    {formatOrderAmount(order)} {order.tokenName}
-                    <span className="ml-2 font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
-                      {order.isOptIn ? "opt-in" : "redeem"}
+              return (
+                <div
+                  key={orderKey}
+                  className="lava-well flex items-center justify-between gap-4 p-3.5"
+                >
+                  <div className="min-w-0">
+                    <p className="tabular truncate text-[15px] font-medium tracking-tighter">
+                      {formatOrderAmount(order)} {order.tokenName}
+                      <span className="ml-2 font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
+                        {order.isOptIn ? "opt-in" : "redeem"}
+                      </span>
+                    </p>
+                    <a
+                      href={getTransactionExplorerUrl(order.txHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono-lava text-[12px] text-dim transition-colors hover:text-[#ff9a4d]"
+                    >
+                      {order.txHash.slice(0, 10)}…
+                    </a>
+                  </div>
+
+                  {remainingSeconds > 0 ? (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={async () => await handleCancelOrder(order)}
+                      disabled={!walletAddress || !walletVK || isSubmitting || isBusy}
+                    >
+                      <XCircle className="h-4 w-4 mr-1.5" />
+                      {isBusy ? "Processing…" : `Cancel (${remainingSeconds}s)`}
+                    </Button>
+                  ) : (
+                    <span className="font-mono-lava text-[12px] uppercase tracking-[0.02em] text-[#ff9a4d] flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#ff9a4d]/10 border border-[#ff9a4d]/20">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#ff9a4d] animate-pulse" />
+                      Processing…
                     </span>
-                  </p>
-                  <a
-                    href={getTransactionExplorerUrl(order.txHash)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono-lava text-[12px] text-dim transition-colors hover:text-[#ff9a4d]"
-                  >
-                    {order.txHash.slice(0, 10)}…
-                  </a>
+                  )}
                 </div>
-
-                {remainingSeconds > 0 ? (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={async () => await handleCancelOrder(order)}
-                    disabled={!walletAddress || !walletVK || isSubmitting || isBusy}
-                  >
-                    <XCircle className="h-4 w-4 mr-1.5" />
-                    {isBusy ? "Processing…" : `Cancel (${remainingSeconds}s)`}
-                  </Button>
-                ) : (
-                  <span className="font-mono-lava text-[12px] uppercase tracking-[0.02em] text-[#ff9a4d] flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#ff9a4d]/10 border border-[#ff9a4d]/20">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#ff9a4d] animate-pulse" />
-                    Processing…
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

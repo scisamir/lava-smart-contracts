@@ -62,18 +62,25 @@ const Stake = () => {
 
     awaitFetchData();
 
+    const timeouts: NodeJS.Timeout[] = [];
+
     const refreshHandler = () => {
       void awaitFetchData();
+      // Follow-up fetches to catch on-chain indexing as blocks are minted
+      [3000, 8000, 15000, 25000].forEach((delay) => {
+        timeouts.push(setTimeout(() => void awaitFetchData(), delay));
+      });
     };
 
     window.addEventListener(HOME_DATA_REFRESH_EVENT, refreshHandler);
 
     const interval = setInterval(() => {
       void awaitFetchData();
-    }, 1_800_000);
+    }, 10_000);
 
     return () => {
       clearInterval(interval);
+      timeouts.forEach(clearTimeout);
       window.removeEventListener(HOME_DATA_REFRESH_EVENT, refreshHandler);
     };
   }, [wallet, walletAddress, showBatchButtons]);

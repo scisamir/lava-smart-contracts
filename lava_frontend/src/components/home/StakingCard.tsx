@@ -7,7 +7,7 @@ import { Slug } from "@/components/layout/Section";
 import { TokenIcon } from "@/components/brand/TokenIcon";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
-import { MeshFullTxWallet, TOKEN_PAIRS, TokenPair } from "@/lib/types";
+import { MeshFullTxWallet, TOKEN_PAIRS, TokenPair, UserOrderType } from "@/lib/types";
 import { fetchBackend } from "@/lib/backendClient";
 import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
 
@@ -271,7 +271,20 @@ export const StakingCard = () => {
       const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
       try {
-        sessionStorage.setItem(`lava_order_time_${txHash}`, String(Date.now()));
+        const orderTime = Date.now();
+        const orderAmount = tokenName === "ADA" ? Math.trunc(amount * 1_000_000) : amount;
+        const optimisticOrder: UserOrderType = {
+          amount: orderAmount,
+          txHash,
+          outputIndex: 0,
+          isOptIn: true,
+          tokenName,
+          firstSeenAt: orderTime,
+        };
+        const rawExisting = sessionStorage.getItem("lava_optimistic_orders");
+        const existing: UserOrderType[] = rawExisting ? JSON.parse(rawExisting) : [];
+        existing.push(optimisticOrder);
+        sessionStorage.setItem("lava_optimistic_orders", JSON.stringify(existing));
       } catch {
         // Ignore storage write failures
       }
@@ -342,7 +355,20 @@ export const StakingCard = () => {
       const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
       try {
-        sessionStorage.setItem(`lava_order_time_${txHash}`, String(Date.now()));
+        const orderTime = Date.now();
+        sessionStorage.setItem(`lava_order_time_${txHash}`, String(orderTime));
+        const optimisticOrder: UserOrderType = {
+          amount: requestAmount,
+          txHash,
+          outputIndex: 0,
+          isOptIn: false,
+          tokenName,
+          firstSeenAt: orderTime,
+        };
+        const rawExisting = sessionStorage.getItem("lava_optimistic_orders");
+        const existing: UserOrderType[] = rawExisting ? JSON.parse(rawExisting) : [];
+        existing.push(optimisticOrder);
+        sessionStorage.setItem("lava_optimistic_orders", JSON.stringify(existing));
       } catch {
         // Ignore storage write failures
       }
