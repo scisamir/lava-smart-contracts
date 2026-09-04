@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Slug } from "@/components/layout/Section";
 import { XCircle } from "lucide-react";
 import { toast } from "react-toastify";
-import { OrderListProps, UserOrderType } from "@/lib/types";
+import { MeshFullTxWallet, OrderListProps, UserOrderType } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
@@ -14,6 +14,14 @@ export const OrderList = ({ orders }: OrderListProps) => {
   const [pendingCancelKeys, setPendingCancelKeys] = useState<Record<string, true>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submittingOrderKey, setSubmittingOrderKey] = useState<string>("");
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const {
     connected,
@@ -129,7 +137,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
       }
 
       const data = await response.json();
-      const signedTx = await wallet.signTxReturnFullTx(String(data.unsignedTx), true);
+      const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setSubmittingOrderKey("");
@@ -152,8 +160,28 @@ export const OrderList = ({ orders }: OrderListProps) => {
     console.log("Cancel order tx hash:", txHash);
   };
 
+  const getOrderCreatedAt = (order: UserOrderType): number => {
+    if (order.firstSeenAt && order.firstSeenAt > 0) {
+      return order.firstSeenAt;
+    }
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem(`lava_order_time_${order.txHash}`);
+        if (stored) {
+          const parsed = Number(stored);
+          if (!isNaN(parsed) && parsed > 0) {
+            return parsed;
+          }
+        }
+      } catch {
+        // Ignore storage read failures
+      }
+    }
+    return 0;
+  };
+
   return (
-    <div data-reveal className="lava-panel mx-auto mt-8 w-full max-w-[520px] p-6">
+    <div className="lava-panel mx-auto mt-8 w-full max-w-[520px] p-6">
       <div className="relative z-[4]">
         <div className="mb-4 flex items-center justify-between">
           <Slug>/orders</Slug>
@@ -167,6 +195,10 @@ export const OrderList = ({ orders }: OrderListProps) => {
             const orderKey = `${order.txHash}-${order.outputIndex ?? 0}`;
             const isBusy =
               (isSubmitting && submittingOrderKey === orderKey) || !!pendingCancelKeys[orderKey];
+            const createdAt = getOrderCreatedAt(order);
+            const remainingSeconds = createdAt > 0
+              ? Math.max(0, 60 - Math.floor((now - createdAt) / 1000))
+              : 0;
 
             return (
               <div
@@ -190,15 +222,22 @@ export const OrderList = ({ orders }: OrderListProps) => {
                   </a>
                 </div>
 
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={async () => await handleCancelOrder(order)}
-                  disabled={!walletAddress || !walletVK || isSubmitting || isBusy}
-                >
-                  <XCircle className="h-4 w-4" />
-                  {isBusy ? "Processing…" : "Cancel"}
-                </Button>
+                {remainingSeconds > 0 ? (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={async () => await handleCancelOrder(order)}
+                    disabled={!walletAddress || !walletVK || isSubmitting || isBusy}
+                  >
+                    <XCircle className="h-4 w-4 mr-1.5" />
+                    {isBusy ? "Processing…" : `Cancel (${remainingSeconds}s)`}
+                  </Button>
+                ) : (
+                  <span className="font-mono-lava text-[12px] uppercase tracking-[0.02em] text-[#ff9a4d] flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#ff9a4d]/10 border border-[#ff9a4d]/20">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#ff9a4d] animate-pulse" />
+                    Processing…
+                  </span>
+                )}
               </div>
             );
           })}

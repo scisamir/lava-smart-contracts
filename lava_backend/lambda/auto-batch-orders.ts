@@ -4,6 +4,8 @@ import {
   type MaestroProvider,
   type MeshTxBuilder,
 } from '@meshsdk/core';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { batchingTx } from './e2e/batching/batching';
 import { OrderValidatorAddr } from './e2e/order/validator';
 import { OrderDatumType } from './e2e/types';
@@ -13,7 +15,14 @@ import {
   createMeshTxBuilder,
 } from './cardano';
 
-type PendingCounts = Record<string, number>;
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const MIN_ORDER_AGE_MS = 60_000;
+
+type PendingInfo = {
+  totalCounts: Record<string, number>;
+  eligibleCounts: Record<string, number>;
+  eligibleOrderKeysByPool: Record<string, Set<string>>;
+};
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -22,32 +31,114 @@ const isRateLimitError = (error: unknown) => {
   return message.includes('API rate limit exceeded') || message.includes('"status":429');
 };
 
-const getPendingCounts = async (maestro: MaestroProvider): Promise<PendingCounts> => {
-  const orderUtxos = await maestro.fetchAddressUTxOs(OrderValidatorAddr);
-  const totalOrders: PendingCounts = {};
+const resolveOrderFirstSeenAt = async (
+  tableName: string,
+  txHash: string,
+  outputIndex: number,
+  poolSAN: string
+): Promise<number> => {
+  const pk = `ORDER#${txHash}#${outputIndex}`;
+  const sk = 'TRACKING';
 
-  orderUtxos.forEach((utxo) => {
+  try {
+    const existing = await ddb.send(
+      new GetCommand({
+        TableName: tableName,
+        Key: { pk, sk },
+      })
+    );
+
+    if (existing.Item && typeof existing.Item.firstSeenAt === 'number') {
+      return existing.Item.firstSeenAt;
+    }
+
+    const now = Date.now();
+    await ddb.send(
+      new PutCommand({
+        TableName: tableName,
+        Item: {
+          pk,
+          sk,
+          entityType: 'ORDER_TRACKING',
+          txHash,
+          outputIndex,
+          poolSAN,
+          firstSeenAt: now,
+          createdAtIso: new Date(now).toISOString(),
+        },
+      })
+    );
+    return now;
+  } catch (err) {
+    console.warn(`Failed to resolve firstSeenAt for order ${txHash}#${outputIndex}:`, err);
+    return Date.now();
+  }
+};
+
+const getPendingOrdersInfo = async (
+  maestro: MaestroProvider,
+  tableName?: string
+): Promise<PendingInfo> => {
+  const orderUtxos = await maestro.fetchAddressUTxOs(OrderValidatorAddr);
+  const totalCounts: Record<string, number> = {};
+  const eligibleCounts: Record<string, number> = {};
+  const eligibleOrderKeysByPool: Record<string, Set<string>> = {};
+
+  const now = Date.now();
+
+  for (const utxo of orderUtxos) {
     const orderPlutusData = utxo.output.plutusData;
-    if (!orderPlutusData) return;
+    if (!orderPlutusData) continue;
 
     const orderDatum = deserializeDatum<OrderDatumType>(orderPlutusData);
     const poolSAN = String(orderDatum.fields[3].bytes ?? '').trim();
     if (!poolSAN) {
-      return;
+      continue;
     }
 
-    totalOrders[poolSAN] = (totalOrders[poolSAN] ?? 0) + 1;
-  });
+    totalCounts[poolSAN] = (totalCounts[poolSAN] ?? 0) + 1;
 
-  return totalOrders;
+    const txHash = utxo.input.txHash;
+    const outputIndex = Number(utxo.input.outputIndex);
+    const orderKey = `${txHash}#${outputIndex}`;
+
+    let isEligible = true;
+    if (tableName) {
+      const firstSeenAt = await resolveOrderFirstSeenAt(
+        tableName,
+        txHash,
+        outputIndex,
+        poolSAN
+      );
+      const ageMs = now - firstSeenAt;
+      if (ageMs < MIN_ORDER_AGE_MS) {
+        isEligible = false;
+      }
+    }
+
+    if (isEligible) {
+      eligibleCounts[poolSAN] = (eligibleCounts[poolSAN] ?? 0) + 1;
+      if (!eligibleOrderKeysByPool[poolSAN]) {
+        eligibleOrderKeysByPool[poolSAN] = new Set<string>();
+      }
+      eligibleOrderKeysByPool[poolSAN].add(orderKey);
+    }
+  }
+
+  return {
+    totalCounts,
+    eligibleCounts,
+    eligibleOrderKeysByPool,
+  };
 };
 
 const runBatch = async (
   poolStakeAssetNameHex: string,
   blockchainProvider: MaestroProvider,
-  txBuilder: MeshTxBuilder
+  txBuilder: MeshTxBuilder,
+  eligibleOrderKeys?: Set<string>
 ): Promise<string> => {
-  return batchingTx(blockchainProvider, txBuilder, poolStakeAssetNameHex);
+  return batchingTx(blockchainProvider, txBuilder, poolStakeAssetNameHex, eligibleOrderKeys);
 };
 
 export const handler = async (_event: ScheduledEvent) => {
@@ -62,19 +153,27 @@ export const handler = async (_event: ScheduledEvent) => {
     throw new Error('BATCHER_WALLET_PASSPHRASE is missing');
   }
 
+  const tableName = process.env.TABLE_NAME;
   const blockchainProvider = createMaestroProvider(maestroKey);
 
-  const pending = await getPendingCounts(blockchainProvider);
+  const { totalCounts, eligibleCounts, eligibleOrderKeysByPool } = await getPendingOrdersInfo(
+    blockchainProvider,
+    tableName
+  );
 
-  const queue = Object.entries(pending)
+  const queue = Object.entries(eligibleCounts)
     .filter(([, totalOrders]) => totalOrders > 0)
     .map(([poolStakeAssetNameHex]) => poolStakeAssetNameHex);
 
   if (queue.length === 0) {
-    console.log('Auto batch skipped: no pending orders', pending);
+    console.log('Auto batch skipped: no eligible pending orders (older than 60s)', {
+      totalCounts,
+      eligibleCounts,
+    });
     return {
       ran: false,
-      pending,
+      pending: totalCounts,
+      eligible: eligibleCounts,
       processed: [],
     };
   }
@@ -91,7 +190,12 @@ export const handler = async (_event: ScheduledEvent) => {
         const txBuilder = createMeshTxBuilder(blockchainProvider);
         await applyLiveProtocolParams(txBuilder, blockchainProvider);
 
-        successTxHash = await runBatch(poolStakeAssetNameHex, blockchainProvider, txBuilder);
+        successTxHash = await runBatch(
+          poolStakeAssetNameHex,
+          blockchainProvider,
+          txBuilder,
+          eligibleOrderKeysByPool[poolStakeAssetNameHex]
+        );
         break;
       } catch (error) {
         lastError = error;
@@ -122,7 +226,8 @@ export const handler = async (_event: ScheduledEvent) => {
   }
 
   console.log('Auto batch run result', {
-    pending,
+    totalCounts,
+    eligibleCounts,
     results,
   });
 
@@ -137,7 +242,8 @@ export const handler = async (_event: ScheduledEvent) => {
 
   return {
     ran: true,
-    pending,
+    pending: totalCounts,
+    eligible: eligibleCounts,
     results,
   };
 };

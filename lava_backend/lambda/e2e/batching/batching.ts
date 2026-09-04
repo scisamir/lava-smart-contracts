@@ -21,7 +21,8 @@ import { repairScriptIntegrityHash } from "../../cardano";
 export const batchingTx = async (
   blockchainProvider: BlockchainProviderType,
   txBuilder: MeshTxBuilder,
-  poolSAN: string
+  poolSAN: string,
+  eligibleOrderKeys?: Set<string>
 ) => {
   const { MinPoolLovelace, PrecisionFactor, batchingScriptTxHash, batchingScriptTxIdx, poolScriptTxHash, poolScriptTxIdx, NETWORK_ID } = setupE2e();
 
@@ -113,6 +114,13 @@ export const batchingTx = async (
   }
 
   const matchingOrders = orderUtxos.flatMap((utxo) => {
+    if (eligibleOrderKeys) {
+      const key = `${utxo.input.txHash}#${utxo.input.outputIndex}`;
+      if (!eligibleOrderKeys.has(key)) {
+        return [];
+      }
+    }
+
     const orderPlutusData = utxo.output.plutusData;
     if (!orderPlutusData) {
       return [];
