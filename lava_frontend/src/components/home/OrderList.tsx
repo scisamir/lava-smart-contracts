@@ -197,7 +197,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
 
   return (
     <div
-      className="mx-auto mt-6 w-full max-w-[520px] p-[22px] sm:p-6 text-white"
+      className="relative z-10 mx-auto mt-6 w-full max-w-[520px] p-[22px] sm:p-6 text-white"
       style={{
         borderRadius: '22px',
         background: 'linear-gradient(180deg, #0d1116 0%, #11131a 55%, #241413 85%, #4a1f18 100%)',
@@ -205,7 +205,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
         boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.07), 0 25px 50px -12px rgba(0,0,0,0.25)',
       }}
     >
-      <div className="flex flex-col gap-4">
+      <div className="relative z-10 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <Slug>/orders</Slug>
           <span className="font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
