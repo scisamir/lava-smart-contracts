@@ -37,7 +37,18 @@ export function useReveal(deps: DependencyList = []) {
       requestAnimationFrame(sweep);
     };
 
+    const observer = new MutationObserver(() => {
+      const newElements = document.querySelectorAll("[data-reveal]:not(.is-visible)");
+      if (newElements.length > 0) {
+        newElements.forEach((el) => pending.add(el));
+        request();
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
     const detach = () => {
+      observer.disconnect();
       window.removeEventListener("scroll", request);
       window.removeEventListener("resize", request);
     };

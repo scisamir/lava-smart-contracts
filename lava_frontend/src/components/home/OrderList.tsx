@@ -5,6 +5,7 @@ import { Slug } from "@/components/layout/Section";
 import { XCircle } from "lucide-react";
 import { toast } from "react-toastify";
 import { MeshFullTxWallet, OrderListProps, UserOrderType } from "@/lib/types";
+import { TokenIcon } from "@/components/brand/TokenIcon";
 import { useEffect, useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
@@ -195,9 +196,9 @@ export const OrderList = ({ orders }: OrderListProps) => {
   };
 
   return (
-    <div className="lava-panel mx-auto mt-8 w-full max-w-[520px] p-6">
-      <div className="relative z-[4]">
-        <div className="mb-4 flex items-center justify-between">
+    <div className="lava-card lava-card--soft mx-auto mt-6 w-full max-w-[520px] p-[22px] sm:p-6 shadow-2xl border border-white/[0.08] text-white">
+      <div className="relative z-10 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
           <Slug>/orders</Slug>
           <span className="font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
             {connected ? `${displayOrders.length} pending` : "0 pending"}
@@ -205,19 +206,19 @@ export const OrderList = ({ orders }: OrderListProps) => {
         </div>
 
         {!connected ? (
-          <div className="lava-well flex items-center justify-center p-6 text-center">
+          <div className="lava-well flex items-center justify-center p-6 text-center border border-white/[0.06] bg-white/[0.02]">
             <p className="font-mono-lava text-[12px] uppercase tracking-[0.02em] text-dim">
               Connect wallet to view orders
             </p>
           </div>
         ) : displayOrders.length === 0 ? (
-          <div className="lava-well flex items-center justify-center p-6 text-center">
+          <div className="lava-well flex items-center justify-center p-6 text-center border border-white/[0.06] bg-white/[0.02]">
             <p className="font-mono-lava text-[12px] uppercase tracking-[0.02em] text-dim">
               No pending orders
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2.5">
             {displayOrders.map((order) => {
               const orderKey = `${order.txHash}-${order.outputIndex ?? 0}`;
               const isBusy =
@@ -230,41 +231,55 @@ export const OrderList = ({ orders }: OrderListProps) => {
               return (
                 <div
                   key={orderKey}
-                  className="lava-well flex items-center justify-between gap-4 p-3.5"
+                  className="lava-well flex items-center justify-between gap-4 p-4 border border-white/[0.08] bg-[#12161f]/80 transition-all hover:border-white/[0.14] hover:bg-[#151a24]"
                 >
-                  <div className="min-w-0">
-                    <p className="tabular truncate text-[15px] font-medium tracking-tighter">
-                      {formatOrderAmount(order)} {order.tokenName}
-                      <span className="ml-2 font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
-                        {order.isOptIn ? "opt-in" : "redeem"}
-                      </span>
-                    </p>
-                    <a
-                      href={getTransactionExplorerUrl(order.txHash)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono-lava text-[12px] text-dim transition-colors hover:text-[#ff9a4d]"
-                    >
-                      {order.txHash.slice(0, 10)}…
-                    </a>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <TokenIcon symbol={order.tokenName} size={34} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="tabular truncate text-[15px] font-semibold text-white tracking-tight">
+                          {formatOrderAmount(order)} {order.tokenName}
+                        </p>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono-lava uppercase tracking-[0.02em] font-medium ${
+                            order.isOptIn
+                              ? "bg-[#ff9a4d]/15 text-[#ff9a4d] border border-[#ff9a4d]/30"
+                              : "bg-[#df473d]/15 text-[#df473d] border border-[#df473d]/30"
+                          }`}
+                        >
+                          {order.isOptIn ? "opt-in" : "redeem"}
+                        </span>
+                      </div>
+                      <a
+                        href={getTransactionExplorerUrl(order.txHash)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono-lava text-[12px] text-dim transition-colors hover:text-[#ff9a4d] hover:underline flex items-center gap-1 mt-0.5"
+                      >
+                        <span>{order.txHash.slice(0, 10)}…{order.txHash.slice(-6)}</span>
+                      </a>
+                    </div>
                   </div>
 
-                  {remainingSeconds > 0 ? (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={async () => await handleCancelOrder(order)}
-                      disabled={!walletAddress || !walletVK || isSubmitting || isBusy}
-                    >
-                      <XCircle className="h-4 w-4 mr-1.5" />
-                      {isBusy ? "Processing…" : `Cancel (${remainingSeconds}s)`}
-                    </Button>
-                  ) : (
-                    <span className="font-mono-lava text-[12px] uppercase tracking-[0.02em] text-[#ff9a4d] flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#ff9a4d]/10 border border-[#ff9a4d]/20">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#ff9a4d] animate-pulse" />
-                      Processing…
-                    </span>
-                  )}
+                  <div className="shrink-0">
+                    {remainingSeconds > 0 ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => await handleCancelOrder(order)}
+                        disabled={!walletAddress || !walletVK || isSubmitting || isBusy}
+                        className="border border-[#df473d]/40 text-[#df473d] hover:bg-[#df473d]/15 font-mono-lava text-[12px]"
+                      >
+                        <XCircle className="h-4 w-4 mr-1.5" />
+                        {isBusy ? "Processing…" : `Cancel (${remainingSeconds}s)`}
+                      </Button>
+                    ) : (
+                      <span className="font-mono-lava text-[12px] uppercase tracking-[0.02em] text-[#ff9a4d] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ff9a4d]/15 border border-[#ff9a4d]/30 shadow-[0_0_12px_rgba(255,154,77,0.15)]">
+                        <span className="h-2 w-2 rounded-full bg-[#ff9a4d] animate-pulse" />
+                        Processing…
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}

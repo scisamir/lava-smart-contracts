@@ -62,7 +62,7 @@ const Stake = () => {
 
     awaitFetchData();
 
-    const timeouts: NodeJS.Timeout[] = [];
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
 
     const refreshHandler = () => {
       void awaitFetchData();
