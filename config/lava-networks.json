@@ -6,15 +6,15 @@
     "explorerBaseUrl": "https://preprod.cardanoscan.io",
     "blockfrostBaseUrl": "https://cardano-preprod.blockfrost.io/api/v0",
     "globalSettingsSeed": {
-      "txHash": "b718edee6c93ad38990d566c2cdbd46ab7f4ffce33de67e4084d9cff3da983dc",
-      "outputIndex": 7
+      "txHash": "e4c1642ea5ece21d0ea1bdc91ae7d3f0949d6719ddb3c562d2f013db728bf7f8",
+      "outputIndex": 3
     },
     "batchingReference": {
-      "txHash": "58af6c2bdded6696c8db3b348dd08da22fee775609e388e3db1ab30d7bfe6747",
+      "txHash": "80d29235fd34c304450d70eca8b178257a9d29e39a8c0398f67093ab60724f8f",
       "outputIndex": 0
     },
     "poolReference": {
-      "txHash": "cf13e115891158a64dc4b66677fe03186690287165052ff67626d84998d55072",
+      "txHash": "9423f30bfb0d31decc45bd03d85ba949e09e97588028fdaf945c3bbeeac2b94a",
       "outputIndex": 0
     }
   },

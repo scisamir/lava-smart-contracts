@@ -38,6 +38,7 @@ export const StakingCard = () => {
     walletSK,
     tokenBalances,
     poolInfo,
+    protocolStats,
     retryWalletAccess,
     refreshWalletStateAfterTx,
   } = useCardanoWallet();
@@ -110,8 +111,16 @@ export const StakingCard = () => {
     }
   }, [availableTokenPairs, selectedToken.base, selectedToken.derivative]);
 
-  const conversionRate = 0.996;
-  const usdRate = 0.32;
+  const activeVault = (poolInfo ?? []).find(
+    (vault) =>
+      vault.name === selectedToken.derivative ||
+      vault.tokenPair?.derivative === selectedToken.derivative
+  );
+  const conversionRate =
+    activeVault && typeof activeVault.exchangeRate === "number" && activeVault.exchangeRate > 0
+      ? activeVault.exchangeRate
+      : 1.0;
+  const usdRate = protocolStats?.adaPriceUsd ?? 0.35;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9.]/g, "");
@@ -492,7 +501,7 @@ export const StakingCard = () => {
                   className="tabular w-full max-w-[150px] bg-transparent text-right text-[28px] font-medium tracking-tightest outline-none"
                 />
                 <div className="tabular text-[12px] text-dim">
-                  ≈ ${(numAmount * usdRate).toFixed(2)}
+                  ≈ ${(numAmount * (isSwapped ? conversionRate * usdRate : usdRate)).toFixed(2)}
                 </div>
               </div>
             </div>
@@ -527,9 +536,21 @@ export const StakingCard = () => {
               </div>
 
               <div className="min-w-0 text-right">
-                <div className="tabular text-[28px] font-medium tracking-tightest">{amount}</div>
+                <div className="tabular text-[28px] font-medium tracking-tightest">
+                  {numAmount > 0
+                    ? isSwapped
+                      ? (numAmount * conversionRate).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 4,
+                        })
+                      : (numAmount / conversionRate).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 4,
+                        })
+                    : amount}
+                </div>
                 <div className="tabular text-[12px] text-dim">
-                  ≈ ${((numAmount / conversionRate) * usdRate).toFixed(2)}
+                  ≈ ${(numAmount * (isSwapped ? conversionRate * usdRate : usdRate)).toFixed(2)}
                 </div>
               </div>
             </div>
@@ -541,7 +562,7 @@ export const StakingCard = () => {
           <div className="flex items-center justify-between">
             <span className="text-dim">1 {selectedToken.derivative}</span>
             <span className="tabular flex items-center gap-2 font-mono-lava text-[13px] text-[#ffd9a8]">
-              {conversionRate.toFixed(3)} {selectedToken.base}
+              {conversionRate.toFixed(4)} {selectedToken.base}
               <Zap className="h-3.5 w-3.5 text-dim" />
             </span>
           </div>

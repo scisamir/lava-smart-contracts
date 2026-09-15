@@ -20,7 +20,8 @@ export class LavaBackendStack extends cdk.Stack {
     const ssmPrefix = lavaNetwork === "preprod" ? "/lava" : "/lava/mainnet";
 
     const allowedOrigins = (
-      process.env.ALLOWED_ORIGINS ?? "http://localhost:3000"
+      process.env.ALLOWED_ORIGINS ??
+      "http://localhost:3000,http://localhost:3001,https://lava-smart-contracts.vercel.app"
     )
       .split(",")
       .map((v) => v.trim())
@@ -347,9 +348,15 @@ export class LavaBackendStack extends cdk.Stack {
       restApiName: "lava-api",
       description: "API for Lava DeFi app",
       defaultCorsPreflightOptions: {
-        allowOrigins: allowedOrigins,
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: ["GET", "POST", "OPTIONS"],
-        allowHeaders: ["Content-Type", "Authorization"],
+        allowHeaders: [
+          "Content-Type",
+          "Authorization",
+          "X-Amz-Date",
+          "X-Api-Key",
+          "X-Amz-Security-Token",
+        ],
       },
       deployOptions: {
         throttlingRateLimit: 20,

@@ -33,6 +33,7 @@ const nextConfig = {
   },
   env: {
     LAVA_NETWORK: lavaNetwork,
+    NEXT_PUBLIC_BACKEND_URL: backendUrl,
   },
   webpack(config) {
     config.resolve = config.resolve || {};

@@ -59,4 +59,14 @@ export type BackendVault = {
     };
   } | null;
   poolStakeAssetNameHex?: string;
+  exchangeRate?: number;
+};
+
+export type ProtocolStats = {
+  tvlAda: number;
+  tvlUsd: number;
+  stakingApy: string;
+  holders: number;
+  adaPriceUsd: number;
+  ada24hChange?: number;
 };
