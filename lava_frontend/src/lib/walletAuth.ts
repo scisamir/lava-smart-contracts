@@ -116,7 +116,9 @@ export const loadWalletAuthSession = (address?: string): WalletAuthSession | nul
 export const clearWalletAuthSession = () => {
   try {
     getAuthStorage()?.removeItem(AUTH_STORAGE_KEY);
-  } catch {}
+  } catch {
+    // Ignore storage access errors in restricted or SSR environments
+  }
   clearWalletAuthFailure();
 };
 
