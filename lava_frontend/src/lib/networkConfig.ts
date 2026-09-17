@@ -22,9 +22,11 @@ const NETWORKS: Record<LavaNetwork, NetworkConfig> = {
   },
 };
 
-const rawNetwork = process.env.LAVA_NETWORK?.trim();
-const configuredNetwork: LavaNetwork =
-  rawNetwork === "mainnet" ? "mainnet" : "preprod";
+const configuredNetwork = process.env.LAVA_NETWORK;
+
+if (configuredNetwork !== "preprod" && configuredNetwork !== "mainnet") {
+  throw new Error("LAVA_NETWORK must be either preprod or mainnet");
+}
 
 export const networkConfig = NETWORKS[configuredNetwork];
 
