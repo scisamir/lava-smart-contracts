@@ -66,35 +66,18 @@ const getHeader = (event: APIGatewayProxyEvent, headerName: string): string => {
   return '';
 };
 
-export const isOriginAllowed = (origin: string): boolean => {
-  if (!origin) return false;
-  if (ALLOWED_ORIGINS.includes(origin)) return true;
-
-  // Allow any localhost or 127.0.0.1 port in development/testing
-  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-    return true;
-  }
-
-  // Allow Vercel preview and production deployments
-  if (/^https:\/\/([a-zA-Z0-9_-]+\.)?vercel\.app$/.test(origin)) {
-    return true;
-  }
-
-  return false;
-};
-
 export const resolveAllowedOrigin = (event: APIGatewayProxyEvent): string | null => {
   const origin = event.headers.origin ?? event.headers.Origin ?? '';
   if (!origin) {
     return null;
   }
 
-  return isOriginAllowed(origin) ? origin : null;
+  return ALLOWED_ORIGINS.includes(origin) ? origin : null;
 };
 
 const hasDisallowedOrigin = (event: APIGatewayProxyEvent): boolean => {
   const origin = event.headers.origin ?? event.headers.Origin ?? '';
-  return Boolean(origin) && !isOriginAllowed(origin);
+  return Boolean(origin) && !ALLOWED_ORIGINS.includes(origin);
 };
 
 export const corsHeaders = (origin: string | null): Record<string, string> => {

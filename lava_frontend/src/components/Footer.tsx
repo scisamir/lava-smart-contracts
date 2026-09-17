@@ -1,85 +1,74 @@
-import Link from "next/link";
-import { LavaWordmark } from "./brand/LadaMark";
+import { LAVA_LOGO } from "@/lib/images";
 
-/* Ported from the landing page footer: ink fading into ember, the link
-   columns on the right, and the oversized wordmark bleeding off the bottom. */
-
-const COLUMNS: { head: string; links: { label: string; href: string; external?: boolean }[] }[] = [
-  {
-    head: "Protocol",
-    links: [
-      { label: "Stake", href: "/stake" },
-      { label: "Earn", href: "/earn" },
-      { label: "Portfolio", href: "/portfolio" },
-      { label: "Points", href: "/points" },
-    ],
-  },
-  {
-    head: "Socials",
-    links: [
-      { label: "Twitter", href: "https://x.com/lava", external: true },
-      { label: "Discord", href: "https://x.com/lava", external: true },
-    ],
-  },
-];
-
-const Footer = () => (
-  <footer
-    className="relative z-[1] overflow-hidden pt-[clamp(40px,6vw,72px)]"
-    style={{ background: "linear-gradient(180deg, #05070a 0%, #12080a 42%, #2a1010 100%)" }}
-  >
-    <div className="shell relative z-[2] flex flex-col justify-between gap-10 pb-[clamp(48px,10vw,120px)] md:flex-row">
-      <div>
-        <LavaWordmark />
-        <p className="mt-[10px] text-[13px] text-dim">
-          © {new Date().getFullYear()} Lava. All rights reserved.
-        </p>
-      </div>
-
-      <div className="flex gap-[clamp(40px,8vw,96px)]">
-        {COLUMNS.map((col) => (
-          <div key={col.head} className="flex min-w-[90px] flex-col gap-2">
-            <span className="text-[14px] font-semibold">{col.head}</span>
-            {col.links.map((link) =>
-              link.external ? (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[13px] text-dim transition-colors hover:text-white"
-                >
-                  {link.label}
-                </a>
-              ) : (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className="text-[13px] text-dim transition-colors hover:text-white"
-                >
-                  {link.label}
-                </Link>
-              )
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-
-    <p
-      aria-hidden="true"
-      className="pointer-events-none relative z-[1] m-0 select-none text-center font-semibold"
-      style={{
-        fontSize: "clamp(120px, 28vw, 380px)",
-        lineHeight: 0.78,
-        letterSpacing: "-0.07em",
-        color: "rgba(255, 154, 77, 0.22)",
-        transform: "translateY(18%)",
-      }}
+const Footer = () => {
+  return (
+    <footer
+      className="relative bg-[#0D0D0D] overflow-hidden flex items-center h-[160px] md:h-[96px]"
     >
-      lava
-    </p>
-  </footer>
-);
+      {/* BACKGROUND TYPOGRAPHY */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        {/* Large dark layers */}
+          <span className="absolute left-[-10%] text-[150px] leading-none font-pixel text-[#303030] opacity-40 whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-30px)' }}>
+            Liquid staking Standard
+          </span>
+
+          <span className="absolute left-[10%] text-[150px] leading-none font-pixel text-[#303030] opacity-80 whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-30px)' }}>
+            Liquid staking Standard
+          </span>
+
+        {/* Light subtle layers */}
+          <span className="absolute left-[30%] text-[150px] leading-none font-pixel text-white opacity-[0.04] whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-30px)' }}>
+            Liquid staking Standard
+          </span>
+
+          <span className="absolute left-[20%] text-[120px] leading-none font-pixel text-white opacity-[0.04] whitespace-nowrap" style={{ display: 'block', lineHeight: 1, transform: 'translateY(-20px)' }}>
+            Liquid staking Standard
+          </span>
+      </div>
+
+      {/* FOREGROUND CONTENT */}
+      <div className="container mx-auto px-6 relative z-10 h-full">
+        <div className="flex flex-col md:flex-row h-full">
+
+          {/* Logo - top on mobile, left on desktop */}
+          <div className="flex items-center gap-[14px] md:items-center md:justify-start">
+            <img src={LAVA_LOGO.src} alt="Lava" className="w-6 h-6" />
+            <span className="text-xl font-bold text-[#D5463E]">
+              lava
+            </span>
+          </div>
+
+          {/* Copyright - centered vertically on mobile, center on desktop */}
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-[14px] text-white opacity-60 no-pixelify text-center">
+              © 2025 Lava. All rights reserved
+            </p>
+          </div>
+
+          {/* Navigation - bottom on mobile, right on desktop */}
+          <div className="flex items-center gap-6 justify-center md:justify-end">
+            <a href="/stake" className="text-white hover:opacity-80">
+              Stake
+            </a>
+            <a href="/earn" className="text-white hover:opacity-80">
+              Earn
+            </a>
+            <a href="/vaults" className="text-white hover:opacity-80">
+              Vaults
+            </a>
+            <a href="/portfolio" className="text-white hover:opacity-80">
+              Portfolio
+            </a>
+          </div>
+
+        </div>
+      </div>
+      {/* Mobile-only background spans (top/mid/bottom) */}
+      <span className="footer-bg-top">Liquid staking Standard</span>
+      <span className="footer-bg-mid">Liquid staking Standard</span>
+      <span className="footer-bg-bottom">Liquid staking Standard</span>
+    </footer>
+  );
+};
 
 export default Footer;

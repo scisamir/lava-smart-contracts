@@ -4,7 +4,6 @@ import { toast } from "react-toastify";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
 import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
-import { MeshFullTxWallet } from "@/lib/types";
 
 export const MintTestTokens = ({ variant = "default", className = "" }: { variant?: "default" | "mobile"; className?: string }) => {
 
@@ -80,7 +79,7 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
       }
 
       const data = await response.json();
-      const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
+      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setIsProcessing(false);
@@ -96,14 +95,13 @@ export const MintTestTokens = ({ variant = "default", className = "" }: { varian
     console.log(`Mint test tokens tx hash:`, txHash);
   };
 
+  const defaultMobileClass = `bg-transparent text-white px-3 py-2 text-[16px] leading-[100%] tracking-[-0.02em] hover:opacity-80 shadow-none`;
+  const defaultDesktopClass = `bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow px-2 py-4`;
+
+  const btnClass = className ? className : variant === "mobile" ? defaultMobileClass : defaultDesktopClass;
+
   return (
-    <Button
-      variant={variant === "mobile" ? "ghost" : "outline"}
-      size="sm"
-      disabled={!connected || !walletAddress || isProcessing}
-      onClick={handleMintTestTokens}
-      className={variant === "mobile" ? `w-full justify-start ${className}` : className}
-    >
+    <Button disabled={!connected || !walletAddress || isProcessing} onClick={handleMintTestTokens} className={`${btnClass} ${variant === "mobile" ? "" : "btn-lava"}`}>
       {isProcessing ? "Processing..." : "Mint Test Tokens"}
     </Button>
   );

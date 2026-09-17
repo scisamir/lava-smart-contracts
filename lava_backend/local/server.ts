@@ -7,13 +7,15 @@ import { handler as getMarkets } from '../lambda/get-markets.js';
 import { handler as getLavaVaults } from '../lambda/get-lava-vaults.js';
 import { handler as getUserStBalance } from '../lambda/get-user-st-balance.js';
 
-import { isOriginAllowed } from '../lambda/security.js';
-
 const PORT = Number(process.env.PORT ?? 5050);
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
 
 const resolveOrigin = (req: IncomingMessage): string | null => {
   const origin = req.headers.origin;
-  if (!origin || !isOriginAllowed(origin)) {
+  if (!origin || !ALLOWED_ORIGINS.includes(origin)) {
     return null;
   }
 

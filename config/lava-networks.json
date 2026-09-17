@@ -25,8 +25,8 @@
     "explorerBaseUrl": "https://cardanoscan.io",
     "blockfrostBaseUrl": "https://cardano-mainnet.blockfrost.io/api/v0",
     "globalSettingsSeed": {
-      "txHash": "396b283bd2814ac591a827176cf238ff62b605e40d4ea061a9b86c5e67415bd4",
-      "outputIndex": 0
+      "txHash": "9d225cd31ee8b47b9782a2b1a9308a02d129f919e562dd492d4accb5b25311ab",
+      "outputIndex": 4
     },
     "batchingReference": {
       "txHash": "f268168603dc31abf523acabb72b8c47662a9e33efd5a44f7f1f6f4358ef247d",

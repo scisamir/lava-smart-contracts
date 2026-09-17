@@ -10,14 +10,7 @@ type WalletSignature = {
 export type WalletSigner = {
   getNetworkId: () => Promise<number>;
   getChangeAddress: () => Promise<string>;
-  getUsedAddresses?: () => Promise<string[]>;
-  signData?: (payload: string, address?: string, convertFromUTF8?: boolean) => Promise<WalletSignature>;
-  _walletInstance?: {
-    signData?: (address: string, payload: string) => Promise<WalletSignature>;
-  };
-  walletInstance?: {
-    signData?: (address: string, payload: string) => Promise<WalletSignature>;
-  };
+  signData: (address: string, payload: string) => Promise<WalletSignature>;
 };
 
 const assertWalletNetwork = async (wallet: WalletSigner): Promise<void> => {
@@ -50,15 +43,12 @@ const AUTH_STORAGE_KEY = `lavaWalletAuth:${networkConfig.name}`;
 
 let inFlightAddress: string | null = null;
 let inFlightAuth: Promise<WalletAuthSession> | null = null;
-let lastAuthFailureTime = 0;
-let lastAuthFailureAddress: string | null = null;
-let lastAuthFailureError: Error | null = null;
-const AUTH_FAILURE_COOLDOWN_MS = 4_000;
+let failedAuthAddress: string | null = null;
+let failedAuthError: Error | null = null;
 
-export const clearWalletAuthFailure = () => {
-  lastAuthFailureTime = 0;
-  lastAuthFailureAddress = null;
-  lastAuthFailureError = null;
+const clearWalletAuthFailure = () => {
+  failedAuthAddress = null;
+  failedAuthError = null;
 };
 
 const isSessionValid = (session: WalletAuthSession | null, address?: string): session is WalletAuthSession => {
@@ -78,28 +68,20 @@ const getAuthStorage = (): Storage | null => {
     return null;
   }
 
-  try {
-    return window.localStorage ?? window.sessionStorage ?? null;
-  } catch {
-    return null;
-  }
+  return window.sessionStorage;
 };
 
 const saveWalletAuthSession = (session: WalletAuthSession) => {
-  try {
-    getAuthStorage()?.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-  } catch (e) {
-    console.warn('[walletAuth] Failed to save session:', e);
-  }
+  getAuthStorage()?.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
 };
 
 export const loadWalletAuthSession = (address?: string): WalletAuthSession | null => {
-  try {
-    const raw = getAuthStorage()?.getItem(AUTH_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
+  const raw = getAuthStorage()?.getItem(AUTH_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
 
+  try {
     const parsed = JSON.parse(raw) as WalletAuthSession;
     if (!isSessionValid(parsed, address)) {
       getAuthStorage()?.removeItem(AUTH_STORAGE_KEY);
@@ -114,11 +96,7 @@ export const loadWalletAuthSession = (address?: string): WalletAuthSession | nul
 };
 
 export const clearWalletAuthSession = () => {
-  try {
-    getAuthStorage()?.removeItem(AUTH_STORAGE_KEY);
-  } catch {
-    // Ignore storage access errors in restricted or SSR environments
-  }
+  getAuthStorage()?.removeItem(AUTH_STORAGE_KEY);
   clearWalletAuthFailure();
 };
 
@@ -182,47 +160,6 @@ const verifyWalletChallenge = async (
   return parseJson<WalletAuthSession>(response);
 };
 
-export const signWalletData = async (
-  wallet: any,
-  address: string,
-  message: string
-): Promise<WalletSignature> => {
-  const messageHex = stringToHex(message);
-
-  // 1. Mesh BrowserWallet: signData(payload, address, convertFromUTF8 = true)
-  // When convertFromUTF8 is true, Mesh internally runs fromUTF8(message), converts address to hex, and calls CIP-30 signData
-  if (typeof wallet.signData === 'function') {
-    try {
-      return await wallet.signData(message, address);
-    } catch (err1) {
-      console.warn('[walletAuth] signData(message, address) failed, trying with hex payload:', err1);
-      try {
-        return await wallet.signData(messageHex, address, false);
-      } catch (err2) {
-        console.warn('[walletAuth] signData(messageHex, address, false) failed, trying CIP-30 argument order (address, messageHex):', err2);
-        try {
-          return await wallet.signData(address, messageHex);
-        } catch (err3) {
-          const cip30 = wallet._walletInstance ?? wallet.walletInstance;
-          if (cip30 && typeof cip30.signData === 'function') {
-            console.warn('[walletAuth] Falling back to cip30.signData(address, messageHex)');
-            return await cip30.signData(address, messageHex);
-          }
-          throw err1;
-        }
-      }
-    }
-  }
-
-  // 2. Direct CIP-30 instance: signData(address, messageHex)
-  const cip30 = wallet._walletInstance ?? wallet.walletInstance;
-  if (cip30 && typeof cip30.signData === 'function') {
-    return await cip30.signData(address, messageHex);
-  }
-
-  throw new Error('Wallet does not support data signing');
-};
-
 const authenticateWallet = async (
   wallet: WalletSigner,
   address: string
@@ -231,10 +168,10 @@ const authenticateWallet = async (
   let signature: WalletSignature;
 
   try {
-    signature = await signWalletData(wallet, address, challenge.message);
+    const signerAddress = await wallet.getChangeAddress();
+    signature = await wallet.signData(signerAddress, stringToHex(challenge.message));
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    console.error('[walletAuth] Authentication failed during signature:', error);
     throw new Error(`Wallet signature failed: ${reason || 'unknown error'}`);
   }
 
@@ -255,12 +192,8 @@ export const ensureWalletAuthSession = async (
     return stored;
   }
 
-  if (
-    lastAuthFailureAddress === address &&
-    lastAuthFailureError &&
-    Date.now() - lastAuthFailureTime < AUTH_FAILURE_COOLDOWN_MS
-  ) {
-    throw lastAuthFailureError;
+  if (failedAuthAddress === address && failedAuthError) {
+    throw failedAuthError;
   }
 
   if (inFlightAuth && inFlightAddress === address) {
@@ -275,9 +208,8 @@ export const ensureWalletAuthSession = async (
     })
     .catch((error: unknown) => {
       const authError = error instanceof Error ? error : new Error(String(error));
-      lastAuthFailureAddress = address;
-      lastAuthFailureError = authError;
-      lastAuthFailureTime = Date.now();
+      failedAuthAddress = address;
+      failedAuthError = authError;
       throw authError;
     });
 

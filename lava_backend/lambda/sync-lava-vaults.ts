@@ -8,36 +8,9 @@ import {
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { PoolValidatorAddr } from './e2e/pool/validator';
-import { cardanoConfig, createMaestroProvider } from './cardano';
+import { createMaestroProvider } from './cardano';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-
-const fetchHoldersCount = async (
-  apiKey: string,
-  policyId?: string,
-  assetNameHex?: string
-): Promise<number> => {
-  if (!policyId || !assetNameHex) return 0;
-  try {
-    const network = cardanoConfig.maestroNetwork.toLowerCase();
-    const url = `https://${network}.gomaestro-api.org/v1/assets/${policyId}${assetNameHex}/addresses`;
-    const res = await fetch(url, {
-      headers: { 'api-key': apiKey },
-    });
-    if (!res.ok) {
-      console.warn(`Maestro holders fetch returned ${res.status}`);
-      return 0;
-    }
-    const data = (await res.json()) as any;
-    if (typeof data === 'number') return data;
-    if (typeof data?.data === 'number') return data.data;
-    if (Array.isArray(data?.data)) return data.data.length;
-    return 0;
-  } catch (err) {
-    console.warn('Error fetching holders count from Maestro:', err);
-    return 0;
-  }
-};
 
 type PoolDatumType = any;
 
@@ -115,8 +88,6 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
     const nowIso = new Date().toISOString();
     let syncedCount = 0;
     const seenVaultPks = new Set<string>();
-    let totalTvlLovelace = 0;
-    let ladaMeta: TokenMetadataItem | undefined;
 
     for (const utxo of utxos) {
       if (!utxo.output.plutusData) {
@@ -138,15 +109,6 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
       const tokenMeta = tokenRegistry.get(derivativeSymbol);
       const baseSymbol = tokenMeta?.underlyingSymbol ?? (isUnderlyingAda ? 'ADA' : '');
 
-      if (derivativeSymbol === 'LADA') {
-        ladaMeta = tokenMeta;
-      }
-      if (baseSymbol === 'ADA' || isUnderlyingAda) {
-        totalTvlLovelace += totalUnderlying;
-      }
-
-      const exchangeRate = totalStAssetsMinted > 0 ? totalUnderlying / totalStAssetsMinted : 1.0;
-
       const vaultPk = `VAULT#${derivativeSymbol}`;
       seenVaultPks.add(vaultPk);
 
@@ -161,7 +123,6 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
         recentBlocks: getRandomInt(100, 1200),
         stStake: totalStAssetsMinted.toLocaleString(),
         staked: totalUnderlying.toLocaleString(),
-        exchangeRate,
         tokenPair: {
           base: baseSymbol,
           derivative: derivativeSymbol,
@@ -188,7 +149,6 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
         onchain: {
           totalUnderlyingRaw: String(totalUnderlying),
           totalStAssetsMintedRaw: String(totalStAssetsMinted),
-          exchangeRate,
           txHash: utxo.input.txHash,
           outputIndex: utxo.input.outputIndex,
         },
@@ -204,28 +164,6 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
 
       syncedCount++;
     }
-
-    // Index LADA holders and persist protocol stats snapshot
-    let ladaHolders = 0;
-    if (ladaMeta?.policyId && ladaMeta?.assetNameHex) {
-      ladaHolders = await fetchHoldersCount(maestroApiKey, ladaMeta.policyId, ladaMeta.assetNameHex);
-    }
-
-    const totalTvlAda = totalTvlLovelace / 1_000_000;
-    await ddb.send(
-      new PutCommand({
-        TableName: tableName,
-        Item: {
-          pk: 'PROTOCOL#STATS',
-          sk: 'LATEST',
-          entityType: 'PROTOCOL_STATS',
-          tvlAda: totalTvlAda,
-          holders: ladaHolders > 0 ? ladaHolders : 12,
-          stakingApy: '3.65%',
-          updatedAt: nowIso,
-        },
-      })
-    );
 
     const existingSnapshots = await ddb.send(
       new ScanCommand({

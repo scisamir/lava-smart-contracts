@@ -1,16 +1,40 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowDown, ChevronDown, Zap, Wallet } from "lucide-react";
-import { Slug } from "@/components/layout/Section";
-import { TokenIcon } from "@/components/brand/TokenIcon";
+import { ADA_LOGO, LAVA_LOGO, STRIKETOKENS_LOGO, SPLASH_LOGO, FLUIDTOKENS_LOGO } from "@/lib/images";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
-import { MeshFullTxWallet, TOKEN_PAIRS, TokenPair, UserOrderType } from "@/lib/types";
+import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
 import { fetchBackend } from "@/lib/backendClient";
 import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
-import { resolveTxHash } from "@meshsdk/core";
+
+// PixelCorner removed — unused decorative element
+
+const Cluster = ({ left, right, top, bottom, rotate = 0 }: { left?: number; right?: number; top?: number; bottom?: number; rotate?: number }) => {
+  const containerStyle: any = {
+    position: "absolute",
+    width: 36.05,
+    height: 36.05,
+    transform: `rotate(${rotate}deg)`,
+    zIndex: 5,
+  };
+  if (left !== undefined) containerStyle.left = left;
+  if (right !== undefined) containerStyle.right = right;
+  if (top !== undefined) containerStyle.top = top;
+  if (bottom !== undefined) containerStyle.bottom = bottom;
+
+  return (
+    <div style={containerStyle}>
+      <div style={{ position: "absolute", width: 12.02, height: 12.02, left: 12.33, top: 11.77, background: "#1B1B1B" }} />
+      <div style={{ position: "absolute", width: 12.02, height: 12.02, left: 0.31, top: -0.25, background: "#1B1B1B" }} />
+      <div style={{ position: "absolute", width: 12.02, height: 12.02, left: 24.34, top: 11.77, background: "#1B1B1B" }} />
+      <div style={{ position: "absolute", width: 12.02, height: 12.02, left: 12.33, top: 23.79, background: "#1B1B1B" }} />
+    </div>
+  );
+};
 
 export const StakingCard = () => {
   const DEFAULT_TOKEN_PAIR: TokenPair = TOKEN_PAIRS[0] ?? {
@@ -39,7 +63,6 @@ export const StakingCard = () => {
     walletSK,
     tokenBalances,
     poolInfo,
-    protocolStats,
     retryWalletAccess,
     refreshWalletStateAfterTx,
   } = useCardanoWallet();
@@ -112,16 +135,8 @@ export const StakingCard = () => {
     }
   }, [availableTokenPairs, selectedToken.base, selectedToken.derivative]);
 
-  const activeVault = (poolInfo ?? []).find(
-    (vault) =>
-      vault.name === selectedToken.derivative ||
-      vault.tokenPair?.derivative === selectedToken.derivative
-  );
-  const conversionRate =
-    activeVault && typeof activeVault.exchangeRate === "number" && activeVault.exchangeRate > 0
-      ? activeVault.exchangeRate
-      : 1.0;
-  const usdRate = protocolStats?.adaPriceUsd ?? 0.35;
+  const conversionRate = 0.996;
+  const usdRate = 0.32;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9.]/g, "");
@@ -143,25 +158,8 @@ export const StakingCard = () => {
     setAmount("0.00");
   };
 
-  /* Every side of every pair is directly selectable: picking the base token
-     mints, picking the derivative redeems. The swap arrow stays as a shortcut
-     for the same state change. */
-  type TokenChoice = {
-    pair: TokenPair;
-    symbol: string;
-    counterpart: string;
-    isDerivative: boolean;
-  };
-
-  const tokenChoices: TokenChoice[] = availableTokenPairs.flatMap((pair) => [
-    { pair, symbol: pair.base, counterpart: pair.derivative, isDerivative: false },
-    { pair, symbol: pair.derivative, counterpart: pair.base, isDerivative: true },
-  ]);
-
-  const handleSelectToken = (choice: TokenChoice) => {
-    setSelectedToken(choice.pair);
-    setIsSwapped(choice.isDerivative);
-    setAmount("0.00");
+  const handleSelectTokenPair = (pair: TokenPair) => {
+    setSelectedToken(pair);
     setIsTokenMenuOpen(false);
   };
 
@@ -254,30 +252,6 @@ export const StakingCard = () => {
     try {
       const { session, walletData } = await retryWalletAccess();
 
-      let currentUtxos = walletData.walletUtxos ?? [];
-      try {
-        if (typeof (wallet as any).getUtxos === "function") {
-          const liveUtxos = await (wallet as any).getUtxos();
-          if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
-            currentUtxos = liveUtxos;
-          }
-        }
-      } catch (utxoErr) {
-        console.warn("[StakingCard] wallet.getUtxos fallback:", utxoErr);
-      }
-
-      let currentCollateral = walletData.collateral ?? null;
-      try {
-        if (typeof (wallet as any).getCollateral === "function") {
-          const liveCollateral = await (wallet as any).getCollateral();
-          if (Array.isArray(liveCollateral) && liveCollateral.length > 0) {
-            currentCollateral = liveCollateral[0];
-          }
-        }
-      } catch (colErr) {
-        console.warn("[StakingCard] wallet.getCollateral fallback:", colErr);
-      }
-
       const response = await fetchBackend("/build-user-order-tx", {
         method: "POST",
         token: session.token,
@@ -291,8 +265,8 @@ export const StakingCard = () => {
           walletAddress,
           walletVK,
           walletSK,
-          walletCollateral: currentCollateral,
-          walletUtxos: currentUtxos,
+          walletCollateral: walletData.collateral ?? null,
+          walletUtxos: walletData.walletUtxos ?? [],
         }),
       });
 
@@ -302,41 +276,8 @@ export const StakingCard = () => {
       }
 
       const data = await response.json();
-      const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
-      try {
-        txHash = await wallet.submitTx(signedTx);
-      } catch (submitErr: any) {
-        const errMsg = String(submitErr?.data?.error || submitErr?.message || submitErr);
-        if (/already been included|all inputs are spent/i.test(errMsg)) {
-          try {
-            txHash = resolveTxHash(signedTx);
-            console.warn("[StakingCard] Tx already included in mempool, resolved txHash:", txHash);
-          } catch (hashErr) {
-            console.warn("[StakingCard] Failed to resolveTxHash:", hashErr);
-            throw submitErr;
-          }
-        } else {
-          throw submitErr;
-        }
-      }
-      try {
-        const orderTime = Date.now();
-        const orderAmount = tokenName === "ADA" ? Math.trunc(amount * 1_000_000) : amount;
-        const optimisticOrder: UserOrderType = {
-          amount: orderAmount,
-          txHash,
-          outputIndex: 0,
-          isOptIn: true,
-          tokenName,
-          firstSeenAt: orderTime,
-        };
-        const rawExisting = sessionStorage.getItem("lava_optimistic_orders");
-        const existing: UserOrderType[] = rawExisting ? JSON.parse(rawExisting) : [];
-        existing.push(optimisticOrder);
-        sessionStorage.setItem("lava_optimistic_orders", JSON.stringify(existing));
-      } catch {
-        // Ignore storage write failures
-      }
+      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setIsProcessing(false);
       toastFailure(e);
@@ -377,30 +318,6 @@ export const StakingCard = () => {
     try {
       const { session, walletData } = await retryWalletAccess();
 
-      let currentUtxos = walletData.walletUtxos ?? [];
-      try {
-        if (typeof (wallet as any).getUtxos === "function") {
-          const liveUtxos = await (wallet as any).getUtxos();
-          if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
-            currentUtxos = liveUtxos;
-          }
-        }
-      } catch (utxoErr) {
-        console.warn("[StakingCard] wallet.getUtxos fallback:", utxoErr);
-      }
-
-      let currentCollateral = walletData.collateral ?? null;
-      try {
-        if (typeof (wallet as any).getCollateral === "function") {
-          const liveCollateral = await (wallet as any).getCollateral();
-          if (Array.isArray(liveCollateral) && liveCollateral.length > 0) {
-            currentCollateral = liveCollateral[0];
-          }
-        }
-      } catch (colErr) {
-        console.warn("[StakingCard] wallet.getCollateral fallback:", colErr);
-      }
-
       const response = await fetchBackend("/build-user-order-tx", {
         method: "POST",
         token: session.token,
@@ -414,8 +331,8 @@ export const StakingCard = () => {
           walletAddress,
           walletVK,
           walletSK,
-          walletCollateral: currentCollateral,
-          walletUtxos: currentUtxos,
+          walletCollateral: walletData.collateral ?? null,
+          walletUtxos: walletData.walletUtxos ?? [],
         }),
       });
 
@@ -425,41 +342,8 @@ export const StakingCard = () => {
       }
 
       const data = await response.json();
-      const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
-      try {
-        txHash = await wallet.submitTx(signedTx);
-      } catch (submitErr: any) {
-        const errMsg = String(submitErr?.data?.error || submitErr?.message || submitErr);
-        if (/already been included|all inputs are spent/i.test(errMsg)) {
-          try {
-            txHash = resolveTxHash(signedTx);
-            console.warn("[StakingCard] Tx already included in mempool, resolved txHash:", txHash);
-          } catch (hashErr) {
-            console.warn("[StakingCard] Failed to resolveTxHash:", hashErr);
-            throw submitErr;
-          }
-        } else {
-          throw submitErr;
-        }
-      }
-      try {
-        const orderTime = Date.now();
-        sessionStorage.setItem(`lava_order_time_${txHash}`, String(orderTime));
-        const optimisticOrder: UserOrderType = {
-          amount: requestAmount,
-          txHash,
-          outputIndex: 0,
-          isOptIn: false,
-          tokenName,
-          firstSeenAt: orderTime,
-        };
-        const rawExisting = sessionStorage.getItem("lava_optimistic_orders");
-        const existing: UserOrderType[] = rawExisting ? JSON.parse(rawExisting) : [];
-        existing.push(optimisticOrder);
-        sessionStorage.setItem("lava_optimistic_orders", JSON.stringify(existing));
-      } catch {
-        // Ignore storage write failures
-      }
+      const signedTx = await wallet.signTx(String(data.unsignedTx), true);
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setIsProcessing(false);
       toastFailure(e);
@@ -504,225 +388,273 @@ export const StakingCard = () => {
     setAmount(displayedTokenBalance.toFixed(2));
   };
 
-  let actionLabel = isSwapped ? "Unstake" : "Stake now";
+  let actionLabel = isSwapped ? "Unstake" : "Stake Now";
   if (!isVaultReady) {
     actionLabel = "Vault unavailable";
   } else if (isProcessing) {
-    actionLabel = "Processing…";
+    actionLabel = "Processing...";
   }
 
   return (
-    <div
-      data-reveal
-      className="lava-card lava-card--soft w-full max-w-[520px] p-[22px] sm:p-6"
-    >
-      <div className="relative z-[4] flex flex-col gap-5">
-        <div className="flex items-center justify-between">
-          <Slug>{isSwapped ? "/redeem" : "/mint"}</Slug>
-          <span className="font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
-            {isSwapped
-              ? `${selectedToken.derivative} → ${selectedToken.base}`
-              : `${selectedToken.base} → ${selectedToken.derivative}`}
-          </span>
-        </div>
+  <Card className="w-full max-w-[520px] h-[436px] bg-[#0D0D0D] p-6 flex flex-col gap-6 relative rounded-none">
+    {/* MAIN INPUT / OUTPUT */}
+    <div className="w-full h-[236px] relative flex flex-col">
 
-        {/* ---- amount in / amount out ---- */}
-        <div className="relative flex flex-col gap-1">
-          {/* TOP: YOUR STAKING */}
-          <div className="lava-well flex flex-col gap-3.5 p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] text-dim">Your staking</span>
+      {/* pixel corners removed (no visual effect) */}
 
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={setHalfAmount}
-                  className="h-[26px] rounded-full px-3 font-mono-lava text-[11px] uppercase tracking-[0.02em] text-[#ff9a4d] shadow-[inset_0_0_0_1px_rgba(255,154,77,0.3)] transition-colors hover:bg-[#ff9a4d]/10"
-                >
-                  Half
-                </button>
-                <button
-                  type="button"
-                  onClick={setMaxAmount}
-                  className="h-[26px] rounded-full px-3 font-mono-lava text-[11px] uppercase tracking-[0.02em] text-[#ff9a4d] shadow-[inset_0_0_0_1px_rgba(255,154,77,0.3)] transition-colors hover:bg-[#ff9a4d]/10"
-                >
-                  Max
-                </button>
-              </div>
-            </div>
-
-            <div className="flex h-[52px] items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <TokenIcon symbol={isSwapped ? selectedToken.derivative : selectedToken.base} size={38} />
-                <button
-                  ref={tokenButtonRef}
-                  type="button"
-                  onClick={() => setIsTokenMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-1.5 text-[22px] font-medium tracking-tightest transition-colors hover:text-[#ff9a4d]"
-                >
-                  {isSwapped ? selectedToken.derivative : selectedToken.base}
-                  <ChevronDown
-                    className={`h-4 w-4 text-dim transition-transform ${
-                      isTokenMenuOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="min-w-0 text-right">
-                <input
-                  value={amount}
-                  onChange={handleChange}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
-                  inputMode="decimal"
-                  aria-label="Amount"
-                  className="tabular w-full max-w-[150px] bg-transparent text-right text-[28px] font-medium tracking-tightest outline-none"
-                />
-                <div className="tabular text-[12px] text-dim">
-                  ≈ ${(numAmount * (isSwapped ? conversionRate * usdRate : usdRate)).toFixed(2)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* SWAP: a round chip straddling the seam between the two wells */}
-          <div className="pointer-events-none absolute inset-x-0 top-1/2 z-20 flex -translate-y-1/2 justify-center">
-            <button
-              type="button"
-              onClick={handleSwap}
-              aria-label="Swap direction"
-              className="pointer-events-auto grid h-9 w-9 place-items-center rounded-full bg-[#141920] text-dim shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] transition-colors hover:text-[#ff9a4d]"
-            >
-              <ArrowDown
-                className={`h-4 w-4 transition-transform duration-300 ${
-                  isSwapped ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* BOTTOM: TO RECEIVE */}
-          <div className="lava-well flex flex-col gap-3.5 p-5">
-            <span className="text-[13px] text-dim">To receive</span>
-
-            <div className="flex h-[52px] items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <TokenIcon symbol={isSwapped ? selectedToken.base : selectedToken.derivative} size={38} />
-                <span className="text-[22px] font-medium tracking-tightest">
-                  {isSwapped ? selectedToken.base : selectedToken.derivative}
-                </span>
-              </div>
-
-              <div className="min-w-0 text-right">
-                <div className="tabular text-[28px] font-medium tracking-tightest">
-                  {numAmount > 0
-                    ? isSwapped
-                      ? (numAmount * conversionRate).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 4,
-                        })
-                      : (numAmount / conversionRate).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 4,
-                        })
-                    : amount}
-                </div>
-                <div className="tabular text-[12px] text-dim">
-                  ≈ ${(numAmount * (isSwapped ? conversionRate * usdRate : usdRate)).toFixed(2)}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ---- readout ---- */}
-        <div className="flex flex-col gap-2 text-[13px]">
-          <div className="flex items-center justify-between">
-            <span className="text-dim">1 {selectedToken.derivative}</span>
-            <span className="tabular flex items-center gap-2 font-mono-lava text-[13px] text-[#ffd9a8]">
-              {conversionRate.toFixed(4)} {selectedToken.base}
-              <Zap className="h-3.5 w-3.5 text-dim" />
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-dim">Balance</span>
-            <span className="tabular flex items-center gap-2 font-mono-lava text-[13px]">
-              {displayedTokenBalance.toFixed(2)} {tokenLabel}
-              <Wallet className="h-3.5 w-3.5 text-dim" />
-            </span>
-          </div>
-        </div>
-
-        {/* ---- action ---- */}
-        <Button
-          variant="default"
-          className="w-full"
-          disabled={
-            !connected ||
-            !walletAddress ||
-            !walletVK ||
-            !isVaultReady ||
-            isProcessing ||
-            numAmount === 0
-          }
-          onClick={async () =>
-            isSwapped
-              ? await handleCreateRedeemOrder(numAmount, selectedToken.derivative)
-              : await handleCreateOptInOrder(numAmount, selectedToken.base)
-          }
-        >
-          {actionLabel}
-        </Button>
+      {/* EDGE DECORATIONS */}
+      <div className="absolute inset-0 pointer-events-none z-10">
+        <div className="absolute top-0 left-0 w-4 h-4 border-t border-l border-[#2A2A2A]" />
+        <div className="absolute top-0 right-0 w-4 h-4 border-t border-r border-[#2A2A2A]" />
+        <div className="absolute bottom-0 left-0 w-4 h-4 border-b border-l border-[#2A2A2A]" />
+        <div className="absolute bottom-0 right-0 w-4 h-4 border-b border-r border-[#2A2A2A]" />
       </div>
 
-      {isTokenMenuOpen && (
-        <div
-          ref={tokenMenuRef}
-          className="lava-panel fixed z-[9999] max-h-[280px] overflow-y-auto p-1.5"
-          style={{
-            top: tokenMenuStyle.top,
-            left: tokenMenuStyle.left,
-            width: tokenMenuStyle.width,
-            boxShadow: "0 24px 60px rgba(0,0,0,0.6)",
-          }}
-        >
-          <div className="relative z-[4]">
-            {tokenChoices.map((choice) => {
-              const isSelected =
-                choice.pair.base === selectedToken.base &&
-                choice.pair.derivative === selectedToken.derivative &&
-                choice.isDerivative === isSwapped;
+      {/* TOP: YOUR STAKING */}
+      <div className="w-full h-[115px] bg-black p-4 flex flex-col gap-3 relative z-20">
+        <div className="flex justify-between items-center">
+          <span className="text-[14px] text-white/70">Your staking</span>
 
-              return (
-                <button
-                  key={`${choice.pair.base}-${choice.pair.derivative}-${choice.symbol}`}
-                  type="button"
-                  onClick={() => handleSelectToken(choice)}
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-white/[0.06] ${
-                    isSelected ? "bg-white/[0.04]" : ""
-                  }`}
-                >
-                  <TokenIcon symbol={choice.symbol} size={28} />
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className={`block text-[14px] font-medium tracking-tighter ${
-                        isSelected ? "text-[#ff9a4d]" : "text-white"
-                      }`}
-                    >
-                      {choice.symbol}
-                    </span>
-                    <span className="block font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
-                      {choice.isDerivative ? "Redeem" : "Mint"} &rarr; {choice.counterpart}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
+          <div className="flex gap-1 staking-half-box">
+            <button
+              onClick={setHalfAmount}
+              className="w-[40px] h-[24px] border border-[#D5463E80] text-[#D5463E] text-[12px] font-medium bg-white/[0.02] staking-half-btn"
+            >
+              Half
+            </button>
+
+            <button
+              onClick={setMaxAmount}
+              className="w-[41px] h-[24px] border border-[#D5463E80] text-[#D5463E] text-[12px] font-medium bg-white/[0.02] staking-max-btn"
+            >
+              Max
+            </button>
           </div>
         </div>
-      )}
+
+        <div className="flex justify-between items-center h-[48px]">
+          <div className="flex items-center gap-2">
+            {/* Render token icon directly (no boxed wrapper). Use placeholder when not available. */}
+            {(() => {
+              const name = isSwapped ? selectedToken.derivative : selectedToken.base;
+              const map: Record<string, string | undefined> = {
+                ADA: ADA_LOGO?.src,
+                tStrike: STRIKETOKENS_LOGO?.src,
+                tPulse: SPLASH_LOGO?.src,
+                test: FLUIDTOKENS_LOGO?.src,
+              };
+              const imgSrc = map[name] ?? LAVA_LOGO?.src;
+              return imgSrc ? (
+                <img src={imgSrc} alt={name} className="w-[40px] h-[40px] object-contain" />
+              ) : (
+                <span className="text-xl">{name?.charAt(0) ?? "T"}</span>
+              );
+            })()}
+
+            <div>
+              <button
+                ref={tokenButtonRef}
+                type="button"
+                onClick={() => setIsTokenMenuOpen((prev) => !prev)}
+                className="text-[24px] font-medium text-white flex items-center gap-2"
+              >
+                {isSwapped ? selectedToken.derivative : selectedToken.base}
+                <ChevronDown
+                  className={`w-5 h-5 text-[#D5463E] transition-transform ${
+                    isTokenMenuOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <input
+              value={amount}
+              onChange={handleChange}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              className="bg-transparent text-[32px] font-medium text-white w-24 sm:w-[130px] max-w-full text-right outline-none no-pixelify"
+            />
+            <div className="text-[14px] text-white/80">
+              ≈ ${(numAmount * usdRate).toFixed(2)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="absolute left-0 right-0 flex items-center justify-center z-40 pointer-events-none"
+        style={{ top: "112px", height: "6px" }}
+      >
+        <div className="flex-1 h-[2px] bg-[#2A2A2A]" />
+        <div className="w-[30px]" />
+        <div className="flex-1 h-[2px] bg-[#2A2A2A] z-40" />
+      </div>
+
+      {/* CENTER ARROW (CUTS THROUGH DIVIDER) */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2 z-30"
+        style={{ top: "100px" }}
+      >
+        <div className="w-[30px] h-[30px] bg-[#000000] border-[2px] border-[#2A2A2A] flex items-center justify-center staking-arrow">
+          <button
+            type="button"
+            onClick={handleSwap}
+            className="staking-arrow-btn w-full h-full flex items-center justify-center"
+            aria-label="Swap tokens"
+          >
+            <ArrowDown
+              className={`w-5 h-5 text-[#303030] transition-transform ${
+                isSwapped ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* BOTTOM: TO RECEIVE (NO GAP) */}
+      <div className="w-full h-[115px] bg-black p-4 flex flex-col gap-3 relative z-20">
+        <span className="text-[14px] text-white/70">To receive</span>
+
+        <div className="flex justify-between items-center h-[55px]">
+          <div className="flex items-center gap-2">
+            {(() => {
+              const name = isSwapped ? selectedToken.base : selectedToken.derivative;
+              const map: Record<string, string | undefined> = {
+                ADA: ADA_LOGO?.src,
+                tStrike: STRIKETOKENS_LOGO?.src,
+                tPulse: SPLASH_LOGO?.src,
+                test: FLUIDTOKENS_LOGO?.src,
+              };
+              const imgSrc = map[name] ?? LAVA_LOGO?.src;
+              return imgSrc ? (
+                <img src={imgSrc} alt={name} className="w-[40px] h-[40px] object-contain" />
+              ) : (
+                <span className="text-[24px] font-medium text-white">{name}</span>
+              );
+            })()}
+            <span className="text-[24px] font-medium text-white">
+              {isSwapped ? selectedToken.base : selectedToken.derivative}
+            </span>
+          </div>
+
+          <div className="text-right">
+            <div className="text-[28px] font-medium text-white no-pixelify">
+              {amount}
+            </div>
+            <div className="text-[14px] text-white/80 no-pixelify">
+              ≈ ${((numAmount / conversionRate) * usdRate).toFixed(2)}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  );
+
+    {/* INFO */}
+    <div className="w-full flex flex-col gap-2 text-[14px] text-white">
+      <div className="flex justify-between items-center">
+        <span className="flex items-center gap-2">
+          1 {selectedToken.derivative}
+        </span>
+          <span className="flex items-center gap-2">
+          <span>0.996 {selectedToken.base} ($0.32)</span>
+          <Zap className="w-4 h-4 text-[#666666]" style={{ color: '#666666' }} />
+        </span>
+      </div>
+
+      <div className="flex justify-between items-center">
+        <span className="flex items-center gap-2">
+          Balance
+        </span>
+        <span className="no-pixelify flex items-center gap-2">
+          <span>{displayedTokenBalance.toFixed(2)} {tokenLabel}</span>
+          <Wallet className="w-4 h-4 text-[#666666]" style={{ color: '#666666' }} />
+        </span>
+      </div>
+    </div>
+
+    {/* corner clusters */}
+    <Cluster left={0.31} top={-0.25} rotate={0} />
+    <Cluster right={0.31} top={-0.25} rotate={-270} />
+    <Cluster left={0.31} bottom={-0.25} rotate={-90} />
+    <Cluster right={0.31} bottom={-0.25} rotate={180} />
+
+    {isTokenMenuOpen && (
+      <div
+        ref={tokenMenuRef}
+        className="fixed max-h-[220px] overflow-y-auto bg-[#111111] border border-[#2A2A2A] shadow-2xl z-[9999]"
+        style={{
+          top: tokenMenuStyle.top,
+          left: tokenMenuStyle.left,
+          width: tokenMenuStyle.width,
+        }}
+      >
+        {availableTokenPairs.map((pair) => {
+          const pairLabel = isSwapped
+            ? `${pair.derivative} / ${pair.base}`
+            : `${pair.base} / ${pair.derivative}`;
+          const isSelected =
+            pair.base === selectedToken.base &&
+            pair.derivative === selectedToken.derivative;
+
+          return (
+            <button
+              key={`${pair.base}-${pair.derivative}`}
+              type="button"
+              onClick={() => handleSelectTokenPair(pair)}
+              className={`w-full px-3 py-2 text-left text-sm border-b border-[#1F1F1F] last:border-b-0 hover:bg-[#1B1B1B] ${
+                isSelected ? "text-[#D5463E]" : "text-white"
+              }`}
+            >
+              {pairLabel}
+            </button>
+          );
+        })}
+      </div>
+    )}
+
+    {/* ACTION BUTTON */}
+    <Button
+      disabled={
+        !connected ||
+        !walletAddress ||
+        !walletVK ||
+        !isVaultReady ||
+        isProcessing ||
+        numAmount === 0
+      }
+      onClick={async () =>
+        isSwapped
+          ? await handleCreateRedeemOrder(numAmount, selectedToken.derivative)
+          : await handleCreateOptInOrder(numAmount, selectedToken.base)
+      }
+      className="w-full h-[40px] bg-[#D5463E] text-black font-pixel text-[16px] uppercase tracking-tight relative rounded-none z-20"
+      style={{ marginTop: "22px" }}
+    >
+      <span
+        className="relative z-10 staking-action-text"
+        style={{
+          fontFamily: "Pixelify Sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
+          fontWeight: 500,
+          fontSize: "16px",
+          lineHeight: "100%",
+          letterSpacing: "-0.04em",
+          textTransform: "uppercase",
+        }}
+      >
+        {actionLabel}
+      </span>
+
+      {/* Corner pixels — 4 corners */}
+      <span style={{ position: "absolute", width: 4, height: 4, right: 0, top: 0, background: "#FFFFFF", zIndex: 2 }} />
+      <span style={{ position: "absolute", width: 4, height: 4, left: 0, top: 0, background: "#FFFFFF", zIndex: 2 }} />
+      <span style={{ position: "absolute", width: 4, height: 4, right: 0, bottom: 0, background: "#FFFFFF", zIndex: 2 }} />
+      <span style={{ position: "absolute", width: 4, height: 4, left: 0, bottom: 0, background: "#FFFFFF", zIndex: 2 }} />
+    </Button>
+  </Card>
+);
+
+
+
 };

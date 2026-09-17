@@ -68,26 +68,32 @@ export const BatchOrders = ({ totalOrder }: any) => {
       setIsProcessing(false);
     }
 
-  const BATCHES: { key: "tStrike" | "test" | "tPulse"; label: string }[] = [
-    { key: "tStrike", label: "Batch tStrike" },
-    { key: "test", label: "Batch Test" },
-    { key: "tPulse", label: "Batch tPulse" },
-  ];
-
   return (
-    <div className="mt-10 flex w-full flex-col justify-center gap-4 md:flex-row">
-      {BATCHES.map((batch) => (
-        <Button
-          key={batch.key}
-          variant="outline"
-          disabled={isProcessing}
-          onClick={() => handleBatching(batch.key)}
-          className="relative"
-        >
-          {isProcessing ? "Processing…" : batch.label}
-          <span className="lava-slug ml-1">{totalOrder[batch.key] ?? 0}</span>
-        </Button>
-      ))}
+    <div className="w-full flex flex-col md:flex-row justify-center mt-10 gap-10">
+      <Button
+        disabled={isProcessing}
+        onClick={() => handleBatching("tStrike")}
+        className="relative bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7 btn-lava"
+      >
+        <span className="absolute top-0 right-0 px-1 text-sm text-red-600 bg-white border border-r-2">GTO: {totalOrder.tStrike ?? 0}</span>
+        {isProcessing ? "Processing..." : "Batch tStrike"}
+      </Button>
+      <Button
+        disabled={isProcessing}
+        onClick={() => handleBatching("test")}
+        className="relative bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7 btn-lava"
+      >
+        <span className="absolute top-0 right-0 px-1 text-sm text-red-600 bg-white border border-r-2">GTO: {totalOrder.test ?? 0}</span>
+        {isProcessing ? "Processing..." : "Batch Test"}
+      </Button>
+      <Button
+        disabled={isProcessing}
+        onClick={() => handleBatching("tPulse")}
+        className="relative bg-gradient-lava hover:opacity-90 transition-opacity shadow-glow text-xl px-5 py-7 btn-lava"
+      >
+        <span className="absolute top-0 right-0 px-1 text-sm text-red-600 bg-white border border-r-2">GTO: {totalOrder.tPulse ?? 0}</span>
+        {isProcessing ? "Processing..." : "Batch tPulse"}
+      </Button>
     </div>
-  );
-};
+  )
+}

@@ -25,9 +25,9 @@ export const ConnectedWalletModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent className="sm:max-w-[400px] bg-card/95 backdrop-blur-xl border-border">
         <DialogHeader>
-          <DialogTitle>My wallet</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">My Wallet</DialogTitle>
         </DialogHeader>
         
         <div className="mt-4">
@@ -36,15 +36,15 @@ export const ConnectedWalletModal = ({
               onDisconnect();
               onOpenChange(false);
             }}
-            className="lava-well group flex w-full items-center justify-between p-4 transition-colors hover:bg-white/[0.06]"
+            className="w-full flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 border border-border/50 hover:border-destructive/50 transition-all group"
           >
             <div className="text-left">
-              <p className="mb-1 text-[15px] font-medium tracking-tighter">Disconnect</p>
-              <p className="font-mono-lava text-[12px] text-dim">
+              <p className="font-semibold text-foreground mb-1">Disconnect</p>
+              <p className="text-sm text-muted-foreground font-mono">
                 {truncateAddress(walletAddress)}
               </p>
             </div>
-            <LogOut className="h-4 w-4 text-dim transition-colors group-hover:text-[#df473d]" />
+            <LogOut className="w-5 h-5 text-primary group-hover:text-destructive transition-colors" />
           </button>
         </div>
       </DialogContent>

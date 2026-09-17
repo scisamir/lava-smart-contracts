@@ -12,8 +12,6 @@ import { MeshProvider, CardanoWallet } from "@meshsdk/react";
 import { ToastContainer } from "react-toastify";
 import { CardanoWalletProvider } from "@/hooks/useCardanoWallet";
 import { networkConfig } from "@/lib/networkConfig";
-import { useRouter } from "next/router";
-import { useReveal } from "@/hooks/useReveal";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,11 +39,6 @@ const persister =
     : noopPersister;
 
 export default function MyApp({ Component, pageProps }: AppProps) {
-  const router = useRouter();
-
-  // Re-arms the [data-reveal] sweep whenever a new page mounts.
-  useReveal([router.asPath]);
-
   return (
     <PersistQueryClientProvider
       client={queryClient}
@@ -53,15 +46,11 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     >
       <MeshProvider>
         <CardanoWalletProvider>
-          {/* REQUIRED FOR WALLET PERSISTENCE. Mounted but visually removed,
-              the connect/disconnect UI lives in the nav; drop the wrapper to
-              bring MeshSDK's own widget back. */}
-          <div data-mesh-wallet-shim aria-hidden="true">
-            <CardanoWallet />
-          </div>
+          {/*REQUIRED FOR WALLET PERSISTENCE */}
+          <CardanoWallet />
 
           <TooltipProvider>
-            <ToastContainer position="bottom-left" autoClose={5000} theme="dark" />
+            <ToastContainer position="bottom-left" autoClose={5000} />
             <Toaster />
             <Component {...pageProps} />
           </TooltipProvider>

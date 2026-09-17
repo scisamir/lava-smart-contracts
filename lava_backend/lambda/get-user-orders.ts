@@ -4,7 +4,7 @@ import {
   serializeAddressObj,
 } from '@meshsdk/core';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { setupE2e } from './e2e/setup';
 import { OrderDatumType } from './e2e/types';
 import { OrderValidatorAddr } from './e2e/order/validator';
@@ -65,51 +65,6 @@ type UserOrder = {
   outputIndex: number;
   isOptIn: boolean;
   tokenName: string;
-  firstSeenAt?: number;
-};
-
-const resolveOrderFirstSeenAt = async (
-  tableName: string,
-  txHash: string,
-  outputIndex: number,
-  poolSAN: string
-): Promise<number> => {
-  const pk = `ORDER#${txHash}#${outputIndex}`;
-  const sk = 'TRACKING';
-
-  try {
-    const existing = await ddb.send(
-      new GetCommand({
-        TableName: tableName,
-        Key: { pk, sk },
-      })
-    );
-
-    if (existing.Item && typeof existing.Item.firstSeenAt === 'number') {
-      return existing.Item.firstSeenAt;
-    }
-
-    const now = Date.now();
-    await ddb.send(
-      new PutCommand({
-        TableName: tableName,
-        Item: {
-          pk,
-          sk,
-          entityType: 'ORDER_TRACKING',
-          txHash,
-          outputIndex,
-          poolSAN,
-          firstSeenAt: now,
-          createdAtIso: new Date(now).toISOString(),
-        },
-      })
-    );
-    return now;
-  } catch (err) {
-    console.warn(`Failed to resolve firstSeenAt for order ${txHash}#${outputIndex}:`, err);
-    return Date.now();
-  }
 };
 
 export const handler = async (
@@ -152,14 +107,7 @@ export const handler = async (
 
     const orderUtxos = await provider.fetchAddressUTxOs(OrderValidatorAddr);
 
-    const userOrdersRaw: {
-      amount: number;
-      txHash: string;
-      outputIndex: number;
-      isOptIn: boolean;
-      tokenName: string;
-      poolSAN: string;
-    }[] = [];
+    const userOrders: UserOrder[] = [];
 
     orderUtxos.forEach((utxo) => {
       const orderPlutusData = utxo.output.plutusData;
@@ -183,34 +131,14 @@ export const handler = async (
         ? tokenLabels?.base || poolSAN
         : tokenLabels?.derivative || poolSAN;
 
-      userOrdersRaw.push({
+      userOrders.push({
         amount: Number(orderDatum.fields[0].fields[0].int),
         txHash: utxo.input.txHash,
         outputIndex: Number(utxo.input.outputIndex),
         isOptIn,
         tokenName,
-        poolSAN,
       });
     });
-
-    const userOrders: UserOrder[] = await Promise.all(
-      userOrdersRaw.map(async (raw) => {
-        const firstSeenAt = await resolveOrderFirstSeenAt(
-          tableName,
-          raw.txHash,
-          raw.outputIndex,
-          raw.poolSAN
-        );
-        return {
-          amount: raw.amount,
-          txHash: raw.txHash,
-          outputIndex: raw.outputIndex,
-          isOptIn: raw.isOptIn,
-          tokenName: raw.tokenName,
-          firstSeenAt,
-        };
-      })
-    );
 
     return jsonResponse(200, { orders: userOrders }, auth.origin);
   } catch (error) {

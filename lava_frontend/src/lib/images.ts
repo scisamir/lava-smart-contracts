@@ -14,9 +14,6 @@ import worldMap from "@/assets/world-map.png";
 import auditorLogo from "@/assets/auditor.png";
 import bgBehindd from "@/assets/bgBehind.png";
 import striketoken from "@/assets/striketoken.jpeg";
-import atlasLogo from "@/assets/atlas-logo.png";
-import surfLogo from "@/assets/surf-logo.png";
-import atriumLogo from "@/assets/atrium-logo.png";
 
 export const LAVA_LOGO = lavaColorful;
 export const ADA_LOGO = adaLogo;
@@ -33,9 +30,6 @@ export const STRIKEFINANCE_LOGO = strikefinanceLogo;
 export const WORLD_MAP = worldMap;
 export const AUDITO_LOGO = auditorLogo;
 export const STRIKETOKENS_LOGO = striketoken;
-export const ATLAS_LOGO = atlasLogo;
-export const SURF_LOGO = surfLogo;
-export const ATRIUM_LOGO = atriumLogo;
 
 export default {
   LAVA_LOGO,
@@ -52,7 +46,4 @@ export default {
   WORLD_MAP,
   AUDITO_LOGO,
   STRIKETOKENS_LOGO,
-  ATLAS_LOGO,
-  SURF_LOGO,
-  ATRIUM_LOGO,
 };
