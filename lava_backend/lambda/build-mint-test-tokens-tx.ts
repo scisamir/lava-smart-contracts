@@ -54,15 +54,6 @@ export const handler = async (
       tStrikeAssetName,
     } = setupE2e();
 
-    const collateralAddress = walletCollateral.output?.address || walletAddress;
-    const selectableUtxos = walletUtxos.filter(
-      (u) =>
-        !(
-          u?.input?.txHash === walletCollateral.input.txHash &&
-          u?.input?.outputIndex === walletCollateral.input.outputIndex
-        )
-    );
-
     const unsignedTx = await txBuilder
       .mintPlutusScriptV3()
       .mint('1000', alwaysSuccessMintValidatorHash, tStrikeAssetName)
@@ -74,13 +65,11 @@ export const handler = async (
       .mintRedeemerValue('')
       .txInCollateral(
         walletCollateral.input.txHash,
-        walletCollateral.input.outputIndex,
-        walletCollateral.output.amount,
-        collateralAddress
+        walletCollateral.input.outputIndex
       )
       .setTotalCollateral('5000000')
       .changeAddress(walletAddress)
-      .selectUtxosFrom(selectableUtxos.length > 0 ? selectableUtxos : walletUtxos)
+      .selectUtxosFrom(walletUtxos)
       .complete();
 
     return jsonResponse(200, {

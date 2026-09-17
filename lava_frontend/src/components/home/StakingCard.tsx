@@ -7,7 +7,7 @@ import { Slug } from "@/components/layout/Section";
 import { TokenIcon } from "@/components/brand/TokenIcon";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
-import { MeshFullTxWallet, TOKEN_PAIRS, TokenPair, UserOrderType } from "@/lib/types";
+import { MeshFullTxWallet, TOKEN_PAIRS, TokenPair } from "@/lib/types";
 import { fetchBackend } from "@/lib/backendClient";
 import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
 import { resolveTxHash } from "@meshsdk/core";
@@ -249,7 +249,7 @@ export const StakingCard = () => {
       try {
         if (typeof (wallet as any).getUtxos === "function") {
           const liveUtxos = await (wallet as any).getUtxos();
-          if (Array.isArray(liveUtxos) && liveUtxos.length > 0 && liveUtxos.every((u: any) => u?.output?.amount)) {
+          if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
             currentUtxos = liveUtxos;
           }
         }
@@ -261,15 +261,12 @@ export const StakingCard = () => {
       try {
         if (typeof (wallet as any).getCollateral === "function") {
           const liveCollateral = await (wallet as any).getCollateral();
-          if (Array.isArray(liveCollateral) && liveCollateral.length > 0 && liveCollateral[0]?.output?.amount) {
+          if (Array.isArray(liveCollateral) && liveCollateral.length > 0) {
             currentCollateral = liveCollateral[0];
           }
         }
       } catch (colErr) {
         console.warn("[StakingCard] wallet.getCollateral fallback:", colErr);
-      }
-      if (currentCollateral && currentCollateral.output && !currentCollateral.output.address) {
-        currentCollateral.output.address = walletAddress;
       }
 
       const response = await fetchBackend("/build-user-order-tx", {
@@ -297,40 +294,7 @@ export const StakingCard = () => {
 
       const data = await response.json();
       const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
-      try {
-        txHash = await wallet.submitTx(signedTx);
-      } catch (submitErr: any) {
-        const errMsg = String(submitErr?.data?.error || submitErr?.message || submitErr);
-        if (/already been included|all inputs are spent/i.test(errMsg)) {
-          try {
-            txHash = resolveTxHash(signedTx);
-            console.warn("[StakingCard] Tx already included in mempool, resolved txHash:", txHash);
-          } catch (hashErr) {
-            console.warn("[StakingCard] Failed to resolveTxHash:", hashErr);
-            throw submitErr;
-          }
-        } else {
-          throw submitErr;
-        }
-      }
-      try {
-        const orderTime = Date.now();
-        const orderAmount = tokenName === "ADA" ? Math.trunc(amount * 1_000_000) : amount;
-        const optimisticOrder: UserOrderType = {
-          amount: orderAmount,
-          txHash,
-          outputIndex: 0,
-          isOptIn: true,
-          tokenName,
-          firstSeenAt: orderTime,
-        };
-        const rawExisting = sessionStorage.getItem("lava_optimistic_orders");
-        const existing: UserOrderType[] = rawExisting ? JSON.parse(rawExisting) : [];
-        existing.push(optimisticOrder);
-        sessionStorage.setItem("lava_optimistic_orders", JSON.stringify(existing));
-      } catch {
-        // Ignore storage write failures
-      }
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setIsProcessing(false);
       toastFailure(e);
@@ -375,7 +339,7 @@ export const StakingCard = () => {
       try {
         if (typeof (wallet as any).getUtxos === "function") {
           const liveUtxos = await (wallet as any).getUtxos();
-          if (Array.isArray(liveUtxos) && liveUtxos.length > 0 && liveUtxos.every((u: any) => u?.output?.amount)) {
+          if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
             currentUtxos = liveUtxos;
           }
         }
@@ -387,15 +351,12 @@ export const StakingCard = () => {
       try {
         if (typeof (wallet as any).getCollateral === "function") {
           const liveCollateral = await (wallet as any).getCollateral();
-          if (Array.isArray(liveCollateral) && liveCollateral.length > 0 && liveCollateral[0]?.output?.amount) {
+          if (Array.isArray(liveCollateral) && liveCollateral.length > 0) {
             currentCollateral = liveCollateral[0];
           }
         }
       } catch (colErr) {
         console.warn("[StakingCard] wallet.getCollateral fallback:", colErr);
-      }
-      if (currentCollateral && currentCollateral.output && !currentCollateral.output.address) {
-        currentCollateral.output.address = walletAddress;
       }
 
       const response = await fetchBackend("/build-user-order-tx", {
@@ -423,40 +384,7 @@ export const StakingCard = () => {
 
       const data = await response.json();
       const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
-      try {
-        txHash = await wallet.submitTx(signedTx);
-      } catch (submitErr: any) {
-        const errMsg = String(submitErr?.data?.error || submitErr?.message || submitErr);
-        if (/already been included|all inputs are spent/i.test(errMsg)) {
-          try {
-            txHash = resolveTxHash(signedTx);
-            console.warn("[StakingCard] Tx already included in mempool, resolved txHash:", txHash);
-          } catch (hashErr) {
-            console.warn("[StakingCard] Failed to resolveTxHash:", hashErr);
-            throw submitErr;
-          }
-        } else {
-          throw submitErr;
-        }
-      }
-      try {
-        const orderTime = Date.now();
-        sessionStorage.setItem(`lava_order_time_${txHash}`, String(orderTime));
-        const optimisticOrder: UserOrderType = {
-          amount: requestAmount,
-          txHash,
-          outputIndex: 0,
-          isOptIn: false,
-          tokenName,
-          firstSeenAt: orderTime,
-        };
-        const rawExisting = sessionStorage.getItem("lava_optimistic_orders");
-        const existing: UserOrderType[] = rawExisting ? JSON.parse(rawExisting) : [];
-        existing.push(optimisticOrder);
-        sessionStorage.setItem("lava_optimistic_orders", JSON.stringify(existing));
-      } catch {
-        // Ignore storage write failures
-      }
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setIsProcessing(false);
       toastFailure(e);

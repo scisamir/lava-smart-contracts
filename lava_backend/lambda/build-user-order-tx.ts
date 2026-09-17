@@ -202,39 +202,18 @@ export const handler = async (
 
     const gsUtxo = (await provider.fetchAddressUTxOs(GlobalSettingsAddr))[0];
 
-    const userUtxos =
-      Array.isArray(walletUtxos) &&
-      walletUtxos.length > 0 &&
-      walletUtxos.every((u) => u?.output?.amount)
-        ? walletUtxos
-        : await provider.fetchAddressUTxOs(walletAddress);
-
-    const hasValidCollateral =
-      walletCollateral &&
-      walletCollateral.input?.txHash &&
-      walletCollateral.output?.amount;
-
-    const fallbackCollateral = [...userUtxos]
+    const fallbackCollateral = [...walletUtxos]
       .filter((utxo) =>
-        utxo?.output?.amount?.length === 1 &&
-        utxo.output.amount[0]?.unit === 'lovelace' &&
-        BigInt(utxo.output.amount[0]?.quantity ?? '0') >= 5_000_000n
+        utxo.output.amount.length === 1 &&
+        utxo.output.amount[0].unit === 'lovelace' &&
+        BigInt(utxo.output.amount[0].quantity) >= 7_000_000n
       )
       .sort((a, b) => Number(BigInt(b.output.amount[0].quantity) - BigInt(a.output.amount[0].quantity)))[0];
 
-    const collateral = hasValidCollateral ? walletCollateral : fallbackCollateral;
+    const collateral = walletCollateral ?? fallbackCollateral;
     if (!collateral) {
-      throw new Error('No collateral UTxO found. Please ensure your wallet has at least 5 ADA collateral.');
+      throw new Error('No collateral UTxO found');
     }
-
-    const collateralAddress = collateral.output?.address || walletAddress;
-    const selectableUtxos = userUtxos.filter(
-      (u) =>
-        !(
-          u?.input?.txHash === collateral.input.txHash &&
-          u?.input?.outputIndex === collateral.input.outputIndex
-        )
-    );
 
     const gsReference = gsUtxo
       ? { txHash: gsUtxo.input.txHash, outputIndex: gsUtxo.input.outputIndex }
@@ -254,16 +233,11 @@ export const handler = async (
       .mintRedeemerValue(mConStr0([]))
       .txOut(OrderValidatorAddr, orderValue)
       .txOutInlineDatumValue(datum)
-      .txInCollateral(
-        collateral.input.txHash,
-        collateral.input.outputIndex,
-        collateral.output.amount,
-        collateralAddress
-      )
+      .txInCollateral(collateral.input.txHash, collateral.input.outputIndex)
       .setTotalCollateral('5000000')
       .requiredSignerHash(walletVK)
       .changeAddress(walletAddress)
-      .selectUtxosFrom(selectableUtxos.length > 0 ? selectableUtxos : userUtxos);
+      .selectUtxosFrom(walletUtxos);
 
     const unsignedTx = await builder.complete();
 
