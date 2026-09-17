@@ -103,7 +103,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
       try {
         if (typeof (wallet as any).getUtxos === "function") {
           const liveUtxos = await (wallet as any).getUtxos();
-          if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
+          if (Array.isArray(liveUtxos) && liveUtxos.length > 0 && liveUtxos.every((u: any) => u?.output?.amount)) {
             currentUtxos = liveUtxos;
           }
         }
@@ -115,7 +115,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
       try {
         if (typeof (wallet as any).getCollateral === "function") {
           const liveCollateral = await (wallet as any).getCollateral();
-          if (Array.isArray(liveCollateral) && liveCollateral.length > 0) {
+          if (Array.isArray(liveCollateral) && liveCollateral.length > 0 && liveCollateral[0]?.output?.amount) {
             currentCollateral = liveCollateral[0];
           }
         }
