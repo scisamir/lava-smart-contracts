@@ -168,11 +168,15 @@ const authenticateWallet = async (
   let signature: WalletSignature;
 
   try {
-    const signerAddress = await wallet.getChangeAddress();
-    signature = await wallet.signData(signerAddress, stringToHex(challenge.message));
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`Wallet signature failed: ${reason || 'unknown error'}`);
+    signature = await wallet.signData(address, stringToHex(challenge.message));
+  } catch {
+    try {
+      const signerAddress = await wallet.getChangeAddress();
+      signature = await wallet.signData(signerAddress, stringToHex(challenge.message));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(`Wallet signature failed: ${reason || 'unknown error'}`);
+    }
   }
 
   const session = await verifyWalletChallenge(address, challenge.challengeToken, signature);

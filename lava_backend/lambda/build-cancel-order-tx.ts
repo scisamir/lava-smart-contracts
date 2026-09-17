@@ -118,6 +118,15 @@ export const handler = async (
       throw new Error('No collateral UTxO found. Please ensure your wallet has at least 5 ADA collateral.');
     }
 
+    const collateralAddress = collateral.output?.address || walletAddress;
+    const selectableUtxos = userUtxos.filter(
+      (u) =>
+        !(
+          u?.input?.txHash === collateral.input.txHash &&
+          u?.input?.outputIndex === collateral.input.outputIndex
+        )
+    );
+
     const unsignedTx = await txBuilder
       .spendingPlutusScriptV3()
       .txIn(
@@ -136,11 +145,13 @@ export const handler = async (
       .txOut(receiverAddress, outputAmount)
       .txInCollateral(
         collateral.input.txHash,
-        collateral.input.outputIndex
+        collateral.input.outputIndex,
+        collateral.output.amount,
+        collateralAddress
       )
       .setTotalCollateral('5000000')
       .changeAddress(walletAddress)
-      .selectUtxosFrom(userUtxos)
+      .selectUtxosFrom(selectableUtxos.length > 0 ? selectableUtxos : userUtxos)
       .requiredSignerHash(walletVK)
       .complete();
 

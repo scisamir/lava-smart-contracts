@@ -62,6 +62,62 @@ const getWalletChangeAddress = async (wallet: WalletSigner): Promise<string> => 
   return wallet.getChangeAddress();
 };
 
+const resolveWalletAddress = async (wallet: any): Promise<string> => {
+  // 1. If wallet has live UTxOs, use the address holding actual UTxOs
+  if (typeof wallet?.getUtxos === "function") {
+    try {
+      const utxos = await wallet.getUtxos();
+      if (Array.isArray(utxos) && utxos.length > 0) {
+        const withAddr = utxos.find(
+          (u: any) => typeof u?.output?.address === "string" && u.output.address
+        );
+        if (withAddr?.output?.address) {
+          return withAddr.output.address;
+        }
+      }
+    } catch (err) {
+      console.warn("wallet.getUtxos address resolution fallback:", err);
+    }
+  }
+
+  // 2. Check used addresses (addresses with transaction history)
+  if (typeof wallet?.getUsedAddresses === "function") {
+    try {
+      const used = await wallet.getUsedAddresses();
+      if (
+        Array.isArray(used) &&
+        used.length > 0 &&
+        typeof used[0] === "string" &&
+        used[0]
+      ) {
+        return used[0];
+      }
+    } catch (err) {
+      console.warn("wallet.getUsedAddresses fallback:", err);
+    }
+  }
+
+  // 3. Check unused addresses (external receive address for newly created/funded wallet)
+  if (typeof wallet?.getUnusedAddresses === "function") {
+    try {
+      const unused = await wallet.getUnusedAddresses();
+      if (
+        Array.isArray(unused) &&
+        unused.length > 0 &&
+        typeof unused[0] === "string" &&
+        unused[0]
+      ) {
+        return unused[0];
+      }
+    } catch (err) {
+      console.warn("wallet.getUnusedAddresses fallback:", err);
+    }
+  }
+
+  // 4. Fall back to change address
+  return getWalletChangeAddress(wallet as WalletSigner);
+};
+
 const fetchWalletBalance = async (
   wallet: WalletSigner,
   address: string
@@ -75,7 +131,71 @@ const fetchWalletBalance = async (
     throw new Error(`Failed to fetch user balance: ${balanceRes.status}`);
   }
 
-  return balanceRes.json();
+  const data: WalletBalanceResponse = await balanceRes.json();
+
+  // Augment with direct live wallet balance from browser wallet extension
+  try {
+    const browserWallet = wallet as any;
+    if (typeof browserWallet.getBalance === "function") {
+      const liveAssets = await browserWallet.getBalance();
+      if (Array.isArray(liveAssets)) {
+        const lovelaceAsset = liveAssets.find(
+          (a: any) => a?.unit === "lovelace" || a?.unit === ""
+        );
+        if (lovelaceAsset) {
+          const liveAda = Number(lovelaceAsset.quantity) / 1_000_000;
+          if (liveAda > 0 || (data.balance ?? 0) === 0) {
+            data.balance = liveAda;
+            data.tokenBalances = {
+              ...(data.tokenBalances ?? {}),
+              ADA: liveAda,
+            };
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Direct wallet.getBalance fallback:", err);
+  }
+
+  // Augment walletUtxos if backend returned empty
+  try {
+    const browserWallet = wallet as any;
+    if (
+      (!data.walletUtxos || data.walletUtxos.length === 0) &&
+      typeof browserWallet.getUtxos === "function"
+    ) {
+      const liveUtxos = await browserWallet.getUtxos();
+      if (
+        Array.isArray(liveUtxos) &&
+        liveUtxos.length > 0 &&
+        liveUtxos.every((u: any) => u?.output?.amount)
+      ) {
+        data.walletUtxos = liveUtxos;
+      }
+    }
+  } catch (err) {
+    console.warn("Direct wallet.getUtxos fallback:", err);
+  }
+
+  // Augment collateral if backend returned null
+  try {
+    const browserWallet = wallet as any;
+    if (!data.collateral && typeof browserWallet.getCollateral === "function") {
+      const liveCol = await browserWallet.getCollateral();
+      if (
+        Array.isArray(liveCol) &&
+        liveCol.length > 0 &&
+        liveCol[0]?.output?.amount
+      ) {
+        data.collateral = liveCol[0];
+      }
+    }
+  } catch (err) {
+    console.warn("Direct wallet.getCollateral fallback:", err);
+  }
+
+  return data;
 };
 
 const fetchVaults = async (): Promise<BackendVault[]> => {
@@ -185,7 +305,7 @@ function useCardanoWalletState() {
       }
 
       try {
-        const addr = await getWalletChangeAddress(wallet as WalletSigner);
+        const addr = await resolveWalletAddress(wallet);
         setWalletAddress(addr);
 
         const { pubKeyHash, stakeCredentialHash } = deserializeAddress(addr);

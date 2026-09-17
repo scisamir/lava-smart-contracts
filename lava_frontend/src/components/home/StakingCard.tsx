@@ -268,6 +268,9 @@ export const StakingCard = () => {
       } catch (colErr) {
         console.warn("[StakingCard] wallet.getCollateral fallback:", colErr);
       }
+      if (currentCollateral && currentCollateral.output && !currentCollateral.output.address) {
+        currentCollateral.output.address = walletAddress;
+      }
 
       const response = await fetchBackend("/build-user-order-tx", {
         method: "POST",
@@ -390,6 +393,9 @@ export const StakingCard = () => {
         }
       } catch (colErr) {
         console.warn("[StakingCard] wallet.getCollateral fallback:", colErr);
+      }
+      if (currentCollateral && currentCollateral.output && !currentCollateral.output.address) {
+        currentCollateral.output.address = walletAddress;
       }
 
       const response = await fetchBackend("/build-user-order-tx", {
