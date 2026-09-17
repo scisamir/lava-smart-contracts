@@ -1,511 +1,445 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+/* ------------------------------------------------------------------ *
+ * Lava design system.
+ *
+ * Ported from the marketing site (day39-unstable-solid): same ink, same
+ * ember palette, same system-sans / mono pairing, same 22px card with the
+ * lava gradient bleeding out of its bottom edge.
+ *
+ * Tailwind reads the shadcn slots as bare HSL triples, so every token is
+ * declared that way; the raw hex the landing page uses is kept alongside
+ * for the handful of places that need a literal (gradients, shadows).
+ * ------------------------------------------------------------------ */
 
-
-/* Load Pixelify Sans from Google Fonts (valid weight syntax). */
-/* Load the Pixelify Sans variable font placed in `public/` */
-@font-face {
-  font-family: 'Pixelify Sans';
-  src: url('/PixelifySans-VariableFont_wght.ttf') format('truetype');
-  /* Variable font weight range */
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
+    /* ---- landing-page literals ---- */
+    --ink: #05070a;
+    --lava-red-hex: #df473d;
+    --lava-ember-hex: #ff9a4d;
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 98%;
+    /* ---- shadcn slots ---- */
+    --background: 216 33% 3%;          /* #05070a */
+    --foreground: 0 0% 100%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 98%;
+    --card: 213 26% 7%;                /* #0d1116 */
+    --card-foreground: 0 0% 100%;
 
-    --primary: 3 64% 54%;
+    --popover: 213 26% 7%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 4 72% 56%;              /* #df473d */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 33 100% 50%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 26 100% 65%;          /* #ff9a4d */
+    --secondary-foreground: 213 26% 7%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 213 18% 11%;
+    --muted-foreground: 210 6% 56%;    /* ≈ rgba(255,255,255,.52) on ink */
 
-    --accent: 14 100% 57%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 26 100% 65%;
+    --accent-foreground: 213 26% 7%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 4 72% 56%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 14 100% 57%;
+    --border: 213 14% 15%;
+    --input: 213 14% 15%;
+    --ring: 26 100% 65%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    --lava-orange: 14 100% 57%;
-    --lava-red: 3 64% 54%;
-    --Color-6: #D5463E;
-    --lava-yellow: 33 100% 50%;
-    
-    --glow-sm: 0 4px 20px hsl(var(--lava-orange) / 0.3);
-    --glow-md: 0 8px 40px hsl(var(--lava-orange) / 0.4);
-    --glow-lg: 0 12px 60px hsl(var(--lava-orange) / 0.5);
+    --lava-orange: 26 100% 65%;
+    --lava-red: 4 72% 56%;
+    --lava-yellow: 33 100% 62%;
+
+    /* Soft ember glows rather than hard drop shadows. */
+    --glow-sm: 0 6px 24px rgba(223, 71, 61, 0.18);
+    --glow-md: 0 12px 40px rgba(223, 71, 61, 0.24);
+    --glow-lg: 0 24px 70px rgba(223, 71, 61, 0.32);
+
+    /* Layout rhythm, matched to the landing shell. */
+    --shell: 1400px;
+    --gutter: clamp(18px, 4vw, 56px);
   }
-}
 
-@layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply text-foreground;
-    background: var(--Color, #000000);
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
   }
 
-  /* Default typography for general texts (Pixelify Sans) */
-  :root, body {
-    font-family: "Pixelify Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    font-style: normal; /* 'Regular' */
-    /* leading-trim is experimental but included per design spec */
-    leading-trim: none;
-    line-height: 100%;
-    letter-spacing: -2%;
+  /* The landing page leans on medium weights and tight tracking rather than
+     bold; mirroring that here is most of what makes the two feel like one
+     product. */
+  h1, h2, h3, h4 {
+    font-weight: 500;
+    letter-spacing: -0.03em;
+  }
+
+  /* Numerals line up in tables and readouts. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: rgba(255, 154, 77, 0.28);
+  }
+
+  /* Scrollbar, tuned to the ink. */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
+}
+
+@layer components {
+  /* ---------------------------------------------------------------- *
+   * Shell
+   * ---------------------------------------------------------------- */
+  .shell {
+    width: 100%;
+    max-width: var(--shell);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Surfaces
+   *
+   * `.lava-panel` is the neutral one (tables, modals, list rows).
+   * `.lava-card` adds the ember bleed the landing cards use. Reserve it
+   * for the one or two hero objects on a page, or it stops reading as an
+   * accent.
+   * ---------------------------------------------------------------- */
+  .lava-panel {
+    position: relative;
+    border-radius: 22px;
+    background: #0d1116;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .lava-panel::after,
+  .lava-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  }
+
+  .lava-card {
+    position: relative;
+    border-radius: 22px;
+    overflow: hidden;
+    isolation: isolate;
+    background: linear-gradient(180deg, #0d1116 0%, #14100f 42%, #4a1a14 78%, #a03c22 100%);
+  }
+
+  /* A quieter version of the same idea: the ember only kisses the bottom. */
+  .lava-card--soft {
+    background: linear-gradient(180deg, #0d1116 0%, #11131a 55%, #241413 85%, #4a1f18 100%);
+  }
+
+  .lava-hairline {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  }
+
+  /* Recessed inner well: inputs, amount fields, list rows inside a panel. */
+  .lava-well {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+
+  /* The first section rides up over the hero, exactly as on the landing page. */
+  .lava-section-lip {
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 32px 32px 0 0;
+    box-shadow: 0 -40px 90px rgba(0, 0, 0, 0.85);
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Minting coin. See components/brand/SpinningCoin.tsx for the geometry
+   * ---------------------------------------------------------------- */
+  .coin {
+    position: relative;
+    width: var(--coin-size);
+    height: var(--coin-size);
+    perspective: 1100px;
+    flex: none;
+  }
+
+  .coin__spin {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    animation: coin-spin 11s linear infinite;
+    will-change: transform;
+  }
+
+  .coin__rim {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform-origin: 50% 50%;
+    backface-visibility: hidden;
+  }
+
+  /* Black disc, lava mark. Same relationship as the favicon. */
+  .coin__face {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background:
+      radial-gradient(72% 72% at 32% 24%, #21262e 0%, #0e1116 46%, #05070a 100%);
+    box-shadow:
+      inset 0 0 0 clamp(2px, 1.2%, 5px) rgba(255, 138, 77, 0.22),
+      inset 0 -14px 40px rgba(0, 0, 0, 0.7);
+  }
+
+  /* The reverse is lit from the opposite side, so it never looks like a decal. */
+  .coin__face--back {
+    background:
+      radial-gradient(72% 72% at 68% 24%, #1c2129 0%, #0c0f14 46%, #05070a 100%);
+  }
+
+  .coin__shadow {
+    position: absolute;
+    left: 50%;
+    bottom: -9%;
+    width: 74%;
+    height: 9%;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: radial-gradient(50% 50% at 50% 50%, rgba(223, 71, 61, 0.42), transparent 72%);
+    filter: blur(6px);
+    animation: coin-shadow 11s linear infinite;
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Slug: the mono pill above a card title
+   * ---------------------------------------------------------------- */
+  .lava-slug {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.72);
+    white-space: nowrap;
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Pills: the landing page's only button shape
+   * ---------------------------------------------------------------- */
+  .lava-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 48px;
+    padding-inline: 22px;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #111318;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .lava-pill:hover:not(:disabled) { background: #f3f3f5; }
+  .lava-pill:active:not(:disabled) { transform: translateY(1px); }
+  .lava-pill:disabled { opacity: 0.4; box-shadow: none; cursor: not-allowed; }
+
+  /* Ember fill, for the one primary action per view. */
+  .lava-pill--ember {
+    background: linear-gradient(120deg, var(--lava-ember-hex) 0%, var(--lava-red-hex) 100%);
+    color: #14090a;
+    box-shadow: 0 12px 40px rgba(223, 71, 61, 0.3);
+  }
+
+  .lava-pill--ember:hover:not(:disabled) {
+    background: linear-gradient(120deg, #ffab68 0%, #e75a50 100%);
+  }
+
+  /* Hairline outline on ink. */
+  .lava-pill--ghost {
+    background: transparent;
+    color: #ffffff;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  }
+
+  .lava-pill--ghost:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  }
+
+  .lava-pill--sm {
+    height: 36px;
+    padding-inline: 16px;
+    font-size: 13px;
   }
 }
 
-/* Ensure the project's bg-gradient-lava utility uses the exact requested gradient.
-   This will make all uses of `bg-gradient-lava` render the precise linear-gradient
-   without changing individual components. */
 @layer utilities {
-  .bg-gradient-lava {
-    background: linear-gradient(181.52deg, #FFD13F -26.73%, #F41B00 98.71%);
+  /* ---------------------------------------------------------------- *
+   * Text treatments
+   * ---------------------------------------------------------------- */
+
+  /* The animated sheen the landing headline uses for its accent line. */
+  .text-sheen {
+    background: linear-gradient(90deg, #ffffff 0%, var(--lava-ember-hex) 45%, var(--lava-red-hex) 70%, #ffffff 100%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: lava-sheen 7s linear infinite;
   }
-}
 
+  /* Cardano's own blue, for the places that name the chain rather than Lava. */
+  .text-sheen--cardano {
+    background: linear-gradient(90deg, #ffffff 0%, #5b9bff 42%, #0033ad 70%, #ffffff 100%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: lava-sheen 7s linear infinite;
+  }
 
-@layer utilities {
+  /* Static ember gradient, where motion would be noise (table cells, labels). */
   .text-gradient-lava {
-    /* Use the requested vertical lava gradient as a text fill (not a button/pill).
-       This keeps the span inline and prevents button-like padding/rounding. */
-    background: linear-gradient(180deg, #D5463E 58.17%, #D5463E 100%);
+    background: linear-gradient(120deg, var(--lava-ember-hex) 0%, var(--lava-red-hex) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
     display: inline;
-    padding: 0;
-    border-radius: 0;
+  }
+
+  .text-dim { color: rgba(255, 255, 255, 0.52); }
+
+  .font-mono-lava {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
 }
 
-/* App background wrapper: renders the background image in a ::before pseudo-element
-   so that filters can be applied (brightness/dimming) without affecting child content. */
-@layer components {
-  .app-bg-wrapper {
-    position: relative;
-    /* allow the wrapper to size to its content so it can be used for
-       rectangular backgrounds around specific sections (not full viewport) */
-  }
-
-  .app-bg-wrapper::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image: var(--app-bg);
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-position: center;
-    opacity: 0.15;
-    z-index: 0;
-  }
-
-  /* Ensure children stack above the background pseudo-element */
-  .app-bg-wrapper > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  /* Colored text utility (use for highlighted/colored labels) */
-  .colored-text {
-    background: var(--Color-6, #D5463E) !important;
-    color: white !important;
-    display: inline-block;
-    padding: 0.1rem 0.4rem;
-    border-radius: 0.25rem;
-  }
-
-  /* Exclude tables and card content from the global Pixelify styles so their
-     typography remains unchanged per request */
-  /* Exclude tables and card-like containers from the global Pixelify styles
-     Use attribute selectors to catch Tailwind generated class names like
-     `bg-card/80` and similar. `!important` ensures these rules win over
-     inherited body font declarations. */
-  table,
-  table th,
-  table td,
-  [class*="bg-card"],
-  [class*="bg-card"] *,
-  [class*=" card"],
-  [class*="card"],
-  [class*="card"] * {
-    font-family:  system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial !important;
-    line-height: normal !important;
-    letter-spacing: normal !important;
-  }
-
-  /* Small lorem helper class for inter-based small text */
-  .lorem {
-    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    font-weight: 400;
-    font-style: normal;
-    font-size: 16px;
-    leading-trim: none;
-    line-height: 150%;
-    letter-spacing: -2%;
-  }
-
-  /* Utility to opt-out of Pixelify Sans (use system font) */
-  .no-pixelify {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial !important;
-    line-height: normal !important;
-    letter-spacing: normal !important;
-  }
-
-  /* Button styling is opt-in via the `.btn-lava` class. This prevents
-     a global rule from forcing appearance on all native button elements. */
-  .btn-lava {
-    background-image: none;
-    background-color: var(--Color-6, #D5463E);
-    background: var(--Color-6, #D5463E);
-    color: black !important;
-    border: none;
-    box-shadow: none;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    
-  }
-
-  /* When the gradient utility is used with the opt-in class */
-  .btn-lava.bg-gradient-lava {
-    background-image: none;
-    background: var(--Color-6, #D5463E);
-    color: black !important;
-  }
-
-  /* FAQ-specific reset: accordion triggers and question elements should NOT
-     inherit the global button styling. Scope the reset to `.faq-section`. */
-  .faq-section button,
-  .faq-section [role="button"],
-  .faq-section .accordion-trigger,
-  .faq-section .accordion-content {
-    background-image: none !important;
-    background: transparent !important;
-    background-color: transparent !important;
-    color: inherit !important;
-    box-shadow: none !important;
-    border: none !important;
-    padding: 0 !important;
-  }
-
-  /* Also ensure buttons inside card-like containers (e.g. accordion items)
-     don't receive the global lava-red background. This removes only the
-     background/color and does not touch font-family or other typography. */
-  [class*="bg-card"] button,
-  [class*="bg-card"] [role="button"] {
-    background-image: none !important;
-    background: transparent !important;
-    background-color: transparent !important;
-    color: inherit !important;
-    box-shadow: none !important;
-    border: none !important;
-    padding: 0 !important;
-  }
-
-  /* Staking card specific overrides: opt-out from global button forcing
-     and apply the boxed black background + var(--Color-6) text color. */
-  .staking-half-box {
-    display: inline-flex;
-    gap: 4px;
-    align-items: center;
-    background: transparent !important;
-    padding: 0 !important;
-  }
-
-  .staking-half-box .staking-half-btn,
-  .staking-half-box .staking-max-btn {
-    background-image: none !important;
-    background: #000000 !important;
-    background-color: #000000 !important;
-    color: var(--Color-6) !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    border: 1px solid rgba(213,70,62,0.5) !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  /* Arrow box: do not force background/border here so component classes can control appearance */
-  .staking-arrow {
-    box-shadow: none !important;
-  }
-
-  .staking-arrow-btn {
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    color: var(--Color-6) !important;
-  }
-
-  /* Mobile navigation specific styles (Component 16)
-     Apply only on small screens so desktop keeps the original layout. */
-  .nav-connect-button {
-    display: inline-flex !important;
-  }
-
-  /* Desktop wallet icon trigger: precise pixel values per design */
-  .nav-wallet-trigger {
-    width: 44px !important;
-    height: 44px !important;
-    gap: 8px !important;
-    transform: rotate(0deg) !important;
-    opacity: 1 !important;
-    background: var(--Color, #000000) !important;
-    border: 1px solid var(--Color-3, #303030) !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-  }
-
-  @media (max-width: 767px) {
-    .nav-mobile-trigger {
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: row;
-      justify-content: center;
-      align-items: center;
-      padding: 16px 12px;
-      gap: 8px;
-      isolation: isolate;
-      width: 40px;
-      height: 40px;
-      background: #000000;
-      border: 1px solid rgba(255,255,255,0.13);
-      position: relative;
-      flex: none;
-      order: 1;
-      flex-grow: 0;
-    }
-
-    /* Small absolute 4x4 white corner pixels */
-    .nav-mobile-trigger .nav-corner {
-      position: absolute;
-      width: 4px;
-      height: 4px;
-      background: #FFFFFF;
-      z-index: 2;
-      pointer-events: none;
-    }
-
-    .nav-mobile-trigger .nav-corner.tl { left: 1px; top: 1px; }
-    .nav-mobile-trigger .nav-corner.tr { right: 1px; top: 1px; }
-    .nav-mobile-trigger .nav-corner.bl { left: 1px; bottom: 1px; }
-    .nav-mobile-trigger .nav-corner.br { right: 1px; bottom: 1px; }
-
-    /* Hide the full Connect Wallet button on small screens so the compact
-       mobile controls are used. */
-    /* Show a compact connect button on mobile (restore visibility) */
-    .nav-connect-button {
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      gap: 8px !important;
-      padding: 6px 10px !important;
-      height: 32px !important;
-      font-size: 16px !important;
-    }
-  }
+/* ------------------------------------------------------------------ *
+ * Scroll reveal, driven by useReveal()
+ *
+ * Deliberately outside @layer: Tailwind tree-shakes its layers by matching
+ * class candidates found in the source, and an attribute selector has no
+ * class for it to match.
+ * ------------------------------------------------------------------ */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(22px);
+  filter: blur(6px);
+  transition: opacity 0.8s cubic-bezier(0.2, 0.7, 0.3, 1),
+              transform 0.8s cubic-bezier(0.2, 0.7, 0.3, 1),
+              filter 0.8s cubic-bezier(0.2, 0.7, 0.3, 1);
+  transition-delay: var(--reveal-delay, 0s);
 }
 
-/* Removed reserved bottom padding; footer is not sticky */
-
-/* Accordion custom toggle: show + when closed, × when open */
-.accordion-toggle { position: relative; }
-.accordion-toggle .accordion-close { display: none; }
-.accordion-toggle .accordion-plus { display: inline; }
-
-/* When the trigger is in open state, swap icons. Radix sets data-state=open on the trigger */
-[data-state="open"] .accordion-toggle .accordion-plus { display: none; }
-[data-state="open"] .accordion-toggle .accordion-close { display: inline; color: var(--Color-6); }
-
-
-
-.faq-section button,
-.faq-section [role="button"],
-.faq-section [data-state],
-.faq-section [data-radix-collection-item] {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  color: inherit !important;
-  box-shadow: none !important;
-  border: none !important;
-  padding: 0 !important;
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+  filter: none;
 }
 
-/* Re-apply accordion item background inside FAQ section with higher priority */
-.faq-section .faq-accordion-item {
-  background: var(--Color-2, #0D0D0D) !important;
+@keyframes lava-sheen {
+  to { background-position: -220% 0; }
 }
 
-/* Mobile navigation menu buttons should NOT have lava backgrounds */
-.mobile-nav-item {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
+@keyframes coin-spin {
+  from { transform: rotateX(-11deg) rotateY(0deg); }
+  to   { transform: rotateX(-11deg) rotateY(360deg); }
 }
 
-/* Mobile footer spans should be hidden by default (desktop) */
-footer .footer-bg-top,
-footer .footer-bg-mid,
-footer .footer-bg-bottom {
-  display: none !important;
+/* The cast shadow narrows as the coin turns edge-on. */
+@keyframes coin-shadow {
+  0%, 50%, 100% { transform: translateX(-50%) scaleX(1); opacity: 0.85; }
+  25%, 75%      { transform: translateX(-50%) scaleX(0.42); opacity: 0.5; }
 }
 
-/* Footer mobile-specific styles (do not affect desktop) */
-@media (max-width: 767px) {
-    footer {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    padding: 24px 16px !important;
-    gap: 24px !important;
-    isolation: isolate !important;
-    background: #0D0D0D !important;
-    height: auto !important;
-    min-height: 120px !important;
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
   }
 
-  footer .container {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-  }
+  .text-sheen,
+  .text-sheen--cardano { animation: none; }
 
-  footer .container > .flex {
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 24px !important;
-    height: auto !important;
-  }
+  /* Hold the coin at a three-quarter angle instead of spinning it. */
+  .coin__spin { animation: none; transform: rotateX(-11deg) rotateY(-24deg); }
+  .coin__shadow { animation: none; }
 
-  footer .container > .flex > div {
-    width: 100% !important;
-    display: flex !important;
-    justify-content: center !important;
-  }
-
-  footer img {
-    width: 24px !important;
-    height: 24px !important;
-  }
-
-  footer p {
-    font-size: 14px !important;
-    line-height: 150% !important;
-    opacity: 0.6 !important;
-    text-align: center !important;
-  }
-
-  footer a {
-    display: inline-block !important;
-    padding: 8px 0 !important;
-    color: #FFFFFF !important;
-    text-decoration: none !important;
-  }
+  html { scroll-behavior: auto; }
 }
 
-/* Make background typography in footer cover mobile width and center it */
-@media (max-width: 767px) {
-  /* Hide the big multi-layer background text (desktop layers) but allow
-     controlled mobile-only background spans added to the footer. */
-  footer .pointer-events-none {
-    display: none !important;
-  }
+/* ------------------------------------------------------------------ *
+ * Third-party surfaces, restyled to the ink
+ * ------------------------------------------------------------------ */
 
-  /* Mobile-only top/bottom background spans */
-  footer .footer-bg-top,
-  footer .footer-bg-mid,
-  footer .footer-bg-bottom {
-    display: block !important;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #FFFFFF;
-    opacity: 0.04;
-    white-space: nowrap;
-    font-family: 'Pixelify Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
-    z-index: 0;
-    pointer-events: none;
-  }
-
-  footer .footer-bg-top {
-    top: -8%;
-    font-size: 18vw;
-    line-height: 0.9;
-  }
-
-  footer .footer-bg-bottom {
-    bottom: -6%;
-    font-size: 18vw;
-    line-height: 0.9;
-    transform: translateX(-50%) scaleX(-1);
-    opacity: 0.04;
-  }
-
-  footer .footer-bg-mid {
-    top: 50%;
-    transform: translateX(-50%) translateY(-50%);
-    font-size: 16vw;
-    line-height: 0.9;
-    opacity: 0.045;
-  }
+/* react-toastify */
+.Toastify__toast {
+  border-radius: 18px !important;
+  background: #0d1116 !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 18px 50px rgba(0, 0, 0, 0.6) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif !important;
+  font-size: 14px !important;
 }
 
-/* Scoped override: force Pixelify Sans on the staking card action text only.
-   This wins over the earlier `[class*="card"] *` exclusion which uses
-   `!important`. We scope the class narrowly so no other buttons/components
-   are affected. */
-.staking-action-text {
-  font-family: 'Pixelify Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial !important;
-  font-weight: 500 !important;
-  font-size: 16px !important;
-  line-height: 100% !important;
-  letter-spacing: -2% !important;
-  text-transform: uppercase !important;
+.Toastify__progress-bar {
+  background: linear-gradient(90deg, var(--lava-ember-hex), var(--lava-red-hex)) !important;
 }
 
-/* Scoped override: ensure only the Lava Earn title uses Pixelify Sans
-   This is narrow and uses !important to win over the card exclusion rule. */
-.lava-earn-title {
-  font-family: 'Pixelify Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial !important;
-  font-weight: 400 !important;
+.Toastify__close-button { color: rgba(255, 255, 255, 0.5) !important; }
+
+/* The MeshSDK <CardanoWallet /> is mounted only to keep the wallet session
+   alive; it has no place in the layout. */
+[data-mesh-wallet-shim] {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }

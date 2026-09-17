@@ -2,23 +2,28 @@
 
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-import { Card } from "@/components/ui/card";
 import { ADA_LOGO, LAVA_LOGO } from "@/lib/images";
-import appBg from "@/assets/app-bg.png";
+import { HeroGlow } from "@/components/home/HeroGlow";
+import { PageHeading, Stat } from "@/components/layout/Section";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 
 const NET_APY = 4.32; // %
 const USD_TO_ADA = 0.56;
 
-const getTokenIcon = (symbol: string) => {
-  const token = String(symbol ?? "").trim();
+const getTokenIcon = (symbol: string) =>
+  String(symbol ?? "").trim() === "ADA" ? ADA_LOGO.src : LAVA_LOGO.src;
 
-  if (token === "ADA") {
-    return ADA_LOGO.src;
-  }
-
-  return LAVA_LOGO.src;
-};
+const Delta = ({ value, positive }: { value: string; positive: boolean }) => (
+  <span className={`tabular ${positive ? "text-[#7ddba3]" : "text-[#df473d]"}`}>{value}</span>
+);
 
 const Portfolio = () => {
   const { tokenBalances } = useCardanoWallet();
@@ -48,210 +53,187 @@ const Portfolio = () => {
       };
     });
 
-  
-     //Portfolio Calculations
+  //Portfolio Calculations
 
-  const netWorth = assets.reduce(
-    (sum, asset) => sum + asset.valueNumber,
-    0
-  );
+  const netWorth = assets.reduce((sum, asset) => sum + asset.valueNumber, 0);
 
-  	  const netWorthAda = netWorth * USD_TO_ADA;
+  const netWorthAda = netWorth * USD_TO_ADA;
 
-
-  const totalPnL = assets.reduce(
-    (sum, asset) => sum + asset.changeNumber,
-    0
-  );
+  const totalPnL = assets.reduce((sum, asset) => sum + asset.changeNumber, 0);
 
   const totalYieldEarned = (netWorth * NET_APY) / 100;
 
   const pnlIsPositive = totalPnL >= 0;
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col bg-background">
       <Navigation />
 
-      <section className="pt-32 pb-20">
-        <div className="container mx-auto px-4">
-          {/* Net Worth - surround this stats block with app-bg as a rectangle aligned to the table */}
-          <Card className="bg-card/50 border-border overflow-hidden rounded-none w-full mx-auto p-6 mb-8 relative">
-            {/* decorative background only on md+ */}
-            <div
-              className="hidden md:block absolute inset-0 -z-10 pointer-events-none"
-              style={{
-                backgroundImage: `url(${appBg.src})`,
-                backgroundRepeat: "no-repeat",
-                backgroundSize: "cover",
-                backgroundPosition: "right center",
-                opacity: 0.4,
-              }}
+      <main className="flex-1">
+        <section className="relative isolate overflow-hidden pb-[clamp(48px,7vw,96px)] pt-[140px] sm:pt-[164px]">
+          <HeroGlow />
+
+          <div className="shell relative z-10 flex flex-col gap-10">
+            <PageHeading
+              eyebrow="/portfolio"
+              title={
+                <>
+                  Your <span className="text-sheen">position</span>
+                </>
+              }
             />
 
-            <div className="mb-6 flex items-start gap-6">
-              <div
-                className="flex-1"
-                style={{
-                  fontFamily:
-                    'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
-                  fontWeight: 500,
-                  fontStyle: 'normal',
-                  fontSize: '14px',
-                  lineHeight: '100%',
-                  letterSpacing: '0em',
-                  //leadingTrim: 'none',
-                }}
-              >
-                <p className="text-muted-foreground mb-2">Net Worth</p>
-                <div className="flex flex-col sm:flex-row items-baseline gap-2 sm:gap-4 mb-6">
-                  <h1 className="text-5xl md:text-6xl font-bold no-pixelify">
+            {/* ---- Net worth ---- */}
+            <div data-reveal className="lava-card lava-card--soft p-6 sm:p-8">
+              <div className="relative z-[4]">
+                <p className="font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
+                  Net worth
+                </p>
+                <div className="mt-3 flex flex-col items-baseline gap-2 sm:flex-row sm:gap-4">
+                  <p className="tabular text-[clamp(40px,6vw,64px)] font-medium leading-none tracking-tightest">
                     ${netWorth.toFixed(2)}
-                  </h1>
-                  <span className="text-xl text-muted-foreground no-pixelify">
+                  </p>
+                  <span className="tabular font-mono-lava text-[16px] text-dim">
                     {netWorthAda.toFixed(2)} ADA
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 md:flex md:flex-wrap md:gap-x-10 md:gap-y-3">
-  <div className="min-w-[140px]">
-    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total PnL</p>
-    <p className={`text-lg sm:text-xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
-      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
-    </p>
-  </div>
-
-  <div className="min-w-[140px]">
-    <p className="text-xs sm:text-sm text-muted-foreground mb-1">24h Gain/Loss</p>
-    <p className={`text-lg sm:text-xl font-semibold no-pixelify ${pnlIsPositive ? "text-green-500" : "text-red-500"}`}>
-      {pnlIsPositive ? "+" : ""}${totalPnL.toFixed(2)}
-    </p>
-  </div>
-
-  <div className="min-w-[160px]">
-    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total Yield Earned</p>
-    <p className="text-lg sm:text-xl font-semibold text-green-500 no-pixelify">
-      ${totalYieldEarned.toFixed(2)}
-    </p>
-  </div>
-
-  <div className="min-w-[120px]">
-    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Net APY</p>
-    <p className="text-lg sm:text-xl font-semibold no-pixelify">{NET_APY}%</p>
-  </div>
-</div>
-              </div>
-
-            </div>
-          </Card>
-
-          {/* Holdings */}
-          <div>
-            <h2 className="text-3xl font-bold mb-6">Holdings</h2>
-
-            {/* Desktop Table */}
-            <div className="hidden md:block">
-              <Card className="bg-card/50 border-border overflow-hidden rounded-none w-full mx-auto">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="border-b border-border bg-muted/50">
-                      <tr>
-                        <th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">Asset</th>
-                        <th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">Value</th>
-                        <th className="text-left px-4 py-3 text-sm text-muted-foreground font-medium">24h Gain/Loss</th>
-                        <th className="text-center px-4 py-3 text-sm text-muted-foreground font-medium">24h Gain/Loss %</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {assets.map((asset, index) => (
-                        <tr key={index} className="border-0 hover:bg-muted/50 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <img src={getTokenIcon(asset.symbol)} alt={asset.symbol} className="w-6 h-6" />
-                              <span className="font-medium">
-                                {asset.amount.toFixed(2)}{" "}
-                                <span className="text-muted-foreground">{asset.symbol}</span>
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 font-medium">{asset.value}</td>
-                          <td className={`px-4 py-3 font-medium ${asset.isPositive ? "text-green-500" : "text-red-500"}`}>
-                            {asset.change}
-                          </td>
-                          <td className={`px-4 py-3 font-medium text-center ${asset.isPositive ? "text-green-500" : "text-red-500"}`}>
-                            {asset.changePercent}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mt-8 grid grid-cols-2 gap-6 md:grid-cols-4">
+                  <Stat
+                    label="Total PnL"
+                    value={
+                      <Delta
+                        value={`${pnlIsPositive ? "+" : ""}$${totalPnL.toFixed(2)}`}
+                        positive={pnlIsPositive}
+                      />
+                    }
+                  />
+                  <Stat
+                    label="24h gain/loss"
+                    value={
+                      <Delta
+                        value={`${pnlIsPositive ? "+" : ""}$${totalPnL.toFixed(2)}`}
+                        positive={pnlIsPositive}
+                      />
+                    }
+                  />
+                  <Stat
+                    label="Total yield earned"
+                    value={<Delta value={`$${totalYieldEarned.toFixed(2)}`} positive />}
+                  />
+                  <Stat label="Net APY" value={`${NET_APY}%`} />
                 </div>
-              </Card>
+              </div>
             </div>
 
-            {/* Mobile Cards */}
-            <div className="md:hidden space-y-4">
-              {assets.map((asset, index) => (
-                <Card key={index} className="bg-card border-border p-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={getTokenIcon(asset.symbol)}
-                          alt={asset.symbol}
-                          className="w-6 h-6"
-                        />
-                        <span className="font-medium">
-                          {asset.amount.toFixed(2)}{" "}
-                          <span className="text-muted-foreground">
-                            {asset.symbol}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
+            {/* ---- Holdings ---- */}
+            <div className="flex flex-col gap-6">
+              <h2
+                data-reveal
+                className="flex items-center gap-3 text-[clamp(24px,2.6vw,32px)] font-medium tracking-tightest"
+              >
+                Holdings
+                <span className="lava-slug">{assets.length}</span>
+              </h2>
 
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground mb-1">
-                        Value
-                      </p>
-                      <p className="font-medium">{asset.value}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">
-                        24h Gain/Loss
-                      </p>
-                      <p
-                        className={`font-medium ${
-                          asset.isPositive
-                            ? "text-green-500"
-                            : "text-red-500"
-                        }`}
-                      >
-                        {asset.change}
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground mb-1">
-                        24h Gain/Loss %
-                      </p>
-                      <p
-                        className={`font-medium ${
-                          asset.isPositive
-                            ? "text-green-500"
-                            : "text-red-500"
-                        }`}
-                      >
-                        {asset.changePercent}
-                      </p>
+              {assets.length === 0 ? (
+                <div data-reveal className="lava-panel p-10 text-center">
+                  <p className="relative z-[4] text-[15px] text-dim">
+                    Nothing here yet. Connect a wallet with ADA or L&#8209;ADA to see your position.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Desktop */}
+                  <div data-reveal className="lava-panel hidden md:block">
+                    <div className="relative z-[4]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead>Asset</TableHead>
+                            <TableHead>Value</TableHead>
+                            <TableHead>24h gain/loss</TableHead>
+                            <TableHead>24h gain/loss %</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {assets.map((asset, index) => (
+                            <TableRow key={index}>
+                              <TableCell>
+                                <span className="inline-flex items-center gap-2.5">
+                                  <img
+                                    src={getTokenIcon(asset.symbol)}
+                                    alt=""
+                                    className="h-7 w-7 shrink-0 object-contain"
+                                  />
+                                  <span className="tabular font-medium">
+                                    {asset.amount.toFixed(2)}{" "}
+                                    <span className="text-dim">{asset.symbol}</span>
+                                  </span>
+                                </span>
+                              </TableCell>
+                              <TableCell className="tabular font-medium">{asset.value}</TableCell>
+                              <TableCell>
+                                <Delta value={asset.change} positive={asset.isPositive} />
+                              </TableCell>
+                              <TableCell>
+                                <Delta value={asset.changePercent} positive={asset.isPositive} />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     </div>
                   </div>
-                </Card>
-              ))}
+
+                  {/* Mobile */}
+                  <div className="flex flex-col gap-3 md:hidden">
+                    {assets.map((asset, index) => (
+                      <div key={index} data-reveal className="lava-panel p-4">
+                        <div className="relative z-[4] flex flex-col gap-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="inline-flex items-center gap-2.5">
+                              <img
+                                src={getTokenIcon(asset.symbol)}
+                                alt=""
+                                className="h-8 w-8 object-contain"
+                              />
+                              <span className="tabular text-[15px] font-medium tracking-tighter">
+                                {asset.amount.toFixed(2)}{" "}
+                                <span className="text-dim">{asset.symbol}</span>
+                              </span>
+                            </span>
+                            <span className="tabular text-[15px] font-medium">{asset.value}</span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
+                                24h gain/loss
+                              </p>
+                              <p className="mt-1">
+                                <Delta value={asset.change} positive={asset.isPositive} />
+                              </p>
+                            </div>
+                            <div>
+                              <p className="font-mono-lava text-[11px] uppercase tracking-[0.02em] text-dim">
+                                24h gain/loss %
+                              </p>
+                              <p className="mt-1">
+                                <Delta value={asset.changePercent} positive={asset.isPositive} />
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <Footer />
     </div>
