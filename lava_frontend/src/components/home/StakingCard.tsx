@@ -7,7 +7,7 @@ import { Slug } from "@/components/layout/Section";
 import { TokenIcon } from "@/components/brand/TokenIcon";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
-import { TOKEN_PAIRS, TokenPair } from "@/lib/types";
+import { MeshFullTxWallet, TOKEN_PAIRS, TokenPair } from "@/lib/types";
 import { fetchBackend } from "@/lib/backendClient";
 import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
 
@@ -268,7 +268,7 @@ export const StakingCard = () => {
       }
 
       const data = await response.json();
-      const signedTx = await wallet.signTxReturnFullTx(String(data.unsignedTx), true);
+      const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setIsProcessing(false);
@@ -334,7 +334,7 @@ export const StakingCard = () => {
       }
 
       const data = await response.json();
-      const signedTx = await wallet.signTxReturnFullTx(String(data.unsignedTx), true);
+      const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setIsProcessing(false);

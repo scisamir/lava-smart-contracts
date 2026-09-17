@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Slug } from "@/components/layout/Section";
 import { XCircle } from "lucide-react";
 import { toast } from "react-toastify";
-import { OrderListProps, UserOrderType } from "@/lib/types";
+import { MeshFullTxWallet, OrderListProps, UserOrderType } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
@@ -129,7 +129,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
       }
 
       const data = await response.json();
-      const signedTx = await wallet.signTxReturnFullTx(String(data.unsignedTx), true);
+      const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setSubmittingOrderKey("");

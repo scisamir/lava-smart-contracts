@@ -10,6 +10,10 @@ export interface OrderListProps {
   orders: UserOrderType[];
 }
 
+export type MeshFullTxWallet = {
+  signTxReturnFullTx: (unsignedTx: string, partialSign?: boolean) => Promise<string>;
+};
+
 export type TokenPair = {
   base: string;
   derivative: string;
