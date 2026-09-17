@@ -1,4 +1,4 @@
-const DEFAULT_BACKEND_URL = 'http://localhost:5050';
+const DEFAULT_BACKEND_URL = 'https://tk3y4kw3f6.execute-api.us-east-1.amazonaws.com/prod';
 
 const normalizePath = (path: string): string => (path.startsWith('/') ? path : `/${path}`);
 
