@@ -4,6 +4,7 @@ export type UserOrderType = {
   outputIndex?: number;
   isOptIn: boolean;
   tokenName: string;
+  firstSeenAt?: number;
 };
 
 export interface OrderListProps {
