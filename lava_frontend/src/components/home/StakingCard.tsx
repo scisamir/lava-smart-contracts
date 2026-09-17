@@ -10,6 +10,7 @@ import { toast } from "react-toastify";
 import { MeshFullTxWallet, TOKEN_PAIRS, TokenPair, UserOrderType } from "@/lib/types";
 import { fetchBackend } from "@/lib/backendClient";
 import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
+import { resolveTxHash } from "@meshsdk/core";
 
 export const StakingCard = () => {
   const DEFAULT_TOKEN_PAIR: TokenPair = TOKEN_PAIRS[0] ?? {
@@ -253,6 +254,30 @@ export const StakingCard = () => {
     try {
       const { session, walletData } = await retryWalletAccess();
 
+      let currentUtxos = walletData.walletUtxos ?? [];
+      try {
+        if (typeof (wallet as any).getUtxos === "function") {
+          const liveUtxos = await (wallet as any).getUtxos();
+          if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
+            currentUtxos = liveUtxos;
+          }
+        }
+      } catch (utxoErr) {
+        console.warn("[StakingCard] wallet.getUtxos fallback:", utxoErr);
+      }
+
+      let currentCollateral = walletData.collateral ?? null;
+      try {
+        if (typeof (wallet as any).getCollateral === "function") {
+          const liveCollateral = await (wallet as any).getCollateral();
+          if (Array.isArray(liveCollateral) && liveCollateral.length > 0) {
+            currentCollateral = liveCollateral[0];
+          }
+        }
+      } catch (colErr) {
+        console.warn("[StakingCard] wallet.getCollateral fallback:", colErr);
+      }
+
       const response = await fetchBackend("/build-user-order-tx", {
         method: "POST",
         token: session.token,
@@ -266,8 +291,8 @@ export const StakingCard = () => {
           walletAddress,
           walletVK,
           walletSK,
-          walletCollateral: walletData.collateral ?? null,
-          walletUtxos: walletData.walletUtxos ?? [],
+          walletCollateral: currentCollateral,
+          walletUtxos: currentUtxos,
         }),
       });
 
@@ -278,7 +303,22 @@ export const StakingCard = () => {
 
       const data = await response.json();
       const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
-      txHash = await wallet.submitTx(signedTx);
+      try {
+        txHash = await wallet.submitTx(signedTx);
+      } catch (submitErr: any) {
+        const errMsg = String(submitErr?.data?.error || submitErr?.message || submitErr);
+        if (/already been included|all inputs are spent/i.test(errMsg)) {
+          try {
+            txHash = resolveTxHash(signedTx);
+            console.warn("[StakingCard] Tx already included in mempool, resolved txHash:", txHash);
+          } catch (hashErr) {
+            console.warn("[StakingCard] Failed to resolveTxHash:", hashErr);
+            throw submitErr;
+          }
+        } else {
+          throw submitErr;
+        }
+      }
       try {
         const orderTime = Date.now();
         const orderAmount = tokenName === "ADA" ? Math.trunc(amount * 1_000_000) : amount;
@@ -337,6 +377,30 @@ export const StakingCard = () => {
     try {
       const { session, walletData } = await retryWalletAccess();
 
+      let currentUtxos = walletData.walletUtxos ?? [];
+      try {
+        if (typeof (wallet as any).getUtxos === "function") {
+          const liveUtxos = await (wallet as any).getUtxos();
+          if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
+            currentUtxos = liveUtxos;
+          }
+        }
+      } catch (utxoErr) {
+        console.warn("[StakingCard] wallet.getUtxos fallback:", utxoErr);
+      }
+
+      let currentCollateral = walletData.collateral ?? null;
+      try {
+        if (typeof (wallet as any).getCollateral === "function") {
+          const liveCollateral = await (wallet as any).getCollateral();
+          if (Array.isArray(liveCollateral) && liveCollateral.length > 0) {
+            currentCollateral = liveCollateral[0];
+          }
+        }
+      } catch (colErr) {
+        console.warn("[StakingCard] wallet.getCollateral fallback:", colErr);
+      }
+
       const response = await fetchBackend("/build-user-order-tx", {
         method: "POST",
         token: session.token,
@@ -350,8 +414,8 @@ export const StakingCard = () => {
           walletAddress,
           walletVK,
           walletSK,
-          walletCollateral: walletData.collateral ?? null,
-          walletUtxos: walletData.walletUtxos ?? [],
+          walletCollateral: currentCollateral,
+          walletUtxos: currentUtxos,
         }),
       });
 
@@ -362,7 +426,22 @@ export const StakingCard = () => {
 
       const data = await response.json();
       const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
-      txHash = await wallet.submitTx(signedTx);
+      try {
+        txHash = await wallet.submitTx(signedTx);
+      } catch (submitErr: any) {
+        const errMsg = String(submitErr?.data?.error || submitErr?.message || submitErr);
+        if (/already been included|all inputs are spent/i.test(errMsg)) {
+          try {
+            txHash = resolveTxHash(signedTx);
+            console.warn("[StakingCard] Tx already included in mempool, resolved txHash:", txHash);
+          } catch (hashErr) {
+            console.warn("[StakingCard] Failed to resolveTxHash:", hashErr);
+            throw submitErr;
+          }
+        } else {
+          throw submitErr;
+        }
+      }
       try {
         const orderTime = Date.now();
         sessionStorage.setItem(`lava_order_time_${txHash}`, String(orderTime));
