@@ -208,6 +208,18 @@ function useCardanoWalletState() {
     }
   }, [backendBaseUrl]);
 
+  // When the connected wallet address changes (wallet switch), clear the old
+  // auth session and drop any cached balance so the new wallet fetches fresh.
+  const prevWalletAddressRef = useRef<string>("");
+  useEffect(() => {
+    if (!walletAddress) return;
+    if (prevWalletAddressRef.current && prevWalletAddressRef.current !== walletAddress) {
+      clearWalletAuthSession();
+      queryClient.removeQueries({ queryKey: ["wallet-balance"] });
+    }
+    prevWalletAddressRef.current = walletAddress;
+  }, [walletAddress, queryClient]);
+
   const walletBalanceQuery = useQuery({
     queryKey: ["wallet-balance", walletAddress],
     queryFn: () => fetchWalletBalance(wallet as WalletSigner, walletAddress),
@@ -223,7 +235,6 @@ function useCardanoWalletState() {
         ? 30_000
         : false,
     refetchIntervalInBackground: false,
-    placeholderData: (previousData) => previousData,
   });
 
   const vaultsQuery = useQuery({
