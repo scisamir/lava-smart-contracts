@@ -4,7 +4,7 @@ const normalizePath = (path: string): string => (path.startsWith('/') ? path : `
 
 export const getBackendBaseUrl = (): string => {
   const configured = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
-  if (!configured || configured.includes('0lth59w8rl') || configured.includes('localhost:5050')) {
+  if (!configured || configured.includes('0lth59w8rl')) {
     return DEFAULT_BACKEND_URL;
   }
   return configured.replace(/\/$/, '');
