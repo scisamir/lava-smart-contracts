@@ -75,7 +75,41 @@ const fetchWalletBalance = async (
     throw new Error(`Failed to fetch user balance: ${balanceRes.status}`);
   }
 
-  return balanceRes.json();
+  const data: WalletBalanceResponse = await balanceRes.json();
+
+  if ((!data.walletUtxos || data.walletUtxos.length === 0) && typeof (wallet as any).getUtxos === "function") {
+    try {
+      const liveUtxos = await (wallet as any).getUtxos();
+      if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
+        data.walletUtxos = liveUtxos;
+        if (!data.balance || data.balance === 0) {
+          let lovelace = 0;
+          for (const u of liveUtxos) {
+            for (const a of u.output?.amount ?? []) {
+              if (a.unit === "lovelace") lovelace += Number(a.quantity);
+            }
+          }
+          data.balance = lovelace / 1_000_000;
+          data.tokenBalances = { ...data.tokenBalances, ADA: data.balance };
+        }
+      }
+    } catch (err) {
+      console.warn("[Lava] browser wallet.getUtxos fallback:", err);
+    }
+  }
+
+  if (!data.collateral && typeof (wallet as any).getCollateral === "function") {
+    try {
+      const liveCols = await (wallet as any).getCollateral();
+      if (Array.isArray(liveCols) && liveCols.length > 0) {
+        data.collateral = liveCols[0];
+      }
+    } catch (err) {
+      console.warn("[Lava] browser wallet.getCollateral fallback:", err);
+    }
+  }
+
+  return data;
 };
 
 const fetchVaults = async (): Promise<BackendVault[]> => {

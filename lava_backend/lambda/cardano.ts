@@ -1,4 +1,4 @@
-import { MaestroProvider, MeshTxBuilder } from '@meshsdk/core';
+import { KoiosProvider, MaestroProvider, MeshTxBuilder, UTxO } from '@meshsdk/core';
 import {
   blake2b,
   CborWriter,
@@ -46,11 +46,66 @@ export const requireLavaNetwork = (
 export const lavaNetwork = requireLavaNetwork();
 export const cardanoConfig = networkConfigs[lavaNetwork];
 
-export const createMaestroProvider = (apiKey: string): MaestroProvider =>
-  new MaestroProvider({
+export const createMaestroProvider = (apiKey: string): MaestroProvider => {
+  const maestro = new MaestroProvider({
     network: cardanoConfig.maestroNetwork,
     apiKey,
   });
+
+  const koiosNetwork = cardanoConfig.meshNetwork === 'mainnet' ? 'api' : 'preprod';
+  const koios = new KoiosProvider(koiosNetwork);
+
+  const origFetchAddressUTxOs = maestro.fetchAddressUTxOs.bind(maestro);
+  maestro.fetchAddressUTxOs = async (address: string, asset?: string): Promise<UTxO[]> => {
+    try {
+      const utxos = await origFetchAddressUTxOs(address, asset);
+      if (utxos && utxos.length > 0) {
+        return utxos;
+      }
+    } catch (err) {
+      console.warn('[cardano] Maestro fetchAddressUTxOs error:', err);
+    }
+
+    try {
+      return await koios.fetchAddressUTxOs(address, asset);
+    } catch (err) {
+      console.warn('[cardano] Koios fallback fetchAddressUTxOs error:', err);
+      return [];
+    }
+  };
+
+  const origFetchProtocolParameters = maestro.fetchProtocolParameters.bind(maestro);
+  maestro.fetchProtocolParameters = async () => {
+    try {
+      return await origFetchProtocolParameters();
+    } catch (err) {
+      console.warn('[cardano] Maestro fetchProtocolParameters error, falling back to Koios:', err);
+      return await koios.fetchProtocolParameters();
+    }
+  };
+
+  const origEvaluateTx = maestro.evaluateTx.bind(maestro);
+  maestro.evaluateTx = async (cbor: string, additionalUtxos?: any, additionalTxs?: any) => {
+    try {
+      return await origEvaluateTx(cbor, additionalUtxos, additionalTxs);
+    } catch (err) {
+      console.warn('[cardano] Maestro evaluateTx error, falling back to Koios:', err);
+      return await koios.evaluateTx(cbor, additionalUtxos, additionalTxs);
+    }
+  };
+
+  const origSubmitTx = maestro.submitTx.bind(maestro);
+  maestro.submitTx = async (tx: string) => {
+    try {
+      return await origSubmitTx(tx);
+    } catch (err) {
+      console.warn('[cardano] Maestro submitTx error, falling back to Koios:', err);
+      return await koios.submitTx(tx);
+    }
+  };
+
+  return maestro;
+};
 
 export const createMeshTxBuilder = (
   provider: MaestroProvider,
