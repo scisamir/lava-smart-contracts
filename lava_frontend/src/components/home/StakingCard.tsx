@@ -38,6 +38,7 @@ export const StakingCard = () => {
     walletSK,
     tokenBalances,
     poolInfo,
+    protocolStats,
     retryWalletAccess,
     refreshWalletStateAfterTx,
   } = useCardanoWallet();
@@ -110,8 +111,16 @@ export const StakingCard = () => {
     }
   }, [availableTokenPairs, selectedToken.base, selectedToken.derivative]);
 
-  const conversionRate = 0.996;
-  const usdRate = 0.32;
+  const activeVault = (poolInfo ?? []).find(
+    (vault) =>
+      vault.name === selectedToken.derivative ||
+      vault.tokenPair?.derivative === selectedToken.derivative
+  );
+  const conversionRate =
+    activeVault && typeof activeVault.exchangeRate === "number" && activeVault.exchangeRate > 0
+      ? activeVault.exchangeRate
+      : 1.0;
+  const usdRate = protocolStats?.adaPriceUsd ?? 0.35;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9.]/g, "");

@@ -20,7 +20,7 @@ import {
   UTxO,
 } from "@meshsdk/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BackendVault } from "@/lib/types";
+import { BackendVault, ProtocolStats } from "@/lib/types";
 import { fetchBackend, getBackendBaseUrl } from "@/lib/backendClient";
 import {
   clearWalletAuthSession,
@@ -112,7 +112,12 @@ const fetchWalletBalance = async (
   return data;
 };
 
-const fetchVaults = async (): Promise<BackendVault[]> => {
+type FetchVaultsResponse = {
+  vaults: BackendVault[];
+  stats: ProtocolStats | null;
+};
+
+const fetchVaults = async (): Promise<FetchVaultsResponse> => {
   const vaultsRes = await fetchBackend('/lava-vaults');
 
   if (!vaultsRes.ok) {
@@ -121,7 +126,7 @@ const fetchVaults = async (): Promise<BackendVault[]> => {
 
   const vaultsData = await vaultsRes.json();
 
-  return (vaultsData.vaults ?? []).map((vault: any) => ({
+  const vaults: BackendVault[] = (vaultsData.vaults ?? []).map((vault: any) => ({
     name: String(vault.name ?? ""),
     logo: String(vault.logo ?? ""),
     score: String(vault.score ?? "0"),
@@ -129,10 +134,24 @@ const fetchVaults = async (): Promise<BackendVault[]> => {
     recentBlocks: Number(vault.recentBlocks ?? 0),
     stStake: String(vault.stStake ?? "0"),
     staked: String(vault.staked ?? "0"),
+    exchangeRate: Number(vault.exchangeRate ?? 1.0),
     tokenPair: vault.tokenPair ?? { base: "", derivative: "" },
     tokenDetails: vault.tokenDetails ?? null,
     poolStakeAssetNameHex: String(vault.poolStakeAssetNameHex ?? ""),
   }));
+
+  const stats: ProtocolStats | null = vaultsData.stats
+    ? {
+        tvlAda: Number(vaultsData.stats.tvlAda ?? 0),
+        tvlUsd: Number(vaultsData.stats.tvlUsd ?? 0),
+        stakingApy: String(vaultsData.stats.stakingApy ?? "3.65%"),
+        holders: Number(vaultsData.stats.holders ?? 0),
+        adaPriceUsd: Number(vaultsData.stats.adaPriceUsd ?? 0.35),
+        ada24hChange: Number(vaultsData.stats.ada24hChange ?? 0),
+      }
+    : null;
+
+  return { vaults, stats };
 };
 
 function useCardanoWalletState() {
@@ -289,7 +308,11 @@ function useCardanoWalletState() {
     [connected, walletBalanceQuery.data?.collateral]
   );
   const poolInfo = useMemo(
-    () => vaultsQuery.data ?? [],
+    () => vaultsQuery.data?.vaults ?? [],
+    [vaultsQuery.data]
+  );
+  const protocolStats = useMemo(
+    () => vaultsQuery.data?.stats ?? null,
     [vaultsQuery.data]
   );
   const vaultsError = useMemo(
@@ -396,6 +419,7 @@ function useCardanoWalletState() {
     walletUtxos,
     getTokenBalance,
     poolInfo,
+    protocolStats,
     backendBaseUrl,
     vaultsLoading: vaultsQuery.isLoading,
     vaultsError,
