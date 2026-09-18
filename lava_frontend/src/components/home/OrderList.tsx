@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { fetchBackend } from "@/lib/backendClient";
 import { getTransactionExplorerUrl } from "@/lib/networkConfig";
-import { resolveTxHash } from "@meshsdk/core";
 
 export const OrderList = ({ orders }: OrderListProps) => {
   const [pendingCancelKeys, setPendingCancelKeys] = useState<Record<string, true>>({});
@@ -99,30 +98,6 @@ export const OrderList = ({ orders }: OrderListProps) => {
     try {
       const { session, walletData } = await retryWalletAccess();
 
-      let currentUtxos = walletData.walletUtxos ?? [];
-      try {
-        if (typeof (wallet as any).getUtxos === "function") {
-          const liveUtxos = await (wallet as any).getUtxos();
-          if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
-            currentUtxos = liveUtxos;
-          }
-        }
-      } catch (utxoErr) {
-        console.warn("[OrderList] wallet.getUtxos fallback:", utxoErr);
-      }
-
-      let currentCollateral = walletData.collateral ?? null;
-      try {
-        if (typeof (wallet as any).getCollateral === "function") {
-          const liveCollateral = await (wallet as any).getCollateral();
-          if (Array.isArray(liveCollateral) && liveCollateral.length > 0) {
-            currentCollateral = liveCollateral[0];
-          }
-        }
-      } catch (colErr) {
-        console.warn("[OrderList] wallet.getCollateral fallback:", colErr);
-      }
-
       const response = await fetchBackend("/build-cancel-order-tx", {
         method: "POST",
         token: session.token,
@@ -130,8 +105,8 @@ export const OrderList = ({ orders }: OrderListProps) => {
         body: JSON.stringify({
           walletAddress,
           walletVK,
-          walletCollateral: currentCollateral,
-          walletUtxos: currentUtxos,
+          walletCollateral: walletData.collateral ?? null,
+          walletUtxos: walletData.walletUtxos ?? [],
           orderTxHash: order.txHash,
           orderOutputIndex,
         }),
@@ -155,22 +130,7 @@ export const OrderList = ({ orders }: OrderListProps) => {
 
       const data = await response.json();
       const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
-      try {
-        txHash = await wallet.submitTx(signedTx);
-      } catch (submitErr: any) {
-        const errMsg = String(submitErr?.data?.error || submitErr?.message || submitErr);
-        if (/already been included|all inputs are spent/i.test(errMsg)) {
-          try {
-            txHash = resolveTxHash(signedTx);
-            console.warn("[OrderList] Tx already included in mempool, resolved txHash:", txHash);
-          } catch (hashErr) {
-            console.warn("[OrderList] Failed to resolveTxHash:", hashErr);
-            throw submitErr;
-          }
-        } else {
-          throw submitErr;
-        }
-      }
+      txHash = await wallet.submitTx(signedTx);
     } catch (e) {
       setSubmittingOrderKey("");
       setIsSubmitting(false);

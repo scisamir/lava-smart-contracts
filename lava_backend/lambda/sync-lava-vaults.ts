@@ -165,31 +165,33 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
       syncedCount++;
     }
 
-    const existingSnapshots = await ddb.send(
-      new ScanCommand({
-        TableName: tableName,
-        FilterExpression: '#entityType = :entityType',
-        ExpressionAttributeNames: { '#entityType': 'entityType' },
-        ExpressionAttributeValues: { ':entityType': 'VAULT_SNAPSHOT' },
-      })
-    );
-
-    const staleItems = (existingSnapshots.Items ?? []).filter((item) => {
-      const pk = String(item.pk ?? '');
-      const sk = String(item.sk ?? '');
-      return pk.startsWith('VAULT#') && sk === 'SNAPSHOT' && !seenVaultPks.has(pk);
-    });
-
-    for (const staleItem of staleItems) {
-      await ddb.send(
-        new DeleteCommand({
+    if (syncedCount > 0) {
+      const existingSnapshots = await ddb.send(
+        new ScanCommand({
           TableName: tableName,
-          Key: {
-            pk: staleItem.pk,
-            sk: staleItem.sk,
-          },
+          FilterExpression: '#entityType = :entityType',
+          ExpressionAttributeNames: { '#entityType': 'entityType' },
+          ExpressionAttributeValues: { ':entityType': 'VAULT_SNAPSHOT' },
         })
       );
+
+      const staleItems = (existingSnapshots.Items ?? []).filter((item) => {
+        const pk = String(item.pk ?? '');
+        const sk = String(item.sk ?? '');
+        return pk.startsWith('VAULT#') && sk === 'SNAPSHOT' && !seenVaultPks.has(pk);
+      });
+
+      for (const staleItem of staleItems) {
+        await ddb.send(
+          new DeleteCommand({
+            TableName: tableName,
+            Key: {
+              pk: staleItem.pk,
+              sk: staleItem.sk,
+            },
+          })
+        );
+      }
     }
 
     return {

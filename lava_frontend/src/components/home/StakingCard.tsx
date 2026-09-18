@@ -10,7 +10,6 @@ import { toast } from "react-toastify";
 import { MeshFullTxWallet, TOKEN_PAIRS, TokenPair } from "@/lib/types";
 import { fetchBackend } from "@/lib/backendClient";
 import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
-import { resolveTxHash } from "@meshsdk/core";
 
 export const StakingCard = () => {
   const DEFAULT_TOKEN_PAIR: TokenPair = TOKEN_PAIRS[0] ?? {
@@ -245,30 +244,6 @@ export const StakingCard = () => {
     try {
       const { session, walletData } = await retryWalletAccess();
 
-      let currentUtxos = walletData.walletUtxos ?? [];
-      try {
-        if (typeof (wallet as any).getUtxos === "function") {
-          const liveUtxos = await (wallet as any).getUtxos();
-          if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
-            currentUtxos = liveUtxos;
-          }
-        }
-      } catch (utxoErr) {
-        console.warn("[StakingCard] wallet.getUtxos fallback:", utxoErr);
-      }
-
-      let currentCollateral = walletData.collateral ?? null;
-      try {
-        if (typeof (wallet as any).getCollateral === "function") {
-          const liveCollateral = await (wallet as any).getCollateral();
-          if (Array.isArray(liveCollateral) && liveCollateral.length > 0) {
-            currentCollateral = liveCollateral[0];
-          }
-        }
-      } catch (colErr) {
-        console.warn("[StakingCard] wallet.getCollateral fallback:", colErr);
-      }
-
       const response = await fetchBackend("/build-user-order-tx", {
         method: "POST",
         token: session.token,
@@ -282,8 +257,8 @@ export const StakingCard = () => {
           walletAddress,
           walletVK,
           walletSK,
-          walletCollateral: currentCollateral,
-          walletUtxos: currentUtxos,
+          walletCollateral: walletData.collateral ?? null,
+          walletUtxos: walletData.walletUtxos ?? [],
         }),
       });
 
@@ -335,30 +310,6 @@ export const StakingCard = () => {
     try {
       const { session, walletData } = await retryWalletAccess();
 
-      let currentUtxos = walletData.walletUtxos ?? [];
-      try {
-        if (typeof (wallet as any).getUtxos === "function") {
-          const liveUtxos = await (wallet as any).getUtxos();
-          if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
-            currentUtxos = liveUtxos;
-          }
-        }
-      } catch (utxoErr) {
-        console.warn("[StakingCard] wallet.getUtxos fallback:", utxoErr);
-      }
-
-      let currentCollateral = walletData.collateral ?? null;
-      try {
-        if (typeof (wallet as any).getCollateral === "function") {
-          const liveCollateral = await (wallet as any).getCollateral();
-          if (Array.isArray(liveCollateral) && liveCollateral.length > 0) {
-            currentCollateral = liveCollateral[0];
-          }
-        }
-      } catch (colErr) {
-        console.warn("[StakingCard] wallet.getCollateral fallback:", colErr);
-      }
-
       const response = await fetchBackend("/build-user-order-tx", {
         method: "POST",
         token: session.token,
@@ -372,8 +323,8 @@ export const StakingCard = () => {
           walletAddress,
           walletVK,
           walletSK,
-          walletCollateral: currentCollateral,
-          walletUtxos: currentUtxos,
+          walletCollateral: walletData.collateral ?? null,
+          walletUtxos: walletData.walletUtxos ?? [],
         }),
       });
 

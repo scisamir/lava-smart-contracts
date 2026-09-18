@@ -4,7 +4,6 @@ import {
   ReactNode,
   createContext,
   createElement,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -120,24 +119,6 @@ function useCardanoWalletState() {
   //CRITICAL FLAG
   const [hasTriedRestore, setHasTriedRestore] = useState(false);
 
-  const applyWalletAddress = useCallback(async (activeWallet: WalletSigner) => {
-    const addr = await getWalletChangeAddress(activeWallet);
-    const { pubKeyHash, stakeCredentialHash } = deserializeAddress(addr);
-
-    setWalletAddress((currentAddress) => {
-      if (currentAddress && currentAddress !== addr) {
-        clearWalletAuthSession();
-        queryClient.removeQueries({ queryKey: ["wallet-balance"] });
-      }
-
-      return addr;
-    });
-    setWalletVK(pubKeyHash);
-    setWalletSK(stakeCredentialHash ?? "");
-
-    return addr;
-  }, [queryClient]);
-
   // Helpers
   const getTokenBalance = (
     assets: AssetExtended[],
@@ -204,7 +185,12 @@ function useCardanoWalletState() {
       }
 
       try {
-        await applyWalletAddress(wallet as WalletSigner);
+        const addr = await getWalletChangeAddress(wallet as WalletSigner);
+        setWalletAddress(addr);
+
+        const { pubKeyHash, stakeCredentialHash } = deserializeAddress(addr);
+        setWalletVK(pubKeyHash);
+        setWalletSK(stakeCredentialHash ?? "");
 
         if (name) localStorage.setItem(LOCAL_STORAGE_KEY, name);
       } catch (err) {
@@ -213,7 +199,7 @@ function useCardanoWalletState() {
     };
 
     setAddressAndKeys();
-  }, [connected, wallet, name, hasTriedRestore, applyWalletAddress]);
+  }, [connected, wallet, name, hasTriedRestore]);
 
   useEffect(() => {
     if (!backendUrlLogged) {
@@ -221,62 +207,6 @@ function useCardanoWalletState() {
       backendUrlLogged = true;
     }
   }, [backendBaseUrl]);
-
-  // When the connected wallet address changes (wallet switch), clear the old
-  // auth session and drop any cached balance so the new wallet fetches fresh.
-  const prevWalletAddressRef = useRef<string>("");
-  useEffect(() => {
-    if (!walletAddress) return;
-    if (prevWalletAddressRef.current && prevWalletAddressRef.current !== walletAddress) {
-      clearWalletAuthSession();
-      queryClient.removeQueries({ queryKey: ["wallet-balance"] });
-    }
-    prevWalletAddressRef.current = walletAddress;
-  }, [walletAddress, queryClient]);
-
-  useEffect(() => {
-    if (!(connected && wallet)) {
-      return;
-    }
-
-    let cancelled = false;
-    let resolving = false;
-
-    const syncConnectedWalletAddress = async () => {
-      if (resolving) {
-        return;
-      }
-
-      resolving = true;
-      try {
-        await applyWalletAddress(wallet as WalletSigner);
-        if (!cancelled && name) {
-          localStorage.setItem(LOCAL_STORAGE_KEY, name);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error("Error refreshing wallet address:", err);
-        }
-      } finally {
-        resolving = false;
-      }
-    };
-
-    const handleFocus = () => {
-      void syncConnectedWalletAddress();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    const interval = window.setInterval(syncConnectedWalletAddress, 2_000);
-
-    void syncConnectedWalletAddress();
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", handleFocus);
-      window.clearInterval(interval);
-    };
-  }, [connected, wallet, name, applyWalletAddress]);
 
   const walletBalanceQuery = useQuery({
     queryKey: ["wallet-balance", walletAddress],
@@ -293,6 +223,7 @@ function useCardanoWalletState() {
         ? 30_000
         : false,
     refetchIntervalInBackground: false,
+    placeholderData: (previousData) => previousData,
   });
 
   const vaultsQuery = useQuery({
@@ -363,11 +294,6 @@ function useCardanoWalletState() {
   // Public API
 
   const connectWallet = async (walletName: string) => {
-    clearWalletAuthSession();
-    queryClient.removeQueries({ queryKey: ["wallet-balance"] });
-    setWalletAddress("");
-    setWalletVK("");
-    setWalletSK("");
     await connect(walletName);
     localStorage.setItem(LOCAL_STORAGE_KEY, walletName);
   };
