@@ -32,6 +32,7 @@ import {
   applyLiveProtocolParams,
   createMaestroProvider,
   createMeshTxBuilder,
+  formatErrorMessage,
   repairScriptIntegrityHash,
 } from './cardano';
 
@@ -245,7 +246,12 @@ export const handler = async (
       .mintRedeemerValue(mConStr0([]))
       .txOut(OrderValidatorAddr, orderValue)
       .txOutInlineDatumValue(datum)
-      .txInCollateral(collateral.input.txHash, collateral.input.outputIndex)
+      .txInCollateral(
+        collateral.input.txHash,
+        collateral.input.outputIndex,
+        collateral.output?.amount,
+        collateral.output?.address || walletAddress
+      )
       .setTotalCollateral('5000000')
       .requiredSignerHash(walletVK)
       .changeAddress(walletAddress)
@@ -261,7 +267,7 @@ export const handler = async (
     return jsonResponse(
       500,
       {
-        error: error instanceof Error ? error.message : 'Internal server error',
+        error: formatErrorMessage(error),
       },
       auth.origin
     );
