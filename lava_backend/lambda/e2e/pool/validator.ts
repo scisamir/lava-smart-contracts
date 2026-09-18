@@ -39,5 +39,6 @@ const PoolValidatorAddrWithStake = serializeSelfStakedValidatorAddress(
 export {
   PoolValidatorScript,
   PoolValidatorHash,
-  PoolValidatorAddr,
+  PoolValidatorAddrWithStake as PoolValidatorAddr,
+  PoolValidatorAddrWithStake,
 };

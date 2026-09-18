@@ -316,7 +316,7 @@ const fetchJson = async (
 };
 
 const fetchCurrentCostModels = async (maestroApiKey?: string): Promise<PlutusCostModels> => {
-  const maestroBaseUrl = `https://${cardanoConfig.maestroNetwork}.gomaestro-api.org/v1`;
+  const maestroBaseUrl = `https://${cardanoConfig.maestroNetwork.toLowerCase()}.gomaestro-api.org/v1`;
   const headers = maestroApiKey ? { 'api-key': maestroApiKey } : undefined;
 
   for (const endpoint of ['protocol-parameters', 'protocol-params']) {
