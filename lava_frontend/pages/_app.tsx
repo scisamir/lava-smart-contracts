@@ -1,7 +1,6 @@
 import "../src/index.css";
 import type { AppProps } from "next/app";
 import { QueryClient } from "@tanstack/react-query";
-import type { Query } from "@tanstack/react-query";
 import {
   PersistQueryClientProvider,
   Persister,
@@ -37,12 +36,9 @@ const persister =
   typeof window !== "undefined"
     ? createSyncStoragePersister({
         storage: window.localStorage,
-        key: `lava-react-query-cache-v2:${networkConfig.name}`,
+        key: `lava-react-query-cache-v1:${networkConfig.name}`,
       })
     : noopPersister;
-
-const shouldPersistQuery = (query: Query) =>
-  query.queryKey[0] !== "wallet-balance";
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -53,14 +49,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   return (
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{
-        persister,
-        maxAge: 24 * 60 * 60 * 1000,
-        buster: "exclude-wallet-balances",
-        dehydrateOptions: {
-          shouldDehydrateQuery: shouldPersistQuery,
-        },
-      }}
+      persistOptions={{ persister, maxAge: 24 * 60 * 60 * 1000 }}
     >
       <MeshProvider>
         <CardanoWalletProvider>
