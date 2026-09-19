@@ -73,18 +73,12 @@ type TokenMetadataItem = {
   isActive?: boolean;
 };
 
-const LOGOS = [
-  'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=128&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1642104704074-907c0698cbd9?w=128&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=128&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1620321023374-d1a68fbc720d?w=128&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1642052502435-0f5d128a4d2f?w=128&q=80&auto=format&fit=crop',
-];
-
-const getRandomInt = (min: number, max: number): number =>
-  Math.floor(Math.random() * (max - min + 1)) + min;
-
-const getRandomLogo = (): string => LOGOS[getRandomInt(0, LOGOS.length - 1)];
+const getDefaultLogo = (symbol: string): string => {
+  if (symbol.toUpperCase() === 'LADA') {
+    return '/assets/circle-logo.png';
+  }
+  return '/assets/circle-logo.png';
+};
 
 const loadTokenRegistry = async (tableName: string) => {
   const scanResult = await ddb.send(
@@ -171,10 +165,10 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
         sk: 'SNAPSHOT',
         entityType: 'VAULT_SNAPSHOT',
         name: derivativeSymbol,
-        logo: tokenMeta?.logo ?? getRandomLogo(),
-        score: (Math.random() * 30 + 70).toFixed(2),
+        logo: tokenMeta?.logo ?? getDefaultLogo(derivativeSymbol),
+        score: isPoolOpen ? '99.20' : '85.00',
         status: isPoolOpen ? 'Open' : 'Closed',
-        recentBlocks: getRandomInt(100, 1200),
+        recentBlocks: 1200,
         stStake: totalStAssetsMinted.toLocaleString(),
         staked: totalUnderlying.toLocaleString(),
         exchangeRate,
