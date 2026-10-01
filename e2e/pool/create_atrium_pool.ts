@@ -1,4 +1,4 @@
-import { deserializeDatum, mConStr0, stringToHex } from "@meshsdk/core";
+import { deserializeDatum, mConStr0, mConStr1, stringToHex } from "@meshsdk/core";
 import {
   multiSigAddress,
   multiSigCbor,
@@ -28,6 +28,10 @@ import {
 } from "../data.js";
 import { BatchingHash } from "../batching/validator.js";
 import { GlobalSettingsAddr } from "../global_settings/validator.js";
+import {
+  AdminControllerRewardAddress,
+  AdminControllerScript,
+} from "../admin_controller/validator.js";
 
 const atriumAsset = assetType("", "", 1_000_000);
 
@@ -97,6 +101,10 @@ const unsignedTx = await txBuilder
   ])
   .txOutInlineDatumValue(AtriumPoolDatum)
   .txOut(multiSigAddress, seedUtxo.output.amount)
+  .withdrawalPlutusScriptV3()
+  .withdrawal(AdminControllerRewardAddress, "0")
+  .withdrawalScript(AdminControllerScript)
+  .withdrawalRedeemerValue(mConStr1([]))
   .txInCollateral(
     wallet1Collateral.input.txHash,
     wallet1Collateral.input.outputIndex,

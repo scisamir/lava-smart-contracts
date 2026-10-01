@@ -6,6 +6,15 @@ import networkConfigs from "../config/lava-networks.json" with {
 
 export type LavaNetwork = "preprod" | "mainnet";
 
+export type SignerConfig = {
+  type:
+    | "verificationKey"
+    | "spendScript"
+    | "withdrawScript"
+    | "mintScript";
+  hash: string;
+};
+
 type NetworkConfig = {
   networkId: 0 | 1;
   meshNetwork: LavaNetwork;
@@ -23,6 +32,10 @@ type NetworkConfig = {
   poolReference: {
     txHash: string;
     outputIndex: number;
+  };
+  adminController: {
+    fullAdmin: SignerConfig;
+    poolToggler: SignerConfig;
   };
 };
 

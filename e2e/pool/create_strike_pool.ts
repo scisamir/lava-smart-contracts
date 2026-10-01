@@ -1,4 +1,4 @@
-import { mConStr0 } from "@meshsdk/core";
+import { mConStr0, mConStr1 } from "@meshsdk/core";
 import {
   alwaysSuccessMintValidatorHash,
   multiSigAddress,
@@ -24,6 +24,10 @@ import {
 import { assetType, computePoolNftName, outputReferenceData, poolDatum, scriptCredential } from "../data.js";
 import { BatchingHash } from "../batching/validator.js";
 import { GlobalSettingsAddr } from "../global_settings/validator.js";
+import {
+  AdminControllerRewardAddress,
+  AdminControllerScript,
+} from "../admin_controller/validator.js";
 
 const poolAsset = assetType(
   alwaysSuccessMintValidatorHash,
@@ -81,6 +85,10 @@ const unsignedTx = await txBuilder
   ])
   .txOutInlineDatumValue(PoolDatum)
   .txOut(multiSigAddress, seedUtxo.output.amount)
+  .withdrawalPlutusScriptV3()
+  .withdrawal(AdminControllerRewardAddress, "0")
+  .withdrawalScript(AdminControllerScript)
+  .withdrawalRedeemerValue(mConStr1([]))
   .txInCollateral(
     wallet1Collateral.input.txHash,
     wallet1Collateral.input.outputIndex,

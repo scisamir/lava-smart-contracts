@@ -1,11 +1,10 @@
-import { deserializeAddress, mConStr0, mScriptAddress } from "@meshsdk/core";
+import { deserializeAddress, mConStr0, mConStr1, mScriptAddress } from "@meshsdk/core";
 import {
   blockchainProvider,
   GlobalSettingsNft,
   MinPoolLovelace,
   multiSigAddress,
   multiSigCbor,
-  multisigHash,
   multiSigUtxos,
   txBuilder,
   wallet1,
@@ -18,7 +17,7 @@ import {
 import {
   assetType,
   globalSettingsDatum,
-  spendScriptSigner,
+  withdrawScriptSigner,
   verificationKeySigner,
 } from "../data.js";
 import {
@@ -28,6 +27,11 @@ import {
   gsParamTxHash,
   gsParamTxIdx,
 } from "./validator.js";
+import {
+  AdminControllerHash,
+  AdminControllerRewardAddress,
+  AdminControllerScript,
+} from "../admin_controller/validator.js";
 import { MintingHash } from "../mint/validator.js";
 import { StakeValidatorHash } from "../stake/validator.js";
 
@@ -49,7 +53,7 @@ const frostAddress = mScriptAddress(
 );
 
 const GlobalSettingsDatum = globalSettingsDatum(
-  spendScriptSigner(multisigHash), // admin
+  withdrawScriptSigner(AdminControllerHash), // admin
   [verificationKeySigner(wallet1VK)], // authorized_batchers
   [adaAsset], // allowed_assets
   MintingHash, // mint_validator_hash
@@ -103,6 +107,10 @@ const unsignedTx = await txBuilder
   ])
   .txOutInlineDatumValue(GlobalSettingsDatum)
   .txOut(multiSigAddress, adminUtxo.output.amount)
+  .withdrawalPlutusScriptV3()
+  .withdrawal(AdminControllerRewardAddress, "0")
+  .withdrawalScript(AdminControllerScript)
+  .withdrawalRedeemerValue(mConStr1([]))
   .txInCollateral(
     wallet1Collateral.input.txHash,
     wallet1Collateral.input.outputIndex,

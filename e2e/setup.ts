@@ -158,6 +158,22 @@ const nativeScript: NativeScript = {
 const { address: multiSigAddress, scriptCbor: multiSigCbor } =
   serializeNativeScript(nativeScript, undefined, NETWORK_ID);
 const multisigHash = resolveNativeScriptHash(nativeScript);
+
+if (
+  NETWORK_CONFIG.adminController.poolToggler.type !== "verificationKey" ||
+  wallet1VK !== NETWORK_CONFIG.adminController.poolToggler.hash
+) {
+  throw new Error("Wallet one does not match the configured bot key hash");
+}
+if (
+  NETWORK_CONFIG.adminController.fullAdmin.type !== "spendScript" ||
+  multisigHash !== NETWORK_CONFIG.adminController.fullAdmin.hash
+) {
+  throw new Error(
+    "Admin wallets do not match the configured multisig hash",
+  );
+}
+
 const multiSigUtxos =
   await blockchainProvider.fetchAddressUTxOs(multiSigAddress);
 

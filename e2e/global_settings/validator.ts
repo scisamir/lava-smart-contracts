@@ -4,8 +4,8 @@ import {
   resolveScriptHash,
   serializePlutusScript,
 } from "@meshsdk/core";
-import { blueprint, NETWORK_ID } from "../setup.js";
-import { NETWORK_CONFIG } from "../network.js";
+import blueprint from "../../smart_contract/plutus.json" with { type: "json" };
+import { NETWORK_CONFIG, NETWORK_ID } from "../network.js";
 
 const gsParamTxHash = NETWORK_CONFIG.globalSettingsSeed.txHash;
 const gsParamTxIdx = NETWORK_CONFIG.globalSettingsSeed.outputIndex;

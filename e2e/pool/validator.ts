@@ -4,7 +4,8 @@ import {
   resolveScriptHash,
   serializePlutusScript,
 } from "@meshsdk/core";
-import { blueprint, NETWORK_ID } from "../setup.js";
+import blueprint from "../../smart_contract/plutus.json" with { type: "json" };
+import { NETWORK_ID } from "../network.js";
 import { GlobalSettingsHash } from "../global_settings/validator.js";
 import { serializeSelfStakedValidatorAddress } from "../data.js";
 
