@@ -178,7 +178,7 @@ export const handler = async (
     const tvlAda = totalTvlAda > 0 ? totalTvlAda : Number(protocolStatsItem?.tvlAda ?? 0);
     const tvlUsd = tvlAda * adaPriceUsd;
     const holders = Number(protocolStatsItem?.holders ?? 1);
-    const stakingApy = String(protocolStatsItem?.stakingApy ?? '3.65%');
+    const stakingApy = String(protocolStatsItem?.stakingApy ?? '-');
 
     const stats = {
       tvlAda,

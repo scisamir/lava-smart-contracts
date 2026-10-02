@@ -3,7 +3,7 @@ import { UTxO } from "@meshsdk/core";
 import { jsonResponse, verifyAccessToken } from './security';
 import { setupE2e } from "./e2e/setup";
 import { MintingHash } from "./e2e/mint/validator";
-import { createMaestroProvider } from "./cardano";
+import { createBlockfrostProvider, createMaestroProvider } from "./cardano";
 
 const getAssetBalanceByUnit = (utxos: UTxO[], unit: string): number => {
   let total = 0;
@@ -47,9 +47,14 @@ export const handler = async (
   try {
     const address = auth.address;
 
-    const maestro = createMaestroProvider(process.env.MAESTRO_API_KEY!);
+    const apiKey = process.env.BLOCKFROST_API_KEY || process.env.MAESTRO_API_KEY;
+    if (!apiKey) {
+      throw new Error('BLOCKFROST_API_KEY is missing');
+    }
 
-    const utxos = await maestro.fetchAddressUTxOs(address);
+    const provider = createBlockfrostProvider(apiKey);
+
+    const utxos = await provider.fetchAddressUTxOs(address);
 
     let adaBalance = 0;
 

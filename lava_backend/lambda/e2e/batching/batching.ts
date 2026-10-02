@@ -316,7 +316,7 @@ export const batchingTx = async (
 
   const repairedTx = await repairScriptIntegrityHash(
     unsignedTx,
-    process.env.MAESTRO_API_KEY,
+    process.env.BLOCKFROST_API_KEY || process.env.MAESTRO_API_KEY,
   );
   const signedTx = await wallet.signTx(repairedTx);
   const txHash = await wallet.submitTx(signedTx);

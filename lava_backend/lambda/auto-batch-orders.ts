@@ -1,7 +1,6 @@
 import { ScheduledEvent } from 'aws-lambda';
 import {
   deserializeDatum,
-  type MaestroProvider,
   type MeshTxBuilder,
 } from '@meshsdk/core';
 import { batchingTx } from './e2e/batching/batching';
@@ -9,6 +8,7 @@ import { OrderValidatorAddr } from './e2e/order/validator';
 import { OrderDatumType } from './e2e/types';
 import {
   applyLiveProtocolParams,
+  createBlockfrostProvider,
   createMaestroProvider,
   createMeshTxBuilder,
 } from './cardano';
@@ -22,11 +22,11 @@ const isRateLimitError = (error: unknown) => {
   return message.includes('API rate limit exceeded') || message.includes('"status":429');
 };
 
-const getPendingCounts = async (maestro: MaestroProvider): Promise<PendingCounts> => {
-  const orderUtxos = await maestro.fetchAddressUTxOs(OrderValidatorAddr);
+const getPendingCounts = async (provider: any): Promise<PendingCounts> => {
+  const orderUtxos = await provider.fetchAddressUTxOs(OrderValidatorAddr);
   const totalOrders: PendingCounts = {};
 
-  orderUtxos.forEach((utxo) => {
+  orderUtxos.forEach((utxo: any) => {
     const orderPlutusData = utxo.output.plutusData;
     if (!orderPlutusData) return;
 
@@ -44,16 +44,16 @@ const getPendingCounts = async (maestro: MaestroProvider): Promise<PendingCounts
 
 const runBatch = async (
   poolStakeAssetNameHex: string,
-  blockchainProvider: MaestroProvider,
+  blockchainProvider: any,
   txBuilder: MeshTxBuilder
 ): Promise<string> => {
   return batchingTx(blockchainProvider, txBuilder, poolStakeAssetNameHex);
 };
 
 export const handler = async (_event: ScheduledEvent) => {
-  const maestroKey = process.env.MAESTRO_API_KEY;
-  if (!maestroKey) {
-    throw new Error('MAESTRO_API_KEY is missing');
+  const apiKey = process.env.BLOCKFROST_API_KEY || process.env.MAESTRO_API_KEY;
+  if (!apiKey) {
+    throw new Error('BLOCKFROST_API_KEY is missing');
   }
 
   const batcherWalletPassphrase = process.env.BATCHER_WALLET_PASSPHRASE;
@@ -62,7 +62,7 @@ export const handler = async (_event: ScheduledEvent) => {
     throw new Error('BATCHER_WALLET_PASSPHRASE is missing');
   }
 
-  const blockchainProvider = createMaestroProvider(maestroKey);
+  const blockchainProvider = createBlockfrostProvider(apiKey);
 
   const pending = await getPendingCounts(blockchainProvider);
 

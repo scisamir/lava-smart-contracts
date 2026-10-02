@@ -27,8 +27,13 @@ const Portfolio = () => {
 
   const adaPriceUsd = protocolStats?.adaPriceUsd ?? 0.35;
   const ada24hChange = protocolStats?.ada24hChange ?? 0;
-  const rawNetApy = protocolStats?.stakingApy ?? "3.65%";
-  const netApyDisplay = rawNetApy.endsWith("%") ? rawNetApy : `${rawNetApy}%`;
+  const rawNetApy = protocolStats?.stakingApy ?? "-";
+  const netApyDisplay =
+    rawNetApy === "-" || rawNetApy === "—"
+      ? "-"
+      : rawNetApy.endsWith("%")
+      ? rawNetApy
+      : `${rawNetApy}%`;
 
   // Find LADA vault to retrieve authentic exchange rate
   const ladaVault = (poolInfo ?? []).find(

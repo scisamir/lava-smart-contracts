@@ -30,7 +30,7 @@ export const StatsSection = () => {
   const apyDisplay =
     vaultsLoading && !protocolStats
       ? "—"
-      : protocolStats?.stakingApy ?? "3.65%";
+      : protocolStats?.stakingApy ?? "-";
 
   const holdersDisplay =
     vaultsLoading && !protocolStats

@@ -35,6 +35,12 @@ export class LavaBackendStack extends cdk.Stack {
     const jwtAudience = process.env.JWT_AUDIENCE ?? "lava-client";
     const authAdminAddresses = process.env.AUTH_ADMIN_ADDRESSES ?? "";
 
+    // Retrieve Blockfrost API key from SSM Parameter Store
+    const blockfrostApiKey = ssm.StringParameter.valueForStringParameter(
+      this,
+      `${ssmPrefix}/blockfrost-api-key`,
+    );
+
     // Retrieve Maestro API key from SSM Parameter Store
     const maestroApiKey = ssm.StringParameter.valueForStringParameter(
       this,
@@ -48,6 +54,7 @@ export class LavaBackendStack extends cdk.Stack {
 
     const cardanoEnvironment = {
       LAVA_NETWORK: lavaNetwork,
+      BLOCKFROST_API_KEY: blockfrostApiKey,
       MAESTRO_API_KEY: maestroApiKey,
     };
 

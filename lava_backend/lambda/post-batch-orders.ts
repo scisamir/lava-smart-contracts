@@ -2,7 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { batchingTx } from './e2e/batching/batching';
 import { setupE2e } from './e2e/setup';
 import { jsonResponse, parseJsonBody, verifyAccessToken } from './security';
-import { createMaestroProvider, createMeshTxBuilder } from './cardano';
+import { createBlockfrostProvider, createMaestroProvider, createMeshTxBuilder } from './cardano';
 
 const resolvePoolStakeAssetNameHex = (batchTypeOrPoolKey: string): string => {
   const key = batchTypeOrPoolKey.trim();
@@ -50,9 +50,9 @@ export const handler = async (
       );
     }
 
-    const maestroKey = process.env.MAESTRO_API_KEY;
-    if (!maestroKey) {
-      throw new Error('MAESTRO_API_KEY is missing');
+    const apiKey = process.env.BLOCKFROST_API_KEY || process.env.MAESTRO_API_KEY;
+    if (!apiKey) {
+      throw new Error('BLOCKFROST_API_KEY is missing');
     }
 
     const batcherWalletPassphrase = process.env.BATCHER_WALLET_PASSPHRASE;
@@ -61,7 +61,7 @@ export const handler = async (
       throw new Error('BATCHER_WALLET_PASSPHRASE is missing');
     }
 
-    const blockchainProvider = createMaestroProvider(maestroKey);
+    const blockchainProvider = createBlockfrostProvider(apiKey);
     const txBuilder = createMeshTxBuilder(blockchainProvider, true);
 
     const txHash = await batchingTx(

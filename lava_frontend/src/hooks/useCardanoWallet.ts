@@ -144,7 +144,7 @@ const fetchVaults = async (): Promise<FetchVaultsResponse> => {
     ? {
         tvlAda: Number(vaultsData.stats.tvlAda ?? 0),
         tvlUsd: Number(vaultsData.stats.tvlUsd ?? 0),
-        stakingApy: String(vaultsData.stats.stakingApy ?? "3.65%"),
+        stakingApy: String(vaultsData.stats.stakingApy ?? "-"),
         holders: Number(vaultsData.stats.holders ?? 0),
         adaPriceUsd: Number(vaultsData.stats.adaPriceUsd ?? 0.35),
         ada24hChange: Number(vaultsData.stats.ada24hChange ?? 0),

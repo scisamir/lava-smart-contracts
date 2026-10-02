@@ -30,6 +30,7 @@ import { PoolDatumType } from './e2e/types';
 import { jsonResponse, normalizeCardanoAddress, parseJsonBody, verifyAccessToken } from './security';
 import {
   applyLiveProtocolParams,
+  createBlockfrostProvider,
   createMaestroProvider,
   createMeshTxBuilder,
   formatErrorMessage,
@@ -82,7 +83,7 @@ const resolvePoolConfig = (tokenName: string) => {
 };
 
 const resolveUnderlyingUnitFromPool = async (
-  provider: MaestroProvider,
+  provider: any,
   poolStakeAssetName: string
 ) => {
   const poolUtxos = await provider.fetchAddressUTxOs(PoolValidatorAddr);
@@ -151,12 +152,12 @@ export const handler = async (
       );
     }
 
-    const maestroKey = process.env.MAESTRO_API_KEY;
-    if (!maestroKey) {
-      throw new Error('MAESTRO_API_KEY is missing');
+    const apiKey = process.env.BLOCKFROST_API_KEY || process.env.MAESTRO_API_KEY;
+    if (!apiKey) {
+      throw new Error('BLOCKFROST_API_KEY is missing');
     }
 
-    const provider = createMaestroProvider(maestroKey);
+    const provider = createBlockfrostProvider(apiKey);
     const txBuilder = createMeshTxBuilder(provider);
     await applyLiveProtocolParams(txBuilder, provider);
 
@@ -260,7 +261,7 @@ export const handler = async (
     const unsignedTx = await builder.complete();
 
     return jsonResponse(200, {
-      unsignedTx: await repairScriptIntegrityHash(unsignedTx, maestroKey),
+      unsignedTx: await repairScriptIntegrityHash(unsignedTx, apiKey),
     }, auth.origin);
   } catch (error) {
     console.error('Build user order tx error:', error);

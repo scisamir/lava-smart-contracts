@@ -9,7 +9,7 @@ import { setupE2e } from './e2e/setup';
 import { OrderDatumType } from './e2e/types';
 import { OrderValidatorAddr } from './e2e/order/validator';
 import { jsonResponse, normalizeCardanoAddress, verifyAccessToken } from './security';
-import { createMaestroProvider } from './cardano';
+import { createBlockfrostProvider, createMaestroProvider } from './cardano';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -78,16 +78,16 @@ export const handler = async (
   try {
     const address = auth.address;
 
-    const maestroKey = process.env.MAESTRO_API_KEY;
+    const apiKey = process.env.BLOCKFROST_API_KEY || process.env.MAESTRO_API_KEY;
     const tableName = process.env.TABLE_NAME;
-    if (!maestroKey) {
-      throw new Error('MAESTRO_API_KEY is missing');
+    if (!apiKey) {
+      throw new Error('BLOCKFROST_API_KEY is missing');
     }
     if (!tableName) {
       throw new Error('TABLE_NAME is missing');
     }
 
-    const provider = createMaestroProvider(maestroKey);
+    const provider = createBlockfrostProvider(apiKey);
 
     const {
       NETWORK_ID,

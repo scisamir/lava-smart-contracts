@@ -5,7 +5,7 @@ import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { OrderValidatorAddr } from './e2e/order/validator';
 import { OrderDatumType } from './e2e/types';
 import { jsonResponse, verifyOriginRequest } from './security';
-import { createMaestroProvider } from './cardano';
+import { createBlockfrostProvider, createMaestroProvider } from './cardano';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -87,9 +87,14 @@ export const handler = async (
       throw new Error('TABLE_NAME is missing');
     }
 
-    const maestro = createMaestroProvider(process.env.MAESTRO_API_KEY!);
+    const apiKey = process.env.BLOCKFROST_API_KEY || process.env.MAESTRO_API_KEY;
+    if (!apiKey) {
+      throw new Error('BLOCKFROST_API_KEY is missing');
+    }
 
-    const orderUtxos = await maestro.fetchAddressUTxOs(OrderValidatorAddr);
+    const provider = createBlockfrostProvider(apiKey);
+
+    const orderUtxos = await provider.fetchAddressUTxOs(OrderValidatorAddr);
     const labelsByPool = await loadSnapshotLabels(tableName);
     const totalOrdersByPool = new Map<string, number>();
 

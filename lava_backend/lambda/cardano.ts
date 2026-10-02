@@ -1,4 +1,4 @@
-import { KoiosProvider, MaestroProvider, MeshTxBuilder, UTxO } from '@meshsdk/core';
+import { BlockfrostProvider, KoiosProvider, MaestroProvider, MeshTxBuilder, UTxO } from '@meshsdk/core';
 import {
   blake2b,
   CborWriter,
@@ -46,24 +46,30 @@ export const requireLavaNetwork = (
 export const lavaNetwork = requireLavaNetwork();
 export const cardanoConfig = networkConfigs[lavaNetwork];
 
-export const createMaestroProvider = (apiKey: string): MaestroProvider => {
-  const maestro = new MaestroProvider({
-    network: cardanoConfig.maestroNetwork,
-    apiKey,
-  });
+export const createBlockfrostProvider = (apiKey?: string): BlockfrostProvider => {
+  const blockfrostKey =
+    apiKey ||
+    process.env.BLOCKFROST_API_KEY ||
+    process.env.BLOCKFROST_ID;
+
+  if (!blockfrostKey) {
+    throw new Error('BLOCKFROST_API_KEY is not configured');
+  }
+
+  const blockfrost = new BlockfrostProvider(blockfrostKey);
 
   const koiosNetwork = cardanoConfig.meshNetwork === 'mainnet' ? 'api' : 'preprod';
   const koios = new KoiosProvider(koiosNetwork);
 
-  const origFetchAddressUTxOs = maestro.fetchAddressUTxOs.bind(maestro);
-  maestro.fetchAddressUTxOs = async (address: string, asset?: string): Promise<UTxO[]> => {
+  const origFetchAddressUTxOs = blockfrost.fetchAddressUTxOs.bind(blockfrost);
+  blockfrost.fetchAddressUTxOs = async (address: string, asset?: string): Promise<UTxO[]> => {
     try {
       const utxos = await origFetchAddressUTxOs(address, asset);
       if (utxos && utxos.length > 0) {
         return utxos;
       }
     } catch (err) {
-      console.warn('[cardano] Maestro fetchAddressUTxOs error, falling back to Koios:', err);
+      console.warn('[cardano] Blockfrost fetchAddressUTxOs error, falling back to Koios:', err);
     }
 
     try {
@@ -74,15 +80,15 @@ export const createMaestroProvider = (apiKey: string): MaestroProvider => {
     }
   };
 
-  const origFetchUTxOs = maestro.fetchUTxOs.bind(maestro);
-  maestro.fetchUTxOs = async (hash: string, index?: number): Promise<UTxO[]> => {
+  const origFetchUTxOs = blockfrost.fetchUTxOs.bind(blockfrost);
+  blockfrost.fetchUTxOs = async (hash: string, index?: number): Promise<UTxO[]> => {
     try {
       const utxos = await origFetchUTxOs(hash, index);
       if (utxos && utxos.length > 0) {
         return utxos;
       }
     } catch (err) {
-      console.warn('[cardano] Maestro fetchUTxOs error, falling back to Koios:', err);
+      console.warn('[cardano] Blockfrost fetchUTxOs error, falling back to Koios:', err);
     }
 
     try {
@@ -93,77 +99,85 @@ export const createMaestroProvider = (apiKey: string): MaestroProvider => {
     }
   };
 
-  const origFetchProtocolParameters = maestro.fetchProtocolParameters.bind(maestro);
-  maestro.fetchProtocolParameters = async (epoch?: number) => {
+  const origFetchProtocolParameters = blockfrost.fetchProtocolParameters.bind(blockfrost);
+  blockfrost.fetchProtocolParameters = async (epoch?: number) => {
     try {
       return await origFetchProtocolParameters(epoch);
     } catch (err) {
-      console.warn('[cardano] Maestro fetchProtocolParameters error, falling back to Koios:', err);
+      console.warn('[cardano] Blockfrost fetchProtocolParameters error, falling back to Koios:', err);
       return await koios.fetchProtocolParameters(epoch);
     }
   };
 
-  const origEvaluateTx = maestro.evaluateTx.bind(maestro);
-  maestro.evaluateTx = async (cbor: string, additionalUtxos?: any, additionalTxs?: any) => {
+  const origEvaluateTx = blockfrost.evaluateTx.bind(blockfrost);
+  blockfrost.evaluateTx = async (cbor: string, additionalUtxos?: any, additionalTxs?: any) => {
     try {
       return await origEvaluateTx(cbor, additionalUtxos, additionalTxs);
     } catch (err) {
-      console.warn('[cardano] Maestro evaluateTx error, falling back to Koios:', err);
+      console.warn('[cardano] Blockfrost evaluateTx error, falling back to Koios:', err);
       return await koios.evaluateTx(cbor, additionalUtxos, additionalTxs);
     }
   };
 
-  const origSubmitTx = maestro.submitTx.bind(maestro);
-  maestro.submitTx = async (tx: string) => {
+  const origSubmitTx = blockfrost.submitTx.bind(blockfrost);
+  blockfrost.submitTx = async (tx: string) => {
     try {
       return await origSubmitTx(tx);
     } catch (err) {
-      console.warn('[cardano] Maestro submitTx error, falling back to Koios:', err);
+      console.warn('[cardano] Blockfrost submitTx error, falling back to Koios:', err);
       return await koios.submitTx(tx);
     }
   };
 
-  const origFetchTxInfo = maestro.fetchTxInfo.bind(maestro);
-  maestro.fetchTxInfo = async (hash: string) => {
+  const origFetchTxInfo = blockfrost.fetchTxInfo.bind(blockfrost);
+  blockfrost.fetchTxInfo = async (hash: string) => {
     try {
       return await origFetchTxInfo(hash);
     } catch (err) {
-      console.warn('[cardano] Maestro fetchTxInfo error, falling back to Koios:', err);
+      console.warn('[cardano] Blockfrost fetchTxInfo error, falling back to Koios:', err);
       return await koios.fetchTxInfo(hash);
     }
   };
 
-  const origFetchAccountInfo = maestro.fetchAccountInfo.bind(maestro);
-  maestro.fetchAccountInfo = async (address: string) => {
+  const origFetchAccountInfo = blockfrost.fetchAccountInfo.bind(blockfrost);
+  blockfrost.fetchAccountInfo = async (address: string) => {
     try {
       return await origFetchAccountInfo(address);
     } catch (err) {
-      console.warn('[cardano] Maestro fetchAccountInfo error, falling back to Koios:', err);
+      console.warn('[cardano] Blockfrost fetchAccountInfo error, falling back to Koios:', err);
       return await koios.fetchAccountInfo(address);
     }
   };
 
-  const origFetchBlockInfo = maestro.fetchBlockInfo.bind(maestro);
-  maestro.fetchBlockInfo = async (hash: string) => {
+  const origFetchBlockInfo = blockfrost.fetchBlockInfo.bind(blockfrost);
+  blockfrost.fetchBlockInfo = async (hash: string) => {
     try {
       return await origFetchBlockInfo(hash);
     } catch (err) {
-      console.warn('[cardano] Maestro fetchBlockInfo error, falling back to Koios:', err);
+      console.warn('[cardano] Blockfrost fetchBlockInfo error, falling back to Koios:', err);
       return await koios.fetchBlockInfo(hash);
     }
   };
 
-  const origGet = maestro.get.bind(maestro);
-  maestro.get = async (url: string) => {
+  const origGet = blockfrost.get.bind(blockfrost);
+  blockfrost.get = async (url: string) => {
     try {
       return await origGet(url);
     } catch (err) {
-      console.warn('[cardano] Maestro get error, falling back to Koios:', err);
+      console.warn('[cardano] Blockfrost get error, falling back to Koios:', err);
       return await koios.get(url);
     }
   };
 
-  return maestro;
+  return blockfrost;
+};
+
+export const createBlockchainProvider = (apiKey?: string): BlockfrostProvider => {
+  return createBlockfrostProvider(apiKey);
+};
+
+export const createMaestroProvider = (apiKey?: string): any => {
+  return createBlockfrostProvider(apiKey);
 };
 
 export const formatErrorMessage = (error: unknown): string => {
@@ -195,7 +209,7 @@ export const formatErrorMessage = (error: unknown): string => {
 };
 
 export const createMeshTxBuilder = (
-  provider: MaestroProvider,
+  provider: any,
   verbose = false,
 ): MeshTxBuilder => {
   const txBuilder = new MeshTxBuilder({
@@ -315,9 +329,33 @@ const fetchJson = async (
   return JSON.parse(body);
 };
 
-const fetchCurrentCostModels = async (maestroApiKey?: string): Promise<PlutusCostModels> => {
+const fetchCurrentCostModels = async (apiKey?: string): Promise<PlutusCostModels> => {
+  const blockfrostKey =
+    apiKey ||
+    process.env.BLOCKFROST_API_KEY ||
+    process.env.BLOCKFROST_ID;
+
+  if (blockfrostKey) {
+    try {
+      const payload: any = await fetchJson(
+        `${cardanoConfig.blockfrostBaseUrl}/epochs/latest/parameters`,
+        { project_id: blockfrostKey }
+      );
+      const costModelsRaw = payload?.cost_models_raw;
+      if (costModelsRaw?.PlutusV3) {
+        return {
+          PlutusV1: costModelsRaw.PlutusV1,
+          PlutusV2: costModelsRaw.PlutusV2,
+          PlutusV3: costModelsRaw.PlutusV3,
+        };
+      }
+    } catch (error) {
+      console.warn('Unable to fetch Blockfrost cost models:', error);
+    }
+  }
+
   const maestroBaseUrl = `https://${cardanoConfig.maestroNetwork.toLowerCase()}.gomaestro-api.org/v1`;
-  const headers = maestroApiKey ? { 'api-key': maestroApiKey } : undefined;
+  const headers = apiKey ? { 'api-key': apiKey } : undefined;
 
   for (const endpoint of ['protocol-parameters', 'protocol-params']) {
     try {
@@ -401,7 +439,7 @@ const computeScriptDataHash = (
 
 export const applyLiveProtocolParams = async (
   txBuilder: MeshTxBuilder,
-  provider: MaestroProvider
+  provider: any
 ): Promise<void> => {
   try {
     txBuilder.protocolParams(await provider.fetchProtocolParameters());
@@ -412,7 +450,7 @@ export const applyLiveProtocolParams = async (
 
 export const repairScriptIntegrityHash = async (
   txHex: string,
-  maestroApiKey?: string
+  apiKey?: string
 ): Promise<string> => {
   const tx = Transaction.fromCbor(TxCBOR(txHex));
   const witnessSet = tx.witnessSet();
@@ -422,7 +460,7 @@ export const repairScriptIntegrityHash = async (
     return txHex;
   }
 
-  const models = await fetchCurrentCostModels(maestroApiKey);
+  const models = await fetchCurrentCostModels(apiKey);
   const scriptDataHash = computeScriptDataHash(
     buildCostmdls(witnessSet, models),
     redeemers,

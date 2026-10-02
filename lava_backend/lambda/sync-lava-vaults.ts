@@ -8,7 +8,7 @@ import {
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { PoolValidatorAddr } from './e2e/pool/validator';
-import { cardanoConfig, createMaestroProvider } from './cardano';
+import { cardanoConfig, createBlockfrostProvider, createMaestroProvider } from './cardano';
 import { MintingHash } from './e2e/mint/validator';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -19,6 +19,28 @@ const fetchHoldersCount = async (
   assetNameHex?: string
 ): Promise<number> => {
   if (!policyId || !assetNameHex) return 0;
+
+  const blockfrostKey =
+    apiKey ||
+    process.env.BLOCKFROST_API_KEY ||
+    process.env.BLOCKFROST_ID;
+
+  if (blockfrostKey) {
+    try {
+      const url = `${cardanoConfig.blockfrostBaseUrl}/assets/${policyId}${assetNameHex}/addresses`;
+      const res = await fetch(url, {
+        headers: { project_id: blockfrostKey },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        if (Array.isArray(data)) {
+          return data.length;
+        }
+      }
+    } catch (err) {
+      console.warn('[sync-lava-vaults] Blockfrost holders fetch error, trying Koios:', err);
+    }
+  }
 
   try {
     const koiosHost = cardanoConfig.meshNetwork === 'mainnet' ? 'https://api.koios.rest' : 'https://preprod.koios.rest';
@@ -104,20 +126,23 @@ const loadTokenRegistry = async (tableName: string) => {
 
 export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: number; body: string }> => {
   try {
-    const maestroApiKey = process.env.MAESTRO_API_KEY;
+    const blockfrostApiKey =
+      process.env.BLOCKFROST_API_KEY ||
+      process.env.BLOCKFROST_ID;
     const tableName = process.env.TABLE_NAME;
 
-    if (!maestroApiKey) {
-      throw new Error('MAESTRO_API_KEY is not configured');
+    if (!blockfrostApiKey) {
+      throw new Error('BLOCKFROST_API_KEY is not configured');
     }
+
     if (!tableName) {
       throw new Error('TABLE_NAME is not configured');
     }
 
-    const maestro = createMaestroProvider(maestroApiKey);
+    const provider = createBlockfrostProvider(blockfrostApiKey);
 
     const tokenRegistry = await loadTokenRegistry(tableName);
-    const utxos = await maestro.fetchAddressUTxOs(PoolValidatorAddr);
+    const utxos = await provider.fetchAddressUTxOs(PoolValidatorAddr);
 
     const nowIso = new Date().toISOString();
     let syncedCount = 0;
@@ -216,7 +241,7 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
     }
 
     const totalTvlAda = totalTvlLovelace / 1_000_000;
-    const ladaHolders = await fetchHoldersCount(maestroApiKey, MintingHash, '4c414441');
+    const ladaHolders = await fetchHoldersCount(blockfrostApiKey, MintingHash, '4c414441');
 
     await ddb.send(
       new PutCommand({
@@ -227,7 +252,7 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
           entityType: 'PROTOCOL_STATS',
           tvlAda: totalTvlAda,
           holders: ladaHolders > 0 ? ladaHolders : 1,
-          stakingApy: '3.65%',
+          stakingApy: '-',
           updatedAt: nowIso,
         },
       })

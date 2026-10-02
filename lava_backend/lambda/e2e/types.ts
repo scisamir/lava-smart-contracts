@@ -1,5 +1,6 @@
 import {
   AssetName,
+  BlockfrostProvider,
   Bool,
   BuiltinByteString,
   ConStr0,
@@ -45,4 +46,4 @@ export type PoolDatumType = ConStr0<
   ]
 >;
 
-export type BlockchainProviderType = MaestroProvider;
+export type BlockchainProviderType = BlockfrostProvider | MaestroProvider;
