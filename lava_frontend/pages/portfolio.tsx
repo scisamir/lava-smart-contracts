@@ -15,9 +15,6 @@ import {
 } from "@/components/ui/table";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 
-const NET_APY = 4.32; // %
-const USD_TO_ADA = 0.56;
-
 const getTokenIcon = (symbol: string) =>
   String(symbol ?? "").trim() === "ADA" ? ADA_LOGO.src : LAVA_LOGO.src;
 
@@ -26,19 +23,37 @@ const Delta = ({ value, positive }: { value: string; positive: boolean }) => (
 );
 
 const Portfolio = () => {
-  const { tokenBalances } = useCardanoWallet();
+  const { tokenBalances, protocolStats, poolInfo } = useCardanoWallet();
+
+  const adaPriceUsd = protocolStats?.adaPriceUsd ?? 0.35;
+  const ada24hChange = protocolStats?.ada24hChange ?? 0;
+  const rawNetApy = protocolStats?.stakingApy ?? "3.65%";
+  const netApyDisplay = rawNetApy.endsWith("%") ? rawNetApy : `${rawNetApy}%`;
+
+  // Find LADA vault to retrieve authentic exchange rate
+  const ladaVault = (poolInfo ?? []).find(
+    (vault) =>
+      vault.name === "LADA" || vault.tokenPair?.derivative === "LADA"
+  );
+  const ladaExchangeRate =
+    ladaVault && typeof ladaVault.exchangeRate === "number" && ladaVault.exchangeRate > 0
+      ? ladaVault.exchangeRate
+      : 1.0;
 
   // Convert tokenBalances object → renderable list
   const assets = Object.entries(tokenBalances)
     .filter(([, amount]) => amount > 0)
     .map(([symbol, amount]) => {
-      const normalizedAmount = symbol === "LADA" ? amount / 1_000_000 : amount;
-      const priceUsd = 0.32; // mock price
+      const isLada = symbol === "LADA";
+      const normalizedAmount = isLada ? amount / 1_000_000 : amount;
 
+      // LADA tracks underlying ADA multiplied by the current pool exchange rate
+      const priceUsd = isLada ? adaPriceUsd * ladaExchangeRate : adaPriceUsd;
       const valueNumber = normalizedAmount * priceUsd;
 
-      const changeValue = Math.random() * 20;
-      const changePercent = Math.random() * 6 - 3; // -3% → +3%
+      // Real 24h market price change
+      const changePercent = ada24hChange;
+      const changeValue = Math.abs(valueNumber * (changePercent / 100));
       const isPositive = changePercent >= 0;
 
       return {
@@ -53,15 +68,27 @@ const Portfolio = () => {
       };
     });
 
-  //Portfolio Calculations
-
+  // Portfolio Calculations
   const netWorth = assets.reduce((sum, asset) => sum + asset.valueNumber, 0);
 
-  const netWorthAda = netWorth * USD_TO_ADA;
+  const netWorthAda =
+    adaPriceUsd > 0
+      ? netWorth / adaPriceUsd
+      : assets.reduce(
+          (sum, asset) =>
+            sum + (asset.symbol === "LADA" ? asset.amount * ladaExchangeRate : asset.amount),
+          0
+        );
 
   const totalPnL = assets.reduce((sum, asset) => sum + asset.changeNumber, 0);
 
-  const totalYieldEarned = (netWorth * NET_APY) / 100;
+  // Real liquid staking yield earned from L-ADA holding
+  // Yield in ADA = LADA_balance * (exchangeRate - 1.0)
+  const ladaHolding = assets.find((a) => a.symbol === "LADA");
+  const ladaAmount = ladaHolding ? ladaHolding.amount : 0;
+  const yieldEarnedAda =
+    ladaExchangeRate > 1.0 ? ladaAmount * (ladaExchangeRate - 1.0) : 0;
+  const totalYieldEarned = yieldEarnedAda * adaPriceUsd;
 
   const pnlIsPositive = totalPnL >= 0;
 
@@ -119,9 +146,9 @@ const Portfolio = () => {
                   />
                   <Stat
                     label="Total yield earned"
-                    value={<Delta value={`$${totalYieldEarned.toFixed(2)}`} positive />}
+                    value={<Delta value={`$${totalYieldEarned.toFixed(2)}`} positive={totalYieldEarned >= 0} />}
                   />
-                  <Stat label="Net APY" value={`${NET_APY}%`} />
+                  <Stat label="Net APY" value={netApyDisplay} />
                 </div>
               </div>
             </div>

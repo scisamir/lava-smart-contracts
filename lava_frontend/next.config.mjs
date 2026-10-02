@@ -9,13 +9,14 @@ if (!lavaNetwork || !supportedLavaNetworks.includes(lavaNetwork)) {
   );
 }
 
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
+const DEFAULT_BACKEND_URL =
+  "https://tk3y4kw3f6.execute-api.us-east-1.amazonaws.com/prod";
 
-if (process.env.NODE_ENV === "production" && !backendUrl) {
-  throw new Error(
-    "NEXT_PUBLIC_BACKEND_URL is required for production frontend builds"
-  );
-}
+const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
+const backendUrl =
+  !rawBackendUrl || rawBackendUrl.includes("0lth59w8rl")
+    ? DEFAULT_BACKEND_URL
+    : rawBackendUrl;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -33,6 +34,7 @@ const nextConfig = {
   },
   env: {
     LAVA_NETWORK: lavaNetwork,
+    NEXT_PUBLIC_BACKEND_URL: backendUrl.replace(/\/$/, ""),
   },
   webpack(config) {
     config.resolve = config.resolve || {};

@@ -1,4 +1,4 @@
-import { MaestroProvider, MeshTxBuilder } from '@meshsdk/core';
+import { KoiosProvider, MaestroProvider, MeshTxBuilder, UTxO } from '@meshsdk/core';
 import {
   blake2b,
   CborWriter,
@@ -46,11 +46,153 @@ export const requireLavaNetwork = (
 export const lavaNetwork = requireLavaNetwork();
 export const cardanoConfig = networkConfigs[lavaNetwork];
 
-export const createMaestroProvider = (apiKey: string): MaestroProvider =>
-  new MaestroProvider({
+export const createMaestroProvider = (apiKey: string): MaestroProvider => {
+  const maestro = new MaestroProvider({
     network: cardanoConfig.maestroNetwork,
     apiKey,
   });
+
+  const koiosNetwork = cardanoConfig.meshNetwork === 'mainnet' ? 'api' : 'preprod';
+  const koios = new KoiosProvider(koiosNetwork);
+
+  const origFetchAddressUTxOs = maestro.fetchAddressUTxOs.bind(maestro);
+  maestro.fetchAddressUTxOs = async (address: string, asset?: string): Promise<UTxO[]> => {
+    try {
+      const utxos = await origFetchAddressUTxOs(address, asset);
+      if (utxos && utxos.length > 0) {
+        return utxos;
+      }
+    } catch (err) {
+      console.warn('[cardano] Maestro fetchAddressUTxOs error, falling back to Koios:', err);
+    }
+
+    try {
+      return await koios.fetchAddressUTxOs(address, asset);
+    } catch (err) {
+      console.warn('[cardano] Koios fallback fetchAddressUTxOs error:', err);
+      return [];
+    }
+  };
+
+  const origFetchUTxOs = maestro.fetchUTxOs.bind(maestro);
+  maestro.fetchUTxOs = async (hash: string, index?: number): Promise<UTxO[]> => {
+    try {
+      const utxos = await origFetchUTxOs(hash, index);
+      if (utxos && utxos.length > 0) {
+        return utxos;
+      }
+    } catch (err) {
+      console.warn('[cardano] Maestro fetchUTxOs error, falling back to Koios:', err);
+    }
+
+    try {
+      return await koios.fetchUTxOs(hash, index);
+    } catch (err) {
+      console.warn('[cardano] Koios fallback fetchUTxOs error:', err);
+      return [];
+    }
+  };
+
+  const origFetchProtocolParameters = maestro.fetchProtocolParameters.bind(maestro);
+  maestro.fetchProtocolParameters = async (epoch?: number) => {
+    try {
+      return await origFetchProtocolParameters(epoch);
+    } catch (err) {
+      console.warn('[cardano] Maestro fetchProtocolParameters error, falling back to Koios:', err);
+      return await koios.fetchProtocolParameters(epoch);
+    }
+  };
+
+  const origEvaluateTx = maestro.evaluateTx.bind(maestro);
+  maestro.evaluateTx = async (cbor: string, additionalUtxos?: any, additionalTxs?: any) => {
+    try {
+      return await origEvaluateTx(cbor, additionalUtxos, additionalTxs);
+    } catch (err) {
+      console.warn('[cardano] Maestro evaluateTx error, falling back to Koios:', err);
+      return await koios.evaluateTx(cbor, additionalUtxos, additionalTxs);
+    }
+  };
+
+  const origSubmitTx = maestro.submitTx.bind(maestro);
+  maestro.submitTx = async (tx: string) => {
+    try {
+      return await origSubmitTx(tx);
+    } catch (err) {
+      console.warn('[cardano] Maestro submitTx error, falling back to Koios:', err);
+      return await koios.submitTx(tx);
+    }
+  };
+
+  const origFetchTxInfo = maestro.fetchTxInfo.bind(maestro);
+  maestro.fetchTxInfo = async (hash: string) => {
+    try {
+      return await origFetchTxInfo(hash);
+    } catch (err) {
+      console.warn('[cardano] Maestro fetchTxInfo error, falling back to Koios:', err);
+      return await koios.fetchTxInfo(hash);
+    }
+  };
+
+  const origFetchAccountInfo = maestro.fetchAccountInfo.bind(maestro);
+  maestro.fetchAccountInfo = async (address: string) => {
+    try {
+      return await origFetchAccountInfo(address);
+    } catch (err) {
+      console.warn('[cardano] Maestro fetchAccountInfo error, falling back to Koios:', err);
+      return await koios.fetchAccountInfo(address);
+    }
+  };
+
+  const origFetchBlockInfo = maestro.fetchBlockInfo.bind(maestro);
+  maestro.fetchBlockInfo = async (hash: string) => {
+    try {
+      return await origFetchBlockInfo(hash);
+    } catch (err) {
+      console.warn('[cardano] Maestro fetchBlockInfo error, falling back to Koios:', err);
+      return await koios.fetchBlockInfo(hash);
+    }
+  };
+
+  const origGet = maestro.get.bind(maestro);
+  maestro.get = async (url: string) => {
+    try {
+      return await origGet(url);
+    } catch (err) {
+      console.warn('[cardano] Maestro get error, falling back to Koios:', err);
+      return await koios.get(url);
+    }
+  };
+
+  return maestro;
+};
+
+export const formatErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    try {
+      const parsed = JSON.parse(error);
+      if (parsed?.data?.message) return parsed.data.message;
+      if (parsed?.message) return parsed.message;
+      if (parsed?.error) {
+        return typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error);
+      }
+    } catch {
+      // not json
+    }
+    return error;
+  }
+  if (error && typeof error === 'object') {
+    const obj = error as Record<string, any>;
+    if (obj.message) return String(obj.message);
+    if (obj.error) {
+      return typeof obj.error === 'string' ? obj.error : JSON.stringify(obj.error);
+    }
+    return JSON.stringify(error);
+  }
+  return 'Internal server error';
+};
 
 export const createMeshTxBuilder = (
   provider: MaestroProvider,
@@ -174,7 +316,7 @@ const fetchJson = async (
 };
 
 const fetchCurrentCostModels = async (maestroApiKey?: string): Promise<PlutusCostModels> => {
-  const maestroBaseUrl = `https://${cardanoConfig.maestroNetwork}.gomaestro-api.org/v1`;
+  const maestroBaseUrl = `https://${cardanoConfig.maestroNetwork.toLowerCase()}.gomaestro-api.org/v1`;
   const headers = maestroApiKey ? { 'api-key': maestroApiKey } : undefined;
 
   for (const endpoint of ['protocol-parameters', 'protocol-params']) {

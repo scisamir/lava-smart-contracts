@@ -4,7 +4,6 @@ export type UserOrderType = {
   outputIndex?: number;
   isOptIn: boolean;
   tokenName: string;
-  firstSeenAt?: number;
 };
 
 export interface OrderListProps {
@@ -59,4 +58,19 @@ export type BackendVault = {
     };
   } | null;
   poolStakeAssetNameHex?: string;
+  exchangeRate?: number;
+};
+
+export interface ProtocolStats {
+  tvlAda: number;
+  tvlUsd: number;
+  stakingApy: string;
+  holders: number;
+  adaPriceUsd: number;
+  ada24hChange: number;
+}
+
+export type GetVaultsResponse = {
+  vaults: BackendVault[];
+  stats?: ProtocolStats;
 };

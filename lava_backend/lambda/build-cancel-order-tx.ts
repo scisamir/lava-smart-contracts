@@ -17,6 +17,7 @@ import {
   applyLiveProtocolParams,
   createMaestroProvider,
   createMeshTxBuilder,
+  formatErrorMessage,
   repairScriptIntegrityHash,
 } from './cardano';
 
@@ -93,17 +94,29 @@ export const handler = async (
       (asset) => asset.unit !== OrderValidatorHash
     );
 
-    const fallbackCollateral = [...walletUtxos]
+    const userUtxos =
+      Array.isArray(walletUtxos) &&
+      walletUtxos.length > 0 &&
+      walletUtxos.every((u) => u?.output?.amount)
+        ? walletUtxos
+        : await provider.fetchAddressUTxOs(walletAddress);
+
+    const hasValidCollateral =
+      walletCollateral &&
+      walletCollateral.input?.txHash &&
+      walletCollateral.output?.amount;
+
+    const fallbackCollateral = [...userUtxos]
       .filter((utxo) =>
-        utxo.output.amount.length === 1 &&
-        utxo.output.amount[0].unit === 'lovelace' &&
-        BigInt(utxo.output.amount[0].quantity) >= 7_000_000n
+        utxo?.output?.amount?.length === 1 &&
+        utxo.output.amount[0]?.unit === 'lovelace' &&
+        BigInt(utxo.output.amount[0]?.quantity ?? '0') >= 5_000_000n
       )
       .sort((a, b) => Number(BigInt(b.output.amount[0].quantity) - BigInt(a.output.amount[0].quantity)))[0];
 
-    const collateral = walletCollateral ?? fallbackCollateral;
+    const collateral = hasValidCollateral ? walletCollateral : fallbackCollateral;
     if (!collateral) {
-      throw new Error('No collateral UTxO found');
+      throw new Error('No collateral UTxO found. Please ensure your wallet has at least 5 ADA collateral.');
     }
 
     const unsignedTx = await txBuilder
@@ -124,11 +137,13 @@ export const handler = async (
       .txOut(receiverAddress, outputAmount)
       .txInCollateral(
         collateral.input.txHash,
-        collateral.input.outputIndex
+        collateral.input.outputIndex,
+        collateral.output?.amount,
+        collateral.output?.address || walletAddress
       )
       .setTotalCollateral('5000000')
       .changeAddress(walletAddress)
-      .selectUtxosFrom(walletUtxos)
+      .selectUtxosFrom(userUtxos)
       .requiredSignerHash(walletVK)
       .complete();
 
@@ -140,7 +155,7 @@ export const handler = async (
     return jsonResponse(
       500,
       {
-        error: error instanceof Error ? error.message : 'Internal server error',
+        error: formatErrorMessage(error),
       },
       auth.origin
     );

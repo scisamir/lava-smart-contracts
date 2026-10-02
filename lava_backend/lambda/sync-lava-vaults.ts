@@ -8,9 +8,49 @@ import {
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { PoolValidatorAddr } from './e2e/pool/validator';
-import { createMaestroProvider } from './cardano';
+import { cardanoConfig, createMaestroProvider } from './cardano';
+import { MintingHash } from './e2e/mint/validator';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+
+const fetchHoldersCount = async (
+  apiKey: string,
+  policyId?: string,
+  assetNameHex?: string
+): Promise<number> => {
+  if (!policyId || !assetNameHex) return 0;
+
+  try {
+    const koiosHost = cardanoConfig.meshNetwork === 'mainnet' ? 'https://api.koios.rest' : 'https://preprod.koios.rest';
+    const res = await fetch(`${koiosHost}/api/v1/asset_addresses?_asset_policy=${policyId}&_asset_name=${assetNameHex}`);
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      if (Array.isArray(data)) {
+        return data.length;
+      }
+    }
+  } catch (err) {
+    console.warn('[sync-lava-vaults] Koios holders fetch error, trying Maestro:', err);
+  }
+
+  try {
+    const network = cardanoConfig.maestroNetwork.toLowerCase();
+    const url = `https://${network}.gomaestro-api.org/v1/assets/${policyId}${assetNameHex}/addresses`;
+    const res = await fetch(url, {
+      headers: { 'api-key': apiKey },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      if (typeof data === 'number') return data;
+      if (typeof data?.data === 'number') return data.data;
+      if (Array.isArray(data?.data)) return data.data.length;
+    }
+  } catch (err) {
+    console.warn('[sync-lava-vaults] Maestro holders fetch error:', err);
+  }
+
+  return 0;
+};
 
 type PoolDatumType = any;
 
@@ -33,18 +73,12 @@ type TokenMetadataItem = {
   isActive?: boolean;
 };
 
-const LOGOS = [
-  'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=128&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1642104704074-907c0698cbd9?w=128&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=128&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1620321023374-d1a68fbc720d?w=128&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1642052502435-0f5d128a4d2f?w=128&q=80&auto=format&fit=crop',
-];
-
-const getRandomInt = (min: number, max: number): number =>
-  Math.floor(Math.random() * (max - min + 1)) + min;
-
-const getRandomLogo = (): string => LOGOS[getRandomInt(0, LOGOS.length - 1)];
+const getDefaultLogo = (symbol: string): string => {
+  if (symbol.toUpperCase() === 'LADA') {
+    return '/assets/circle-logo.png';
+  }
+  return '/assets/circle-logo.png';
+};
 
 const loadTokenRegistry = async (tableName: string) => {
   const scanResult = await ddb.send(
@@ -89,6 +123,8 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
     let syncedCount = 0;
     const seenVaultPks = new Set<string>();
 
+    let totalTvlLovelace = 0;
+
     for (const utxo of utxos) {
       if (!utxo.output.plutusData) {
         continue;
@@ -102,9 +138,21 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
       const isPoolOpen = Number(poolDatum.fields[7].constructor) === 1;
       const totalUnderlying = Number(poolDatum.fields[2].int);
       const totalStAssetsMinted = Number(poolDatum.fields[1].int);
+      const exchangeRateDatum = Number(poolDatum.fields[3].int);
+      const exchangeRate =
+        exchangeRateDatum > 0
+          ? exchangeRateDatum / 100_000
+          : totalStAssetsMinted > 0
+            ? totalUnderlying / totalStAssetsMinted
+            : 1.0;
+
       const underlyingPolicyId = String(poolDatum.fields[5].fields[1].bytes ?? '');
       const underlyingAssetNameHex = String(poolDatum.fields[5].fields[2].bytes ?? '');
       const isUnderlyingAda = underlyingPolicyId === '' && underlyingAssetNameHex === '';
+
+      if (isUnderlyingAda) {
+        totalTvlLovelace += totalUnderlying;
+      }
 
       const tokenMeta = tokenRegistry.get(derivativeSymbol);
       const baseSymbol = tokenMeta?.underlyingSymbol ?? (isUnderlyingAda ? 'ADA' : '');
@@ -117,12 +165,13 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
         sk: 'SNAPSHOT',
         entityType: 'VAULT_SNAPSHOT',
         name: derivativeSymbol,
-        logo: tokenMeta?.logo ?? getRandomLogo(),
-        score: (Math.random() * 30 + 70).toFixed(2),
+        logo: tokenMeta?.logo ?? getDefaultLogo(derivativeSymbol),
+        score: isPoolOpen ? '99.20' : '85.00',
         status: isPoolOpen ? 'Open' : 'Closed',
-        recentBlocks: getRandomInt(100, 1200),
+        recentBlocks: 1200,
         stStake: totalStAssetsMinted.toLocaleString(),
         staked: totalUnderlying.toLocaleString(),
+        exchangeRate,
         tokenPair: {
           base: baseSymbol,
           derivative: derivativeSymbol,
@@ -149,6 +198,7 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
         onchain: {
           totalUnderlyingRaw: String(totalUnderlying),
           totalStAssetsMintedRaw: String(totalStAssetsMinted),
+          exchangeRate,
           txHash: utxo.input.txHash,
           outputIndex: utxo.input.outputIndex,
         },
@@ -165,31 +215,51 @@ export const handler = async (_event: ScheduledEvent): Promise<{ statusCode: num
       syncedCount++;
     }
 
-    const existingSnapshots = await ddb.send(
-      new ScanCommand({
+    const totalTvlAda = totalTvlLovelace / 1_000_000;
+    const ladaHolders = await fetchHoldersCount(maestroApiKey, MintingHash, '4c414441');
+
+    await ddb.send(
+      new PutCommand({
         TableName: tableName,
-        FilterExpression: '#entityType = :entityType',
-        ExpressionAttributeNames: { '#entityType': 'entityType' },
-        ExpressionAttributeValues: { ':entityType': 'VAULT_SNAPSHOT' },
+        Item: {
+          pk: 'PROTOCOL#STATS',
+          sk: 'LATEST',
+          entityType: 'PROTOCOL_STATS',
+          tvlAda: totalTvlAda,
+          holders: ladaHolders > 0 ? ladaHolders : 1,
+          stakingApy: '3.65%',
+          updatedAt: nowIso,
+        },
       })
     );
 
-    const staleItems = (existingSnapshots.Items ?? []).filter((item) => {
-      const pk = String(item.pk ?? '');
-      const sk = String(item.sk ?? '');
-      return pk.startsWith('VAULT#') && sk === 'SNAPSHOT' && !seenVaultPks.has(pk);
-    });
-
-    for (const staleItem of staleItems) {
-      await ddb.send(
-        new DeleteCommand({
+    if (syncedCount > 0) {
+      const existingSnapshots = await ddb.send(
+        new ScanCommand({
           TableName: tableName,
-          Key: {
-            pk: staleItem.pk,
-            sk: staleItem.sk,
-          },
+          FilterExpression: '#entityType = :entityType',
+          ExpressionAttributeNames: { '#entityType': 'entityType' },
+          ExpressionAttributeValues: { ':entityType': 'VAULT_SNAPSHOT' },
         })
       );
+
+      const staleItems = (existingSnapshots.Items ?? []).filter((item) => {
+        const pk = String(item.pk ?? '');
+        const sk = String(item.sk ?? '');
+        return pk.startsWith('VAULT#') && sk === 'SNAPSHOT' && !seenVaultPks.has(pk);
+      });
+
+      for (const staleItem of staleItems) {
+        await ddb.send(
+          new DeleteCommand({
+            TableName: tableName,
+            Key: {
+              pk: staleItem.pk,
+              sk: staleItem.sk,
+            },
+          })
+        );
+      }
     }
 
     return {

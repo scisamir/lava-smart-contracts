@@ -7,7 +7,7 @@ import { Slug } from "@/components/layout/Section";
 import { TokenIcon } from "@/components/brand/TokenIcon";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { toast } from "react-toastify";
-import { MeshFullTxWallet, TOKEN_PAIRS, TokenPair, UserOrderType } from "@/lib/types";
+import { MeshFullTxWallet, TOKEN_PAIRS, TokenPair } from "@/lib/types";
 import { fetchBackend } from "@/lib/backendClient";
 import { getTransactionExplorerUrl, networkConfig } from "@/lib/networkConfig";
 
@@ -38,6 +38,7 @@ export const StakingCard = () => {
     walletSK,
     tokenBalances,
     poolInfo,
+    protocolStats,
     retryWalletAccess,
     refreshWalletStateAfterTx,
   } = useCardanoWallet();
@@ -110,8 +111,16 @@ export const StakingCard = () => {
     }
   }, [availableTokenPairs, selectedToken.base, selectedToken.derivative]);
 
-  const conversionRate = 0.996;
-  const usdRate = 0.32;
+  const activeVault = (poolInfo ?? []).find(
+    (vault) =>
+      vault.name === selectedToken.derivative ||
+      vault.tokenPair?.derivative === selectedToken.derivative
+  );
+  const conversionRate =
+    activeVault && typeof activeVault.exchangeRate === "number" && activeVault.exchangeRate > 0
+      ? activeVault.exchangeRate
+      : 1.0;
+  const usdRate = protocolStats?.adaPriceUsd ?? 0.35;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9.]/g, "");
@@ -270,24 +279,6 @@ export const StakingCard = () => {
       const data = await response.json();
       const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
-      try {
-        const orderTime = Date.now();
-        const orderAmount = tokenName === "ADA" ? Math.trunc(amount * 1_000_000) : amount;
-        const optimisticOrder: UserOrderType = {
-          amount: orderAmount,
-          txHash,
-          outputIndex: 0,
-          isOptIn: true,
-          tokenName,
-          firstSeenAt: orderTime,
-        };
-        const rawExisting = sessionStorage.getItem("lava_optimistic_orders");
-        const existing: UserOrderType[] = rawExisting ? JSON.parse(rawExisting) : [];
-        existing.push(optimisticOrder);
-        sessionStorage.setItem("lava_optimistic_orders", JSON.stringify(existing));
-      } catch {
-        // Ignore storage write failures
-      }
     } catch (e) {
       setIsProcessing(false);
       toastFailure(e);
@@ -354,24 +345,6 @@ export const StakingCard = () => {
       const data = await response.json();
       const signedTx = await (wallet as unknown as MeshFullTxWallet).signTxReturnFullTx(String(data.unsignedTx), true);
       txHash = await wallet.submitTx(signedTx);
-      try {
-        const orderTime = Date.now();
-        sessionStorage.setItem(`lava_order_time_${txHash}`, String(orderTime));
-        const optimisticOrder: UserOrderType = {
-          amount: requestAmount,
-          txHash,
-          outputIndex: 0,
-          isOptIn: false,
-          tokenName,
-          firstSeenAt: orderTime,
-        };
-        const rawExisting = sessionStorage.getItem("lava_optimistic_orders");
-        const existing: UserOrderType[] = rawExisting ? JSON.parse(rawExisting) : [];
-        existing.push(optimisticOrder);
-        sessionStorage.setItem("lava_optimistic_orders", JSON.stringify(existing));
-      } catch {
-        // Ignore storage write failures
-      }
     } catch (e) {
       setIsProcessing(false);
       toastFailure(e);

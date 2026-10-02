@@ -62,24 +62,18 @@ const Stake = () => {
 
     awaitFetchData();
 
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
-
     const refreshHandler = () => {
       void awaitFetchData();
-      [3000, 8000, 15000, 25000].forEach((delay) => {
-        timeouts.push(setTimeout(() => void awaitFetchData(), delay));
-      });
     };
 
     window.addEventListener(HOME_DATA_REFRESH_EVENT, refreshHandler);
 
     const interval = setInterval(() => {
       void awaitFetchData();
-    }, 10_000);
+    }, 1_800_000);
 
     return () => {
       clearInterval(interval);
-      timeouts.forEach(clearTimeout);
       window.removeEventListener(HOME_DATA_REFRESH_EVENT, refreshHandler);
     };
   }, [wallet, walletAddress, showBatchButtons]);

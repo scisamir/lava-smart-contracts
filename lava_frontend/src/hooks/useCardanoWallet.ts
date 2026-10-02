@@ -20,7 +20,7 @@ import {
   UTxO,
 } from "@meshsdk/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BackendVault } from "@/lib/types";
+import { BackendVault, ProtocolStats } from "@/lib/types";
 import { fetchBackend, getBackendBaseUrl } from "@/lib/backendClient";
 import {
   clearWalletAuthSession,
@@ -75,10 +75,49 @@ const fetchWalletBalance = async (
     throw new Error(`Failed to fetch user balance: ${balanceRes.status}`);
   }
 
-  return balanceRes.json();
+  const data: WalletBalanceResponse = await balanceRes.json();
+
+  if ((!data.walletUtxos || data.walletUtxos.length === 0) && typeof (wallet as any).getUtxos === "function") {
+    try {
+      const liveUtxos = await (wallet as any).getUtxos();
+      if (Array.isArray(liveUtxos) && liveUtxos.length > 0) {
+        data.walletUtxos = liveUtxos;
+        if (!data.balance || data.balance === 0) {
+          let lovelace = 0;
+          for (const u of liveUtxos) {
+            for (const a of u.output?.amount ?? []) {
+              if (a.unit === "lovelace") lovelace += Number(a.quantity);
+            }
+          }
+          data.balance = lovelace / 1_000_000;
+          data.tokenBalances = { ...data.tokenBalances, ADA: data.balance };
+        }
+      }
+    } catch (err) {
+      console.warn("[Lava] browser wallet.getUtxos fallback:", err);
+    }
+  }
+
+  if (!data.collateral && typeof (wallet as any).getCollateral === "function") {
+    try {
+      const liveCols = await (wallet as any).getCollateral();
+      if (Array.isArray(liveCols) && liveCols.length > 0) {
+        data.collateral = liveCols[0];
+      }
+    } catch (err) {
+      console.warn("[Lava] browser wallet.getCollateral fallback:", err);
+    }
+  }
+
+  return data;
 };
 
-const fetchVaults = async (): Promise<BackendVault[]> => {
+type FetchVaultsResponse = {
+  vaults: BackendVault[];
+  stats: ProtocolStats | null;
+};
+
+const fetchVaults = async (): Promise<FetchVaultsResponse> => {
   const vaultsRes = await fetchBackend('/lava-vaults');
 
   if (!vaultsRes.ok) {
@@ -87,7 +126,7 @@ const fetchVaults = async (): Promise<BackendVault[]> => {
 
   const vaultsData = await vaultsRes.json();
 
-  return (vaultsData.vaults ?? []).map((vault: any) => ({
+  const vaults: BackendVault[] = (vaultsData.vaults ?? []).map((vault: any) => ({
     name: String(vault.name ?? ""),
     logo: String(vault.logo ?? ""),
     score: String(vault.score ?? "0"),
@@ -95,10 +134,24 @@ const fetchVaults = async (): Promise<BackendVault[]> => {
     recentBlocks: Number(vault.recentBlocks ?? 0),
     stStake: String(vault.stStake ?? "0"),
     staked: String(vault.staked ?? "0"),
+    exchangeRate: Number(vault.exchangeRate ?? 1.0),
     tokenPair: vault.tokenPair ?? { base: "", derivative: "" },
     tokenDetails: vault.tokenDetails ?? null,
     poolStakeAssetNameHex: String(vault.poolStakeAssetNameHex ?? ""),
   }));
+
+  const stats: ProtocolStats | null = vaultsData.stats
+    ? {
+        tvlAda: Number(vaultsData.stats.tvlAda ?? 0),
+        tvlUsd: Number(vaultsData.stats.tvlUsd ?? 0),
+        stakingApy: String(vaultsData.stats.stakingApy ?? "3.65%"),
+        holders: Number(vaultsData.stats.holders ?? 0),
+        adaPriceUsd: Number(vaultsData.stats.adaPriceUsd ?? 0.35),
+        ada24hChange: Number(vaultsData.stats.ada24hChange ?? 0),
+      }
+    : null;
+
+  return { vaults, stats };
 };
 
 function useCardanoWalletState() {
@@ -255,7 +308,11 @@ function useCardanoWalletState() {
     [connected, walletBalanceQuery.data?.collateral]
   );
   const poolInfo = useMemo(
-    () => vaultsQuery.data ?? [],
+    () => vaultsQuery.data?.vaults ?? [],
+    [vaultsQuery.data]
+  );
+  const protocolStats = useMemo(
+    () => vaultsQuery.data?.stats ?? null,
     [vaultsQuery.data]
   );
   const vaultsError = useMemo(
@@ -362,6 +419,7 @@ function useCardanoWalletState() {
     walletUtxos,
     getTokenBalance,
     poolInfo,
+    protocolStats,
     backendBaseUrl,
     vaultsLoading: vaultsQuery.isLoading,
     vaultsError,

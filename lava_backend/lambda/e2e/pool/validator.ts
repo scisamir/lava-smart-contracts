@@ -40,4 +40,5 @@ export {
   PoolValidatorScript,
   PoolValidatorHash,
   PoolValidatorAddrWithStake as PoolValidatorAddr,
+  PoolValidatorAddrWithStake,
 };
