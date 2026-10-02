@@ -16,6 +16,16 @@
     "poolReference": {
       "txHash": "cf13e115891158a64dc4b66677fe03186690287165052ff67626d84998d55072",
       "outputIndex": 0
+    },
+    "adminController": {
+      "fullAdmin": {
+        "type": "spendScript",
+        "hash": "e97d62992ffe249822851c72de559d1f81ef01043791be69a8f79483"
+      },
+      "poolToggler": {
+        "type": "verificationKey",
+        "hash": "1cf3f4f03d7246a72f07b23d3300378f8f2e159716b11ed6f95f73f3"
+      }
     }
   },
   "mainnet": {
@@ -35,6 +45,16 @@
     "poolReference": {
       "txHash": "6dd8752d81233d08afe8193116c051eed24b83d5b3747f1eac3511dba4e1b3d8",
       "outputIndex": 0
+    },
+    "adminController": {
+      "fullAdmin": {
+        "type": "spendScript",
+        "hash": "e97d62992ffe249822851c72de559d1f81ef01043791be69a8f79483"
+      },
+      "poolToggler": {
+        "type": "verificationKey",
+        "hash": "1cf3f4f03d7246a72f07b23d3300378f8f2e159716b11ed6f95f73f3"
+      }
     }
   }
 }

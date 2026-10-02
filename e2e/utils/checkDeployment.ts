@@ -1,4 +1,5 @@
 import { deserializeDatum } from "@meshsdk/core";
+import { AdminControllerHash } from "../admin_controller/validator.js";
 import { BatchingHash } from "../batching/validator.js";
 import {
   GlobalSettingsAddr,
@@ -90,6 +91,14 @@ if (globalSettingsUtxo) {
         `Expected the 9-field GlobalSettingsDatum, found ${globalSettings.fields?.length ?? 0} fields`,
       );
     }
+
+    const admin = globalSettings.fields?.[0];
+    if (
+      Number(admin?.constructor) !== 2 ||
+      admin?.fields?.[0]?.bytes !== AdminControllerHash
+    ) {
+      issues.push("Global settings admin is not the admin controller");
+    }
   }
 
   const globalSettingsUnit = GlobalSettingsHash + GlobalSettingsNft;
@@ -110,6 +119,7 @@ console.log("Network:", LAVA_NETWORK);
 console.log("Global settings hash:", GlobalSettingsHash);
 console.log("Pool validator hash:", PoolValidatorHash);
 console.log("Batching validator hash:", BatchingHash);
+console.log("Admin controller hash:", AdminControllerHash);
 console.log("Pool UTxOs:", poolUtxos.length);
 
 if (issues.length > 0) {
