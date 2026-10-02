@@ -1,47 +1,12 @@
 import {
-  MaestroProvider,
-  MeshTxBuilder,
   MeshWallet,
   UTxO,
   deserializeAddress,
 } from "@meshsdk/core";
 import { NETWORK_CONFIG, NETWORK_ID } from "../network.js";
+import { blockchainProvider, txBuilder } from "../provider.js";
 
-const maestroKey = process.env.MAESTRO_KEY;
-if (!maestroKey) {
-  throw new Error("MAESTRO_KEY does not exist");
-}
-
-const blockchainProvider = new MaestroProvider({
-  network: NETWORK_CONFIG.maestroNetwork,
-  apiKey: maestroKey,
-});
-
-const response = await fetch(
-  `https://${NETWORK_CONFIG.maestroNetwork}.gomaestro-api.org/v1/protocol-parameters`,
-  { headers: { "api-key": maestroKey } },
-);
-if (!response.ok) {
-  throw new Error(
-    `Failed to fetch Maestro protocol parameters: ${response.status}`,
-  );
-}
-
-const protocolParameters = await response.json();
-const { plutus_v1, plutus_v2, plutus_v3 } =
-  protocolParameters.data.plutus_cost_models;
-
-const txBuilder = new MeshTxBuilder({
-  fetcher: blockchainProvider,
-  submitter: blockchainProvider,
-  evaluator: blockchainProvider,
-  verbose: false,
-});
-txBuilder.setNetwork([plutus_v1, plutus_v2, plutus_v3]);
-
-const botPassphrase =
-  process.env.BOT_WALLET_PASSPHRASE ??
-  process.env.WALLET_PASSPHRASE_ONE;
+const botPassphrase = process.env.BOT_WALLET_PASSPHRASE?.trim();
 if (!botPassphrase) {
   throw new Error("BOT_WALLET_PASSPHRASE does not exist");
 }

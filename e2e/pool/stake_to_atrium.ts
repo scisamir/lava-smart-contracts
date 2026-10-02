@@ -336,6 +336,14 @@ const main = async (): Promise<void> => {
     );
   }
 
+  const expectedRate = process.env.EXPECTED_ATRIUM_RATE;
+  if (
+    expectedRate &&
+    expectedRate !== `${state.exRate.numerator}/${state.exRate.denominator}`
+  ) {
+    throw new Error("Atrium exchange rate changed before staking. Retry with a fresh rate.");
+  }
+
   const diffusionToMint = lovelaceToBasketTokens(state.exRate, poolUnderlying);
   if (diffusionToMint <= 0n) {
     throw new Error(

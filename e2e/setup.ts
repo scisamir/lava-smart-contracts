@@ -1,6 +1,4 @@
 import {
-  MaestroProvider,
-  MeshTxBuilder,
   MeshWallet,
   NativeScript,
   UTxO,
@@ -13,49 +11,7 @@ import {
 } from "@meshsdk/core";
 import blueprint from "../smart_contract/plutus.json" with { type: "json" };
 import { LAVA_NETWORK, NETWORK_CONFIG, NETWORK_ID } from "./network.js";
-
-// Setup blockchain provider as Maestro
-const maestroKey = process.env.MAESTRO_KEY;
-if (!maestroKey) {
-  throw new Error("MAESTRO_KEY does not exist");
-}
-const blockchainProvider = new MaestroProvider({
-  network: NETWORK_CONFIG.maestroNetwork,
-  apiKey: maestroKey,
-});
-
-const fetchProtocolParameters = async (attempts = 3): Promise<any> => {
-  try {
-    const response = await fetch(
-      `https://${NETWORK_CONFIG.maestroNetwork}.gomaestro-api.org/v1/protocol-parameters`,
-      { headers: { "api-key": maestroKey } },
-    );
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch Maestro protocol parameters: ${response.status}`,
-      );
-    }
-    return response.json();
-  } catch (error) {
-    if (attempts === 1) throw error;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return fetchProtocolParameters(attempts - 1);
-  }
-};
-
-// Create transaction builder
-const txBuilder = new MeshTxBuilder({
-  fetcher: blockchainProvider,
-  submitter: blockchainProvider,
-  evaluator: blockchainProvider,
-  // evaluator: blockfrostProvider,
-  verbose: false,
-});
-const protocolParameters = await fetchProtocolParameters();
-const { plutus_v1, plutus_v2, plutus_v3 } =
-  protocolParameters.data.plutus_cost_models;
-txBuilder.setNetwork([plutus_v1, plutus_v2, plutus_v3]);
-// txBuilder.txEvaluationMultiplier = 1.6
+import { blockchainProvider, txBuilder } from "./provider.js";
 
 // import admin's wallet passphrase and initialize the wallet
 const wallet1Passphrase = process.env.WALLET_PASSPHRASE_ONE;
@@ -159,12 +115,6 @@ const { address: multiSigAddress, scriptCbor: multiSigCbor } =
   serializeNativeScript(nativeScript, undefined, NETWORK_ID);
 const multisigHash = resolveNativeScriptHash(nativeScript);
 
-if (
-  NETWORK_CONFIG.adminController.poolToggler.type !== "verificationKey" ||
-  wallet1VK !== NETWORK_CONFIG.adminController.poolToggler.hash
-) {
-  throw new Error("Wallet one does not match the configured bot key hash");
-}
 if (
   NETWORK_CONFIG.adminController.fullAdmin.type !== "spendScript" ||
   multisigHash !== NETWORK_CONFIG.adminController.fullAdmin.hash

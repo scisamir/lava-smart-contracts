@@ -9,3 +9,6 @@ logs/
 *.dmp
 core
 core.*
+.atrium-cycle-mainnet.json
+.atrium-cycle-mainnet.json.tmp
+.atrium-cycle-mainnet.lock

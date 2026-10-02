@@ -1,5 +1,4 @@
 import { deserializeDatum, mConStr1 } from "@meshsdk/core";
-import { withdrawScriptSigner } from "../data.js";
 import {
   blockchainProvider,
   multiSigAddress,
@@ -49,7 +48,7 @@ if (currentGlobalSettings.fields?.length !== 9) {
 const updatedGlobalSettings = {
   ...currentGlobalSettings,
   fields: [
-    withdrawScriptSigner(AdminControllerHash),
+    { constructor: 2, fields: [{ bytes: AdminControllerHash }] },
     ...currentGlobalSettings.fields.slice(1),
   ],
 };
@@ -75,7 +74,7 @@ const unsignedTx = await txBuilder
   .txInInlineDatumPresent()
   .txInRedeemerValue(mConStr1([]))
   .txOut(GlobalSettingsAddr, gsUtxo.output.amount)
-  .txOutInlineDatumValue(updatedGlobalSettings)
+  .txOutInlineDatumValue(updatedGlobalSettings, "JSON")
   .txOut(multiSigAddress, adminUtxo.output.amount)
   .withdrawalPlutusScriptV3()
   .withdrawal(AdminControllerRewardAddress, "0")

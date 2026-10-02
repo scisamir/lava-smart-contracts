@@ -18,7 +18,6 @@ export type SignerConfig = {
 type NetworkConfig = {
   networkId: 0 | 1;
   meshNetwork: LavaNetwork;
-  maestroNetwork: "Preprod" | "Mainnet";
   explorerBaseUrl: string;
   blockfrostBaseUrl: string;
   globalSettingsSeed: {

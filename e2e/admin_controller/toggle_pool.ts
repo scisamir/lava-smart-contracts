@@ -4,7 +4,6 @@ import {
   mConStr1,
   stringToHex,
 } from "@meshsdk/core";
-import { falseData, trueData } from "../data.js";
 import { NETWORK_CONFIG } from "../network.js";
 import {
   blockchainProvider,
@@ -90,11 +89,20 @@ if (isProcessingOpen === shouldBeOpen) {
   process.exit(0);
 }
 
+const feeUtxos = botUtxos.filter(
+  (utxo) =>
+    utxo.input.txHash !== botCollateral.input.txHash ||
+    utxo.input.outputIndex !== botCollateral.input.outputIndex,
+);
+if (feeUtxos.length === 0) {
+  throw new Error("Bot wallet needs a fee UTxO separate from collateral");
+}
+
 const updatedPoolDatum = {
   ...currentPoolDatum,
   fields: [
     ...currentPoolDatum.fields.slice(0, 7),
-    isProcessingOpen ? falseData() : trueData(),
+    { constructor: isProcessingOpen ? 0 : 1, fields: [] },
   ],
 };
 
@@ -116,7 +124,7 @@ const unsignedTx = await txBuilder
   .spendingReferenceTxInInlineDatumPresent()
   .spendingReferenceTxInRedeemerValue(mConStr1([]))
   .txOut(poolUtxo.output.address, poolUtxo.output.amount)
-  .txOutInlineDatumValue(updatedPoolDatum)
+  .txOutInlineDatumValue(updatedPoolDatum, "JSON")
   .withdrawalPlutusScriptV3()
   .withdrawal(AdminControllerRewardAddress, "0")
   .withdrawalScript(AdminControllerScript)
@@ -128,7 +136,7 @@ const unsignedTx = await txBuilder
   )
   .setTotalCollateral("5000000")
   .changeAddress(botAddress)
-  .selectUtxosFrom(botUtxos)
+  .selectUtxosFrom(feeUtxos)
   .complete();
 
 const signedTx = await botWallet.signTx(unsignedTx, true);
